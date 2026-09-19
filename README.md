@@ -106,7 +106,7 @@ MINI_PROJECT_1_Local_Culture_Tour_Guide/
 ├── .gitattributes               ← 윈도우/맥 줄바꿈 차이로 인한 충돌 방지 설정
 │
 ├── .github/                     ← GitHub 협업 도구 설정
-│   ├── README.md
+│   ├── ABOUT.md                 ← 이 폴더 설명
 │   ├── PULL_REQUEST_TEMPLATE.md ← PR(코드 합치기 요청) 작성 양식
 │   └── ISSUE_TEMPLATE/          ← 이슈(할 일·버그) 작성 양식
 │       ├── bug_report.md
