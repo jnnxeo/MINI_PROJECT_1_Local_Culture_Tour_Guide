@@ -241,5 +241,5 @@ git checkout -b feat/기능이름  # 내 작업 브랜치 생성
 
 ## 참고
 
-- 이 저장소의 폴더 구조는 팀의 이전 프로젝트 [ScholarBee](https://github.com/yejun05011/ScholarBee)의 구성을 참고해 정리했습니다.
+
 - 상세 요구사항·기능·화면·DB 정의는 팀 공유 엑셀 문서(`08_TripAI_요구사항정의서.xlsx`)를 기준으로 합니다.
