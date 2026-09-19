@@ -1,0 +1,36 @@
+# =============================================================
+#  .gitattributes — 줄바꿈(개행) 문자 통일 설정
+# =============================================================
+#  윈도우는 줄바꿈을 CRLF, 맥/리눅스는 LF 로 저장합니다.
+#  설정이 없으면 "코드는 하나도 안 바꿨는데 전체 파일이 수정됨"으로
+#  표시되어 충돌이 나거나 diff가 지저분해집니다.
+#
+#  아래 설정은 "저장소에는 항상 LF 로 저장"하도록 통일합니다.
+#  팀원은 신경 쓸 필요 없이 그냥 평소처럼 작업하면 됩니다.
+# =============================================================
+
+# 기본: Git이 텍스트 파일을 자동 판별해 저장소에는 LF로 보관
+* text=auto eol=lf
+
+# 실행 스크립트는 반드시 LF (윈도우에서 CRLF가 되면 맥/리눅스에서 실행 불가)
+*.sh      text eol=lf
+gradlew   text eol=lf
+
+# 윈도우 전용 배치 파일은 CRLF 유지
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# 바이너리 파일 — 절대 변환하지 않음
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.webp    binary
+*.pdf     binary
+*.jar     binary
+*.zip     binary
+*.woff    binary
+*.woff2   binary
+*.ttf     binary
+*.xlsx    binary

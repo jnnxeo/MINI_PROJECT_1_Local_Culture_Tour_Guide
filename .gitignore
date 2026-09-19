@@ -1,0 +1,163 @@
+# =============================================================
+#  .gitignore — GitHub에 "올리지 않을" 파일 목록
+# =============================================================
+#  여기에 적힌 파일/폴더는 git add 를 해도 커밋되지 않습니다.
+#
+#  왜 제외하나요?
+#   1) 빌드 결과물  : 각자 컴퓨터에서 만들면 되는 것. 올리면 충돌만 남습니다.
+#   2) 라이브러리   : 용량이 수백 MB. 설정 파일만 있으면 재설치됩니다.
+#   3) 비밀 정보    : DB 비밀번호·API 키. 올라가면 보안 사고입니다.
+#   4) 개인 설정    : 각자 쓰는 에디터/OS가 만드는 파일. 공유할 이유가 없습니다.
+#
+#  ⚠️ 이미 커밋된 파일은 여기에 추가해도 계속 추적됩니다.
+#     그럴 땐 아래 명령으로 추적을 끊어주세요 (파일은 안 지워집니다).
+#       git rm -r --cached <경로>
+# =============================================================
+
+
+# -------------------------------------------------------------
+# 1. 백엔드 — Java / Spring Boot / Gradle
+# -------------------------------------------------------------
+
+# 컴파일 결과물
+*.class
+build/
+out/
+bin/
+target/
+
+# Gradle 캐시·로컬 설정
+.gradle/
+gradle-app.setting
+
+# ✅ Gradle Wrapper 는 반드시 커밋합니다 (팀원이 Gradle 설치 없이 빌드 가능)
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+!gradlew
+!gradlew.bat
+
+# Maven (혹시 Maven으로 전환할 경우 대비)
+.mvn/
+mvnw
+mvnw.cmd
+
+# 실행 로그·임시 파일
+*.log
+logs/
+tmp/
+*.pid
+hs_err_pid*
+replay_pid*
+
+
+# -------------------------------------------------------------
+# 2. 프론트엔드 — Node.js / React / Vite
+# -------------------------------------------------------------
+
+# 설치된 라이브러리 (npm install 로 재생성)
+node_modules/
+
+# 빌드 결과물
+dist/
+dist-ssr/
+.vite/
+frontend/build/
+
+# npm/yarn 로그
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ❗ package-lock.json 은 커밋합니다 (팀원 간 버전 통일).
+#    아래 줄 주석을 풀지 마세요.
+# package-lock.json
+
+
+# -------------------------------------------------------------
+# 3. 🔐 비밀 정보 — 절대 커밋 금지
+# -------------------------------------------------------------
+#  DB 비밀번호, 서울시 문화행사 API 키, TourAPI 키, 카카오 키 등이
+#  들어가는 파일입니다. 한 번 올라가면 기록에 영구히 남습니다.
+
+# Spring Boot 설정 파일
+application.properties
+application.yml
+application-*.properties
+application-*.yml
+backend/src/main/resources/application.properties
+backend/src/main/resources/application.yml
+backend/src/main/resources/application-*.properties
+backend/src/main/resources/application-*.yml
+
+# 환경변수 파일
+.env
+.env.*
+!.env.example
+
+# 인증서·키 파일
+*.pem
+*.key
+*.jks
+*.p12
+
+
+# -------------------------------------------------------------
+# 4. IDE / 에디터 개인 설정
+# -------------------------------------------------------------
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# VS Code (팀 공용 설정을 쓸 경우 .vscode/settings.json 만 예외 처리 가능)
+.vscode/
+
+# Eclipse / STS
+.classpath
+.project
+.settings/
+.apt_generated/
+.factorypath
+
+
+# -------------------------------------------------------------
+# 5. 운영체제가 자동 생성하는 파일
+# -------------------------------------------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+
+# -------------------------------------------------------------
+# 6. 압축·배포 산출물
+# -------------------------------------------------------------
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ✅ 단, Gradle Wrapper jar 는 예외 (위 1번에서 이미 허용)
+!gradle/wrapper/gradle-wrapper.jar
+
+
+# -------------------------------------------------------------
+# 7. 데이터베이스 로컬 파일
+# -------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db-journal
+*.session.sql
