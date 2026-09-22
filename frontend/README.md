@@ -1,9 +1,9 @@
-# Frontend (React · Vite · Node.js)
+# Frontend (React 18 · Vite 5 · JavaScript · Node.js)
 
 사용자가 직접 보는 화면 디렉토리입니다. 백엔드 API를 호출해 받은 데이터를 화면에 그립니다.
 
-> 📌 **현재 상태**: 폴더 구조와 설명 문서만 있고 **실제 코드는 없습니다.**
-> 프론트엔드 담당자가 아래 "프로젝트 최초 생성"을 **한 번만** 수행하면 됩니다.
+> 📌 **현재 상태**: JavaScript 기반 React/Vite 초기 환경이 구성되어 있습니다.
+> 팀원은 프로젝트를 다시 생성하지 말고 아래 설치·실행 절차를 따르세요.
 
 ---
 
@@ -35,42 +35,30 @@ frontend/
 
 ---
 
-## 프로젝트 최초 생성 (담당자 1인만, 1회)
+## 프로젝트 초기 설정 및 실행
 
-### 1단계 · 언어 선택 (팀 결정 필요)
+### 1단계 · 언어 선택 (결정 완료: JavaScript)
 
 | | TypeScript | JavaScript |
 |---|---|---|
 | 장점 | 오타·타입 실수를 **미리** 잡아줌 | 문법이 단순해 **빨리 시작** 가능 |
 | 단점 | 처음엔 어려움 | 실행 중 에러를 만날 확률이 높음 |
-| 참고 | 이전 프로젝트(ScholarBee)에서 사용 | - |
+| 이번 프로젝트 | 사용하지 않음 | **사용** |
 
-> 🙋 **아직 정해지지 않았습니다.** 팀에서 정한 뒤 아래 명령 중 하나를 고르세요.
-> 정하고 나면 이 문서의 이 부분을 수정해 주세요.
+> 팀원이 JavaScript와 npm을 사용하므로 `.jsx` 파일을 작성합니다.
 
-### 2단계 · Vite 프로젝트 생성
+### 2단계 · Vite 프로젝트 (완료)
 
 ```bash
 cd frontend
-
-# TypeScript 로 할 경우
-npm create vite@latest . -- --template react-ts
-
-# JavaScript 로 할 경우
-npm create vite@latest . -- --template react
+npm ci
 ```
 
-> `.` 은 "현재 폴더에 생성"이라는 뜻입니다.
-> 기존 파일이 있다고 경고가 나오면 **기존 파일 유지(Ignore files and continue)** 를 선택하세요.
-> ⚠️ 이미 있는 `README.md` 파일들을 덮어쓰지 않도록 주의하세요.
+> `npm create vite@latest . -- --template react`는 실행하지 않았습니다. 기존 README를 보존하면서 React/Vite 초기 파일을 추가했습니다. 팀원은 `npm ci`로 잠금 파일에 기록된 버전을 설치합니다.
 
-### 3단계 · 라이브러리 설치
+### 3단계 · 라이브러리 설치 (완료)
 
-```bash
-npm install                 # 기본 설치
-npm install axios           # API 호출용
-npm install react-router-dom  # 화면 이동(라우팅)용
-```
+`package.json`에 React, Vite, axios(API 호출), react-router-dom(화면 이동)을 등록했고 `npm install`로 `package-lock.json`을 생성했습니다. 새 라이브러리를 추가할 때는 `npm install <패키지>`를 실행합니다.
 
 ### 4단계 · 실행 확인
 
@@ -95,12 +83,13 @@ git push origin chore/frontend-init
 
 | 명령 | 설명 |
 |---|---|
-| `npm install` | `package.json`의 라이브러리 설치 → `node_modules/` 생성 |
+| `npm ci` | `package-lock.json`에 고정된 라이브러리 설치 → `node_modules/` 생성 |
+| `npm install <패키지>` | 의존성 추가 시 `package.json`과 `package-lock.json` 수정 |
 | `npm run dev` | 개발 서버 실행 (http://localhost:5173) |
 | `npm run build` | 배포용 빌드 → `dist/` 생성 |
 | `npm run preview` | 빌드 결과 미리보기 |
 
-> 🔄 **새로 clone 받았거나 팀원이 라이브러리를 추가했다면** `npm install`을 먼저 실행하세요.
+> 🔄 **새로 clone 받았거나 팀원이 라이브러리를 추가했다면** `npm ci`를 실행하세요. 의존성을 추가한 사람은 두 package 파일을 함께 커밋합니다.
 
 ---
 
@@ -129,7 +118,7 @@ server: {
 |---|---|
 | `package.json` | `node_modules/` (용량 수백 MB) |
 | `package-lock.json` | `dist/` (빌드 결과물) |
-| `vite.config.js`, `index.html` | `.env` 🔐 (API 키) |
+| `index.html`, `.env.example` | `.env` 🔐 (API 키) |
 | `src/` 아래 소스 코드 | `.vite/` (캐시) |
 
 > 🔐 카카오맵 키 등은 `.env` 파일에 넣고, **절대 커밋하지 않습니다.**
