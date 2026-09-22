@@ -2,8 +2,8 @@
 
 백엔드 서버 디렉토리입니다. 프론트엔드의 요청을 받아 **DB 조회·외부 API 연동·AI 일정 생성**을 처리하고 JSON으로 응답합니다.
 
-> 📌 **현재 상태**: 폴더 구조와 설명 문서만 있고 **실제 코드는 없습니다.**
-> 백엔드 담당자가 아래 "프로젝트 최초 생성"을 **한 번만** 수행하면 됩니다.
+> 📌 **현재 상태**: Spring Boot·Gradle·MyBatis 공통 초기 설정이 완료되었습니다.
+> 기능별 API 코드는 각자 `feat/*` 브랜치에서 추가합니다.
 
 ---
 
@@ -65,60 +65,18 @@ backend/
 
 ---
 
-## 프로젝트 최초 생성 (담당자 1인만, 1회)
+## 공통 초기 설정
 
-폴더 구조는 이미 있으니 **빌드 설정 파일만** 만들면 됩니다.
+공통 초기 설정은 이미 저장소에 포함되어 있습니다. 팀원은 새 Spring Boot 프로젝트를 생성하지 않습니다.
 
-### 방법 A · Spring Initializr 사이트 (권장)
+- Java 17 · Spring Boot 3.5 · Gradle Wrapper
+- Spring Web · Validation · Spring Security
+- MyBatis · MySQL Driver · Lombok
+- CORS 설정, 공통 API 응답, 전역 입력 검증 예외 처리
 
-1. https://start.spring.io 접속
-2. 아래와 같이 설정
-
-   | 항목 | 값 |
-   |---|---|
-   | Project | **Gradle - Groovy** |
-   | Language | **Java** |
-   | Spring Boot | **3.x** (최신 안정 버전) |
-   | Group | `com.tripai` |
-   | Artifact | `backend` |
-   | Package name | `com.tripai.backend` |
-   | Packaging | **Jar** |
-   | Java | **17** |
-
-3. **Dependencies** 추가
-   - Spring Web
-   - Spring Data JPA
-   - MySQL Driver
-   - Spring Security
-   - Validation
-   - Lombok
-   - Spring Boot DevTools
-
-4. **GENERATE** → 압축 해제 → 아래 파일들을 이 `backend/` 폴더에 **복사**
-
-   ```
-   build.gradle
-   settings.gradle
-   gradlew
-   gradlew.bat
-   gradle/wrapper/
-   src/main/java/com/tripai/backend/BackendApplication.java
-   ```
-
-   > ⚠️ 이미 있는 `README.md` 파일들은 **덮어쓰지 마세요.**
-
-5. 커밋
-
-   ```bash
-   git checkout -b chore/backend-init
-   git add backend/
-   git commit -m "chore: Spring Boot 프로젝트 초기 설정"
-   git push origin chore/backend-init
-   ```
-
-### 방법 B · IntelliJ에서 생성
-
-`File → New → Project → Spring Boot` 에서 위와 동일하게 설정합니다.
+공용 `src/main/resources/application.yml`은 환경 변수 이름과 MyBatis 설정만 관리합니다.
+개인 DB 비밀번호와 JWT 비밀 키는 `backend/.env.example`을 참고해 각자 `backend/.env`에 입력합니다.
+`.env` 파일은 Git에 올리지 않습니다.
 
 ---
 
