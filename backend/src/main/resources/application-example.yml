@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: tripai-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/tripai?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: CHANGE_ME
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.tripai.backend.domain
+  configuration:
+    map-underscore-to-camel-case: true
+
+server:
+  port: 8080
