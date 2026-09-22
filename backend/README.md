@@ -74,8 +74,9 @@ backend/
 - MyBatis · MySQL Driver · Lombok
 - CORS 설정, 공통 API 응답, 전역 입력 검증 예외 처리
 
-개인 DB 설정은 `src/main/resources/application-example.yml`을 참고해
-`application.yml`을 각자 만들고 입력합니다. 실제 설정 파일에는 비밀번호가 들어가므로 커밋하지 않습니다.
+공용 `src/main/resources/application.yml`은 환경 변수 이름과 MyBatis 설정만 관리합니다.
+개인 DB 비밀번호와 JWT 비밀 키는 `backend/.env.example`을 참고해 각자 `backend/.env`에 입력합니다.
+`.env` 파일은 Git에 올리지 않습니다.
 
 ---
 
