@@ -1,5 +1,7 @@
 package com.tripai.backend.repository;
 
+import java.util.List;
+
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -19,7 +21,7 @@ public interface FavoriteEventMapper {
     );
 
     // 관심 행사 중복 확인
-    public int existsFavorite(
+    public boolean existsFavorite(
         @Param("userId") Long userId,
         @Param("eventContentId") String eventContentId
     );

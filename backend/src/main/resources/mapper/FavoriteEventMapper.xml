@@ -11,7 +11,7 @@
 
     <delete id="deleteFavorite">
         DELETE FROM favorite_event
-        WHERE 1=1
+        WHERE 1=1 
         AND user_id = #{userId}
         AND event_content_id = #{eventContentId}
     </delete>
@@ -24,5 +24,6 @@
           AND event_content_id = #{eventContentId}
     )
     </select>
+    
 
 </mapper>
