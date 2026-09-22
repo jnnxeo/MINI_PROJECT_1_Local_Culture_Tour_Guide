@@ -37,9 +37,8 @@ public class AuthService {
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getEmail());
-        String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId(), user.getEmail());
 
-        return new LoginResponse(accessToken, refreshToken, jwtTokenProvider.getAccessTokenExpirationSeconds());
+        return new LoginResponse(accessToken, jwtTokenProvider.getAccessTokenExpirationSeconds());
     }
 
     public void logout() {

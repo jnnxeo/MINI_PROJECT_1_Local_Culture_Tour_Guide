@@ -22,7 +22,6 @@ public class JwtTokenProvider {
 
 	private final SecretKey key;
 	private final long accessTokenExpirationMs;
-	private final long refreshTokenExpirationMs;
 
 	public JwtTokenProvider(
 			@Value("${jwt.secret}") String secret,
@@ -30,15 +29,10 @@ public class JwtTokenProvider {
 	) {
 		this.key = Keys.hmacShaKeyFor(sha256(secret));
 		this.accessTokenExpirationMs = accessTokenExpirationMs;
-		this.refreshTokenExpirationMs = accessTokenExpirationMs * 24 * 14;
 	}
 
 	public String createAccessToken(Long userId, String email) {
 		return createToken(userId, email, accessTokenExpirationMs);
-	}
-
-	public String createRefreshToken(Long userId, String email) {
-		return createToken(userId, email, refreshTokenExpirationMs);
 	}
 
 	public long getAccessTokenExpirationSeconds() {
