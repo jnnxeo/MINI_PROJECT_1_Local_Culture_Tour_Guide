@@ -24,4 +24,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.failure("일시적인 오류가 발생했습니다."));
     }
+
+    // 2026.09.23 추가 by 손호성
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ApiResponse<Void>> handleCustom(CustomException exception) {
+        ErrorCode errorCode = exception.getErrorCode();
+        return ResponseEntity
+                .status(errorCode.getStatus())                    // 404, 409 등
+                .body(ApiResponse.failure(errorCode.getMessage())); // 그 메시지
+    }
 }
