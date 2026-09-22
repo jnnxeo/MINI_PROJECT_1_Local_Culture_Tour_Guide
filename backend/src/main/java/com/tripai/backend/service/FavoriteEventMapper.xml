@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.FavoriteEventMapper">
+
+    <insert id ="insertFavorite">
+        INSERT INTO favorite_event(user_id, event_content_id)
+        VALUES(#{userId},#{eventContentId})
+    </insert>
+
+
+    <delete id="deleteFavorite">
+        DELETE FROM favorite_event
+        WHERE 1=1
+        AND user_id = #{userId}
+        AND event_content_id = #{eventContentId}
+    </delete>
+
+    <select id="existsFavorite" resultType="boolean">
+    SELECT EXISTS (
+        SELECT 1
+        FROM favorite_event
+        WHERE user_id = #{userId}
+          AND event_content_id = #{eventContentId}
+    )
+    </select>
+
+</mapper>
