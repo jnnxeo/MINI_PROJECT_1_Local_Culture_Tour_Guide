@@ -44,13 +44,13 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    clearAuth()
-    setIsAuthenticated(false)
-
     try {
       await requestLogout()
     } catch {
-      // JWT Stateless 로그아웃은 로컬 토큰 삭제만으로 완료된다.
+      // 서버 요청 실패와 관계없이 로컬 인증 정보는 제거한다.
+    } finally {
+      clearAuth()
+      setIsAuthenticated(false)
     }
   }
 
