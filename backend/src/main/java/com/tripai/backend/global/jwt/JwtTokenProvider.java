@@ -39,18 +39,13 @@ public class JwtTokenProvider {
 		return accessTokenExpirationMs / 1000;
 	}
 
-	public boolean isValid(String token) {
-		try {
-			Jwts.parser().verifyWith(key).build().parseSignedClaims(token);
-			return true;
-		} catch (JwtException | IllegalArgumentException e) {
-			return false;
-		}
-	}
-
-	public Long getUserId(String token) {
-		return parseClaims(token).get(USER_ID_CLAIM, Long.class);
-	}
+    public Long getUserIdIfValid(String token) {
+        try {
+            return parseClaims(token).get(USER_ID_CLAIM, Long.class);
+        } catch (JwtException | IllegalArgumentException e) {
+            return null;
+        }
+    }
 
 	private String createToken(Long userId, String email, long expirationMs) {
 		Date now = new Date();
