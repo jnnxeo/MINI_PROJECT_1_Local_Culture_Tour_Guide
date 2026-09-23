@@ -39,13 +39,17 @@ public class JwtTokenProvider {
 		return accessTokenExpirationMs / 1000;
 	}
 
-    public Long getUserIdIfValid(String token) {
-        try {
-            return parseClaims(token).get(USER_ID_CLAIM, Long.class);
-        } catch (JwtException | IllegalArgumentException e) {
-            return null;
-        }
-    }
+	/**
+	 * 토큰을 한 번만 파싱해서 유효성 검증과 userId 추출을 같이 처리한다.
+	 * 유효하지 않으면(위조·만료·형식오류) null을 반환한다.
+	 */
+	public Long getUserIdIfValid(String token) {
+		try {
+			return parseClaims(token).get(USER_ID_CLAIM, Long.class);
+		} catch (JwtException | IllegalArgumentException e) {
+			return null;
+		}
+	}
 
 	private String createToken(Long userId, String email, long expirationMs) {
 		Date now = new Date();
