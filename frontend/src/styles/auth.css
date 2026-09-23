@@ -138,6 +138,18 @@ button {
   background: #93b4f6;
 }
 
+.auth-signup-link {
+  margin-top: 8px;
+  color: #2563eb;
+  font-size: 14px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.auth-signup-link:hover {
+  text-decoration: underline;
+}
+
 .app-header {
   display: flex;
   min-height: 68px;

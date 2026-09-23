@@ -36,17 +36,23 @@ export async function signup({ email, password }) {
     return mockSignup({ email, password })
   }
 
-  const { data } = await api.post(
-    '/api/auth/signup',
-    { email, password },
-    { skipAuthSessionHandling: true },
-  )
+  try {
+    const { data } = await api.post(
+      '/api/auth/signup',
+      { email, password },
+      { skipAuthSessionHandling: true },
+    )
 
-  if (!data.success) {
-    throw new Error(data.message ?? '회원가입 처리 중 오류가 발생했습니다.')
+    if (!data.success) {
+      throw new Error(data.message ?? '회원가입 처리 중 오류가 발생했습니다.')
+    }
+
+    return data
+  } catch (error) {
+    const signupError = new Error(getErrorMessage(error))
+    signupError.status = error.response?.status ?? error.status
+    throw signupError
   }
-
-  return data
 }
 
 export async function requestLogin({ email, password }) {

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { getErrorMessage, requestLogin } from '../services/authService.js'
 
@@ -110,6 +110,10 @@ export default function LoginPage() {
           <button className="login-button" type="submit" disabled={isSubmitting}>
             {isSubmitting ? '로그인 중...' : '로그인'}
           </button>
+
+          <Link to="/signup" className="auth-signup-link">
+            아직 계정이 없으신가요? 회원가입
+          </Link>
         </form>
       </section>
     </main>
