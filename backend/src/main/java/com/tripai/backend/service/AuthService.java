@@ -3,7 +3,8 @@ package com.tripai.backend.service;
 import com.tripai.backend.domain.dto.LoginRequest;
 import com.tripai.backend.domain.dto.LoginResponse;
 import com.tripai.backend.domain.entity.User;
-import com.tripai.backend.global.exception.InvalidCredentialsException;
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.global.jwt.JwtTokenProvider;
 import com.tripai.backend.repository.UserMapper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -11,8 +12,6 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class AuthService {
-
-    private static final String INVALID_CREDENTIALS_MESSAGE = "이메일 또는 비밀번호가 올바르지 않습니다.";
 
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -30,10 +29,10 @@ public class AuthService {
 
     public LoginResponse login(LoginRequest request) {
         User user = userMapper.findByEmail(request.email())
-                .orElseThrow(() -> new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE));
+                .orElseThrow(() -> new CustomException(ErrorCode.LOGIN_FAILED));
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
-            throw new InvalidCredentialsException(INVALID_CREDENTIALS_MESSAGE);
+            throw new CustomException(ErrorCode.LOGIN_FAILED);
         }
 
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getEmail());
