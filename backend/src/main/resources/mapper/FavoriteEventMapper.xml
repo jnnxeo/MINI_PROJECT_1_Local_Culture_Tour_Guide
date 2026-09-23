@@ -24,6 +24,21 @@
           AND event_content_id = #{eventContentId}
     )
     </select>
+
+
+    <select id="selectFavorite" resultType="com.tripai.backend.domain.dto.favorite.FavoriteEventResponse">
+    SELECT e.event_content_id,
+           e.event_name,
+           e.event_type,
+           e.district_name,
+           e.event_start_date,
+           e.image_url
+    FROM favorite_event f
+    JOIN event e ON f.event_content_id = e.event_content_id
+    WHERE f.user_id = #{userId}
+    ORDER BY f.created_at DESC
+    </select>
+    
     
 
 </mapper>

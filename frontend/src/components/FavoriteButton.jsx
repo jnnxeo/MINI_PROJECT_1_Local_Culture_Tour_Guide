@@ -2,18 +2,22 @@ import React from "react";
 import { useState } from "react";
 import { addFavorite, removeFavorite } from "../services/favoriteApi";
 
-function FavoriteButton({eventContentId}) {
-    const [isFavorite,setIsFavorite] = useState(false);
+function FavoriteButton({eventContentId, initialFavorite = false, onRemoved}) {
+    const [isFavorite,setIsFavorite] = useState(initialFavorite);
 
     const favoritehandler = async () => {
     // ===== 로직 (유지) =====
     try {
         if (isFavorite) {
             await removeFavorite(eventContentId);   // 해제 성공을 기다림
+            setIsFavorite(false);
+            if(onRemoved) {
+                onRemoved(eventContentId); //<- 부모에게 "이거 해제" 라고 알림
+            }
         } else {
             await addFavorite(eventContentId);      // 저장 성공을 기다림
+            setIsFavorite(true);
         }
-        setIsFavorite(!isFavorite);   // 성공했을 때만 화면 바꿈
     } catch (error) {
         // TODO(연동): 실패 처리 (401이면 로그인 유도 등)
         console.error("즐겨찾기 처리 실패:", error);
