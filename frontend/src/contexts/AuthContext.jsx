@@ -7,6 +7,7 @@ import React, {
 } from 'react'
 import {
   clearAuth,
+  getAuthExpirationDelay,
   getAccessToken,
   requestLogout,
   saveAuth,
@@ -23,6 +24,19 @@ export function AuthProvider({ children }) {
     window.addEventListener('tripai:auth-expired', handleAuthExpired)
     return () => window.removeEventListener('tripai:auth-expired', handleAuthExpired)
   }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      clearAuth()
+      setIsAuthenticated(false)
+    }, getAuthExpirationDelay())
+
+    return () => window.clearTimeout(timeoutId)
+  }, [isAuthenticated])
 
   const login = (loginResponse) => {
     saveAuth(loginResponse)

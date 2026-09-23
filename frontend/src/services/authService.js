@@ -90,6 +90,11 @@ export function getAccessToken() {
   return accessToken
 }
 
+export function getAuthExpirationDelay() {
+  const expiresAt = Number(localStorage.getItem(ACCESS_TOKEN_EXPIRES_AT_KEY))
+  return Number.isFinite(expiresAt) ? Math.max(0, expiresAt - Date.now()) : 0
+}
+
 export function clearAuth() {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
   localStorage.removeItem(ACCESS_TOKEN_EXPIRES_AT_KEY)
