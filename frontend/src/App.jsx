@@ -1,6 +1,7 @@
 import React from 'react'
 import { Route, Routes } from 'react-router-dom'
 import SignupPage from './pages/SignupPage.jsx'
+import EventDetailPage from './pages/EventDetailPage.jsx'
 
 function HomePage() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/signup" element={<SignupPage />} />
       <Route path="/login" element={<LoginPlaceholder />} />
+      <Route path="/events/:eventId" element={<EventDetailPage />} />
     </Routes>
   )
 }
