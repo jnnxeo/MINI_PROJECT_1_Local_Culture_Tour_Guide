@@ -1,0 +1,644 @@
+/*
+ * 나의 일정 편집 화면 — Figma "editor · 나의 하루 일정" (1440 기준)
+ * 본문 1312 = 타임라인 590 + 간격 32 + 동선 690
+ */
+.plan-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--tripai-white);
+  color: var(--tripai-text);
+  font-family: Inter, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.plan-page p,
+.plan-page h1,
+.plan-page h2,
+.plan-page h3,
+.plan-page ul {
+  margin: 0;
+}
+
+/* ---------- Page heading ---------- */
+.plan-heading {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 48px calc(var(--tripai-page-gutter) + 60px) 48px var(--tripai-page-gutter);
+  background: var(--tripai-navy);
+  color: var(--tripai-white);
+  line-height: 1.45;
+}
+
+.plan-heading__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-heading__title {
+  font-size: 32px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.plan-heading__desc {
+  font-size: 15px;
+}
+
+.plan-heading__rename {
+  position: absolute;
+  top: 75px;
+  right: 56px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--tripai-line);
+  border-radius: 22px;
+  background: var(--tripai-white);
+  color: var(--tripai-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ---------- Editor ---------- */
+.plan-editor {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+  max-width: calc(1312px + var(--tripai-page-gutter) * 2);
+  margin: 0 auto;
+  padding: 64px var(--tripai-page-gutter);
+}
+
+.plan-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.plan-toolbar__desc {
+  flex: 1 1 280px;
+  color: var(--tripai-muted);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.plan-toolbar__button {
+  width: 160px;
+}
+
+.plan-toolbar__save {
+  width: 180px;
+}
+
+.plan-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 590fr) minmax(0, 690fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.plan-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---------- Timeline item ---------- */
+.plan-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 20px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: var(--tripai-canvas);
+  line-height: 1.45;
+}
+
+.plan-item--event {
+  background: var(--tripai-pale);
+}
+
+.plan-item.is-selected {
+  border-color: rgb(37 99 235 / 35%);
+}
+
+.plan-item__photo {
+  width: 100%;
+  height: 130px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tripai-line);
+}
+
+.plan-item__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plan-item__photo-empty,
+.plan-place__photo span {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  color: var(--tripai-muted);
+  font-size: 12px;
+}
+
+.plan-item__title {
+  color: var(--tripai-navy);
+  font-size: 19px;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+
+.plan-item__meta {
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+.plan-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-item__action {
+  width: 130px;
+}
+
+.plan-item__remove {
+  width: 90px;
+}
+
+.plan-item__event-note {
+  color: var(--tripai-blue);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.plan-item__reason {
+  color: var(--tripai-blue);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.plan-item__distance {
+  color: var(--tripai-muted);
+  font-size: 12px;
+}
+
+.plan-item__map {
+  width: 140px;
+}
+
+/* ---------- Route map panel ---------- */
+.plan-route {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: var(--tripai-radius-16);
+  background: var(--tripai-canvas);
+  line-height: 1.45;
+  scroll-margin-top: 16px;
+}
+
+.plan-route__title {
+  color: var(--tripai-navy);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.plan-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 642 / 470;
+  overflow: hidden;
+  border-radius: 16px;
+  background: #f0f3ed;
+}
+
+.plan-map__background,
+.plan-map__route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.plan-map__marker {
+  position: absolute;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 22px;
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+  font-size: 14px;
+  font-weight: 700;
+  transform: translate(-50%, -50%);
+}
+
+.plan-map__ring {
+  position: absolute;
+  top: -6px;
+  left: -6px;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+}
+
+.plan-map__empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+.plan-route__selected {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--tripai-selected);
+}
+
+.plan-route__selected-title {
+  color: var(--tripai-blue);
+  font-size: 19px;
+  font-weight: 700;
+  white-space: pre-wrap;
+}
+
+.plan-route__selected-desc {
+  color: var(--tripai-muted);
+  font-size: 13px;
+}
+
+.plan-route__summary {
+  color: var(--tripai-text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.plan-route__note {
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+.plan-basis {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 16px;
+  background: var(--tripai-white);
+}
+
+.plan-basis__title {
+  color: var(--tripai-text);
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.plan-basis__text {
+  font-size: 15px;
+}
+
+.plan-basis__note,
+.plan-basis__warnings {
+  color: var(--tripai-muted);
+  font-size: 13px;
+}
+
+.plan-basis__warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-left: 18px;
+}
+
+/* ---------- Load / empty / error ---------- */
+.plan-status {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  justify-content: center;
+  padding: 96px var(--tripai-page-gutter);
+  color: var(--tripai-muted);
+  text-align: center;
+}
+
+.plan-status h1 {
+  color: var(--tripai-navy);
+  font-size: 24px;
+}
+
+/* ---------- 팝업 내부: 시간 선택 (time · 팝업) ---------- */
+.plan-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-picker__box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 18px 16px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 12px;
+}
+
+.plan-picker__label {
+  color: var(--tripai-subtle);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.plan-picker__selected {
+  margin: 0;
+  color: var(--tripai-blue);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.plan-wheel {
+  display: flex;
+  gap: 10px;
+}
+
+.plan-wheel__column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  align-items: stretch;
+  border-radius: 8px;
+  text-align: center;
+  user-select: none;
+}
+
+.plan-wheel__column:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.plan-wheel__label {
+  color: var(--tripai-subtle);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.plan-wheel__cell {
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--tripai-text);
+  font-size: 14px;
+}
+
+.plan-wheel__cell--d2 {
+  color: var(--tripai-subtle);
+}
+
+.plan-wheel__cell.is-empty {
+  color: var(--tripai-faint);
+  cursor: default;
+}
+
+.plan-wheel__cell--d0 {
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.plan-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-chip {
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--tripai-chip);
+  color: var(--tripai-blue);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.plan-chip.is-selected {
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+}
+
+/* ---------- 팝업 내부: 장소 검색 (place / placechange · 팝업) ---------- */
+.plan-place-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.plan-place {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 118px;
+  padding: 14px 16px 14px 150px;
+  border: 2px solid transparent;
+  border-radius: var(--tripai-radius-12);
+  background: var(--tripai-canvas);
+  line-height: 1.45;
+}
+
+.plan-place.is-selected {
+  border-color: var(--tripai-blue);
+}
+
+.plan-place__photo {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  width: 110px;
+  height: 90px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--tripai-line);
+}
+
+.plan-place__photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plan-place__name {
+  margin: 0;
+  color: var(--tripai-navy);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.plan-place__meta {
+  margin: 0;
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+.plan-place__select {
+  width: 100%;
+}
+
+.plan-place-state {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 0;
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+/* ---------- 팝업 내부: 생성 중 / 조건 / 이름 ---------- */
+.plan-steps {
+  margin: 0;
+  padding: 0;
+  color: var(--tripai-blue);
+  font-size: 17px;
+  font-weight: 500;
+  line-height: 1.45;
+  list-style: none;
+  white-space: pre-wrap;
+}
+
+.plan-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.plan-conditions__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.plan-conditions__label {
+  margin: 0;
+  color: var(--tripai-navy);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.plan-conditions__interests {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.plan-conditions__help {
+  margin: 0;
+  color: var(--tripai-muted);
+  font-size: 14px;
+}
+
+.plan-conditions__note {
+  margin: 0;
+  color: var(--tripai-muted);
+  font-size: 12px;
+}
+
+.plan-toggle.is-checked {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-selected);
+  color: var(--tripai-blue);
+}
+
+/* ---------- 반응형 ---------- */
+@media (max-width: 1024px) {
+  .plan-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .plan-heading {
+    padding: 32px 72px 32px var(--tripai-page-gutter);
+  }
+
+  .plan-heading__title {
+    font-size: 26px;
+  }
+
+  .plan-heading__rename {
+    top: 32px;
+    right: var(--tripai-page-gutter);
+  }
+
+  .plan-editor {
+    padding: 32px var(--tripai-page-gutter);
+  }
+
+  .plan-toolbar__button {
+    flex: 1 1 calc(50% - 6px);
+    width: auto;
+  }
+
+  .plan-toolbar__save {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .plan-item__actions {
+    width: 100%;
+  }
+
+  .plan-item__action,
+  .plan-item__remove {
+    flex: 1;
+    width: auto;
+  }
+
+  .plan-place {
+    padding-left: 16px;
+  }
+
+  .plan-place__photo {
+    position: static;
+    width: 100%;
+    height: 120px;
+  }
+
+  .plan-conditions__row,
+  .plan-conditions__interests {
+    grid-template-columns: 1fr;
+  }
+}
