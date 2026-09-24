@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.EventMapper">
+
+    <!-- EVENT-001 행사 상세 조회 -->
+    <!-- 컬럼명 -> API 응답 필드명(camelCase, 영문축약)으로 별칭(AS) 매핑 -->
+    <select id="selectEventDetail" resultType="com.tripai.backend.domain.dto.event.EventDetailResponse">
+        SELECT event_content_id  AS eventId,
+               event_name        AS title,
+               event_type        AS category,
+               event_start_date  AS startDate,
+               event_end_date    AS endDate,
+               event_place       AS place,
+               mapy              AS lat,
+               mapx              AS lng,
+               use_fee           AS fee,
+               free_yn           AS freeYn,
+               overview,
+               image_url         AS imageUrl,
+               homepage,
+               tel_no            AS inquiry,
+               district_name     AS district,
+                date_text         AS dateText,
+                event_start_time  AS startTime,
+                event_end_time    AS endTime
+        FROM event
+        WHERE event_content_id = #{eventId}
+    </select>
+
+</mapper>
