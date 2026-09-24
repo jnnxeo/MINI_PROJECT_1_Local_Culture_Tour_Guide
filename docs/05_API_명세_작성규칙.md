@@ -156,6 +156,7 @@
 ## 6. 우리 프로젝트 주요 API (초안)
 
 > 확정본은 엑셀 `API 명세` 시트를 기준으로 합니다.
+> 일정(`/api/plans`)·맛집(`/api/places`)의 요청·응답·검증 규칙은 [07_나의일정_API_계약.md](07_나의일정_API_계약.md)를 봐 주세요.
 
 | 기능 | 메서드 | URL | 인증 |
 |---|---|---|---|
@@ -164,11 +165,13 @@
 | 로그아웃 | POST | `/api/auth/logout` | ⭕ |
 | 문화행사 검색 | GET | `/api/events?startDate=&endDate=&gu=&category=` | ❌ |
 | 행사 상세 | GET | `/api/events/{contentId}` | ❌ |
-| AI 일정 생성 | POST | `/api/plans/generate` | ⭕ |
-| 일정 저장 | POST | `/api/plans` | ⭕ |
-| 내 일정 목록 | GET | `/api/plans` | ⭕ |
-| 일정 상세 | GET | `/api/plans/{planId}` | ⭕ |
-| 일정 수정 | PATCH | `/api/plans/{planId}` | ⭕ |
+| 일정 초안 생성 (AI 추천) | POST | `/api/plans/drafts` | ⭕ |
+| 최근 초안 복원 | GET | `/api/plans/drafts/latest` | ⭕ |
+| 일정 상세 (초안·저장 공통) | GET | `/api/plans/{planId}` | ⭕ |
+| 일정 저장 / 수정 저장 | PUT | `/api/plans/{planId}` | ⭕ |
+| 다시 추천 / 조건 수정 | POST | `/api/plans/{planId}/regenerate` | ⭕ |
+| 맛집 후보 | GET | `/api/places?eventId=&keyword=&time=&durationMin=` | ⭕ |
+| 내 여행 목록 | GET | `/api/plans` | ⭕ |
 | 일정 삭제 | DELETE | `/api/plans/{planId}` | ⭕ |
 | 즐겨찾기 토글 | POST | `/api/favorites/{contentId}` | ⭕ |
 | 즐겨찾기 목록 | GET | `/api/favorites` | ⭕ |
