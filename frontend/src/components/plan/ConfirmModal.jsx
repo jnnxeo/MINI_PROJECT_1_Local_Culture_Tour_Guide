@@ -1,5 +1,5 @@
 import React from 'react'
-import Modal from '../common/Modal.jsx'
+import PlanModal from './PlanModal.jsx'
 
 /**
  * 확인형 팝업 — Figma remove / regenerate / timeerror / saved 팝업이 같은 구조
@@ -17,7 +17,7 @@ export default function ConfirmModal({
   onClose,
 }) {
   return (
-    <Modal title={title} onClose={onClose}>
+    <PlanModal title={title} onClose={onClose}>
       {description && <p className="tp-modal__desc">{description}</p>}
       <button
         className={`tp-btn tp-btn--${confirmVariant} tp-btn--block`}
@@ -32,6 +32,6 @@ export default function ConfirmModal({
           {cancelLabel}
         </button>
       )}
-    </Modal>
+    </PlanModal>
   )
 }

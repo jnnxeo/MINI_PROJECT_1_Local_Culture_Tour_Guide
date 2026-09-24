@@ -56,12 +56,12 @@ export default function RouteMap({ items, selectedKey, onSelect }) {
           className={`tp-marker plan-map__marker${item.key === selectedKey ? ' is-selected' : ''}`}
           type="button"
           style={{ left: `${(x / MAP_WIDTH) * 100}%`, top: `${(y / MAP_HEIGHT) * 100}%` }}
-          aria-label={`${item.seq}번 ${item.name}`}
+          aria-label={`${item.sequence}번 ${item.name}`}
           aria-pressed={item.key === selectedKey}
           onClick={() => onSelect(item.key)}
         >
           {item.key === selectedKey && <img className="plan-map__ring" src={ringImage} alt="" />}
-          {item.seq}
+          {item.sequence}
         </button>
       ))}
       {points.length === 0 && <p className="plan-map__empty">좌표 정보가 있는 장소가 없습니다.</p>}

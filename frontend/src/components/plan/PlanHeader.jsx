@@ -1,14 +1,15 @@
 import React from 'react'
 import { useNavigate } from 'react-router-dom'
-import symbolImage from '../../assets/brand/tripai-symbol.svg'
+import symbolImage from '../../assets/plan/tripai-symbol.svg'
 import { useAuth } from '../../contexts/AuthContext.jsx'
-import '../../styles/common.css'
+import '../../styles/plan-base.css'
 
 /**
- * Figma Navigation — 로고 · 메인페이지 · 내 여행 · 로그인/로그아웃
- * onNavigate: 이동 전에 확인이 필요한 화면(편집 중 이탈 방지)에서 가로챌 때 사용
+ * 나의 일정 화면 전용 상단 메뉴 (Figma Navigation 모양)
+ * 공통 헤더·내비게이션은 WBS-101(1조) 담당 — 공통 헤더가 나오면 이 컴포넌트를 교체한다.
+ * 이탈 방지(UX-004)를 위해 onNavigate로 이동을 가로챌 수 있게 했다.
  */
-export default function SiteHeader({ onNavigate }) {
+export default function PlanHeader({ onNavigate }) {
   const navigate = useNavigate()
   const { isAuthenticated, logout } = useAuth()
 
@@ -50,7 +51,7 @@ export default function SiteHeader({ onNavigate }) {
       <button className="tp-btn tp-nav__link" type="button" onClick={() => go('/')}>
         메인페이지
       </button>
-      <button className="tp-btn tp-nav__link" type="button" onClick={() => go('/mypage')}>
+      <button className="tp-btn tp-nav__link" type="button" onClick={() => go('/my-trips')}>
         내 여행
       </button>
       <button className="tp-btn tp-btn--secondary tp-nav__auth" type="button" onClick={handleAuthClick}>
