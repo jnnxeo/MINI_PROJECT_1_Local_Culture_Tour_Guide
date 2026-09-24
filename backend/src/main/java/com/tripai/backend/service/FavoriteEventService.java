@@ -28,8 +28,8 @@ public class FavoriteEventService {
         return new EventListResponse(events, page, totalCount);
     }
 
-    public Integer deleteFavoriteEvent(String eventId){
-        Integer response = favoriteEventMapper.deleteEventByEventId(eventId);
+    public Integer deleteFavoriteEvent(Long userId, String eventId){
+        Integer response = favoriteEventMapper.deleteEventByEventId(userId, eventId);
         
         return response;
     }

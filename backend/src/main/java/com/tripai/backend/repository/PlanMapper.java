@@ -14,8 +14,10 @@ public interface PlanMapper {
                                                 @Param("offset") Integer offset, 
                                                 @Param("size") Integer size);
     public Integer countPlansByUserId(@Param("userId") Long userId);
-    public Integer deletePlanByPlanId(@Param("planId") Integer planId);
-    public Integer updatePlanTitleByPlanId( @Param("planId") Integer planId, 
+    public Integer deletePlanByPlanId(  @Param("userId") Long userId,
+                                        @Param("planId") Integer planId);
+    public Integer updatePlanTitleByPlanId( @Param("userId") Long userId,
+                                            @Param("planId") Integer planId, 
                                             @Param("title") String title);
 
 }

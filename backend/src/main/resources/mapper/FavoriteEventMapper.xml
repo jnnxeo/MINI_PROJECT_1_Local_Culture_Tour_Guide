@@ -30,7 +30,8 @@
 
     <delete id="deleteEventByEventId">
         DELETE FROM favorite_event
-        WHERE event_id = #{eventId}
+        WHERE event_content_id = #{eventId}
+        AND user_id = #{userId}
     </delete>
 
 </mapper>

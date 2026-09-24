@@ -27,6 +27,7 @@
 
         DELETE FROM trip_plan
         WHERE trip_plan_id = #{planId}
+        AND user_id = #{userId}
 
     </delete>
 
@@ -35,7 +36,7 @@
         UPDATE trip_plan
         SET title = #{title}
         WHERE trip_plan_id = #{planId}
-
+        AND user_id = #{userId}
     </update>
 
 </mapper>

@@ -30,15 +30,16 @@ public class PlansService {
             return new PlanListResponse(plans, page, totalCount);
         }
 
-    public void deletePlan(Integer planId){
-        planMapper.deletePlanByPlanId(planId);
+    public void deletePlan(Long userId, Integer planId){
+        planMapper.deletePlanByPlanId(userId, planId);
     }
 
-    public Integer updatePlanTitle( Integer planId,
-                                                    String title)
+    public Integer updatePlanTitle(     Long userId,             
+                                        Integer planId,
+                                        String title)
     {
         
-        Integer response = planMapper.updatePlanTitleByPlanId(planId, title);
+        Integer response = planMapper.updatePlanTitleByPlanId(userId, planId, title);
         
         return response;
     }

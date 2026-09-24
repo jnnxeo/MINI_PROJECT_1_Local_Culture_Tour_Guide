@@ -44,9 +44,10 @@ public class PlanController {
 
     @DeleteMapping("/drafts/{planId}")
     public ResponseEntity<ApiResponse<Void>> deletePlan(
+            @AuthenticationPrincipal Long userId,
             @PathVariable Integer planId
     ){
-        plansService.deletePlan(planId);
+        plansService.deletePlan(userId, planId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                             .body(ApiResponse.success(null));
@@ -54,11 +55,12 @@ public class PlanController {
 
     @PatchMapping("/drafts/{planId}/title")
     public ResponseEntity<ApiResponse<UpdatePlanTitleResponse>> updatePlanTitle(
+            @AuthenticationPrincipal Long userId,    
             @PathVariable Integer planId,
             @RequestBody UpdatePlanTitleRequest request
     ) {
         Integer response =
-                plansService.updatePlanTitle(planId, request.getTitle());
+                plansService.updatePlanTitle(userId, planId, request.getTitle());
 
         return ResponseEntity.status(HttpStatus.OK)
                             .body(ApiResponse.success(null));
