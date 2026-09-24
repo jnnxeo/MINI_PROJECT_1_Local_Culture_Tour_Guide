@@ -24,6 +24,8 @@ const EventItem = ({ event, onUpdate }) => {
     <div>
         
         <button     onClick = {()=>{
+                        //행사 검색 결과 페이지로 이동 (endPoint는 추후 페이지 추가에 따라 변경)
+                        //행사 검색 결과 페이지로 이동하며 이때 eventId를 전달한다.
                         moveUrl(`/favorites/events/${event.eventId}`)
                     }}>
             문화행사 상세 조회

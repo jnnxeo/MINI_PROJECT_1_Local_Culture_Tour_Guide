@@ -7,7 +7,7 @@ import axios from 'axios'
 const MyPage = () => {
 
     //access token & email 
-    const userid = localStorage.getItem('user')
+    const userid = localStorage.getItem('userid')
     const at = localStorage.getItem('at')
     const rt = localStorage.getItem('rt')
 

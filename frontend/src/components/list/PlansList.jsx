@@ -1,6 +1,6 @@
 import PlanItem from "../item/PlansItem";
 
-const PlansList = ({ ary, onUpdate}) => {
+const PlansList = ({ary, onUpdate}) => {
     if(ary.length === 0){
         return (
             <div>

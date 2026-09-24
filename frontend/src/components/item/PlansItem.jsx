@@ -44,6 +44,8 @@ const PlanItem = ({ plan, onUpdate }) => {
         
         <button     title = "일정 상세"
                     onClick = {()=>{
+                        //나의 일정 페이지로 이동 (endPoint는 추후 페이지 추가에 따라 변경)
+                        //나의 일정 페이지로 이동하며 이대 planId를 전달한다.
                         moveUrl(`/plans/drafts/${plan.planId}/conditions`)
                     }}/>
 
