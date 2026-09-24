@@ -9,6 +9,23 @@
 
 ---
 
+## 이 문서의 근거 구분
+
+팀 명세에 있는 것과, 명세에 없어 이 문서에서 **새로 제안한 것**을 구분합니다. **[제안]** 항목은 팀 확인 전까지 확정이 아닙니다.
+
+| 구분 | 내용 | 근거 |
+|---|---|---|
+| 명세 | 요구사항 ID(AI·TRIP·FOOD·UX·SEC·MY·EVENT), 화면명("나의 일정 저장 전 초안", "저장 일정 상세") | 요구사항명세서_수정본 |
+| 명세 | 테이블·컬럼, 초안=`save_yn FALSE`, 제약조건 | 테이블정의서·DDL v3.2.1 |
+| 명세 | API ID `API-PLAN-010`, `API-PLACE-001`, `API-EVENT-001` | DDL v3.2.1 인덱스 주석 |
+| 명세 | URL·JSON 이름 규칙(복수형 자원, camelCase), `{ success, data, message }` | docs/05, 공통 코드 |
+| **[제안]** | API ID `API-PLAN-001~005`, `API-PLAN-011` | 명세에 없음 — DDL 주석 번호 체계를 이어서 붙임 |
+| **[제안]** | URL(`/api/plans/drafts`, `/regenerate` 등), 요청·응답 필드 이름 | 명세에 없음 (구 API 명세 시트는 DDL 이전 버전이라 적용 불가) |
+| **[제안]** | 새 ErrorCode(5장), 화면 주소 `/trips/draft`·`/my-trips/{planId}` | 명세에 없음 |
+| **[제안]** | 6장 미결정 사항의 제안값 | 점검 회의에서 확정 |
+
+---
+
 ## 0. 범위
 
 | 포함 | 제외 (DDL v3.2.1: 당일여행 · 숙박 제외) |
@@ -47,19 +64,19 @@
 
 ---
 
-## 3. 응답 모델 — `PlanDetail`
+## 3. 일정 상세 응답
 
-**PlanDetail = 일정 하나를 통째로 열었을 때 서버가 돌려주는 데이터 모양**입니다.
-일정 정보(제목·날짜·인원 등) + 방문 항목 목록(`items`) + 안내 사항(`warnings`)으로 이루어집니다.
+일정 하나를 열었을 때(“나의 일정 저장 전 초안”, “저장 일정 상세” 화면) 서버가 돌려주는 데이터입니다.
+일정 정보(제목·날짜·인원 등) + 방문 항목 목록(`items`) + 안내 사항(`warnings`)으로 이루어집니다. **[제안]**
 
 | 어디서 쓰나 | API |
 |---|---|
-| 일정 상세 화면 열기 (`/trips/draft`, `/my-trips/{planId}`) | PLAN-002, PLAN-003 |
-| 저장 후 결과 | PLAN-004 |
-| 초안 생성 · 다시 추천 결과 | PLAN-001, PLAN-005 |
-| 행사 상세 "저장한 일정에 추가"(EVENT-004) — 불러와서 행사 넣고 저장 | PLAN-003 → PLAN-004 |
+| 일정 화면 열기 | API-PLAN-002, API-PLAN-003 |
+| 저장 후 결과 | API-PLAN-004 |
+| 초안 생성 · 다시 추천 결과 | API-PLAN-001, API-PLAN-005 |
+| 행사 상세 "저장한 일정에 추가"(EVENT-004) — 불러와서 행사 넣고 저장 | API-PLAN-003 → API-PLAN-004 |
 
-> 내 여행 **목록**(PLAN-010)은 PlanDetail이 아니라 카드용 **요약 모양(`PlanSummary`)** 을 씁니다 → 4장 PLAN-010 참고.
+> 내 여행 **목록**(API-PLAN-010)은 이 응답이 아니라 카드에 필요한 요약만 담은 **목록 응답**을 씁니다 → 4장 API-PLAN-010 참고.
 
 초안·저장 일정 모두 같은 모양입니다.
 
@@ -157,7 +174,7 @@
 
 ### API-PLAN-001 · 초안 생성
 
-`POST /api/plans/drafts` → `201 Created`, `data: PlanDetail`
+`POST /api/plans/drafts` → `201 Created`, `data: 일정 상세 응답(3장)`
 
 진입 경로 두 가지:
 - **메인 + "AI 추천받기" 체크 후 검색** (MAIN-002): `anchorEventId` 없이 조건만 보냄 → 서버가 행사 1개 선정 (AI-002)
@@ -206,7 +223,7 @@
 
 ### API-PLAN-002 · 최근 초안 복원
 
-`GET /api/plans/drafts/latest` → `200`, `data: PlanDetail`
+`GET /api/plans/drafts/latest` → `200`, `data: 일정 상세 응답(3장)`
 
 - `/trips/draft` 진입 시 호출. 로그인 후 복귀했을 때도 같은 초안이 보인다 (UX-005, SEC-003, TRIP-010 예외).
 - 초안이 없으면 `404 PLAN_NOT_FOUND` → 프론트는 "조건을 입력해 일정을 만들어 보세요" 빈 상태.
@@ -215,7 +232,7 @@
 
 ### API-PLAN-003 · 일정 상세
 
-`GET /api/plans/{planId}` → `200`, `data: PlanDetail`
+`GET /api/plans/{planId}` → `200`, `data: 일정 상세 응답(3장)`
 
 | 상황 | 코드 | ErrorCode |
 |---|---|---|
@@ -226,7 +243,7 @@
 
 ### API-PLAN-004 · 저장 / 수정 저장
 
-`PUT /api/plans/{planId}` → `200`, `data: PlanDetail`
+`PUT /api/plans/{planId}` → `200`, `data: 일정 상세 응답(3장)`
 
 - 초안(`saved=false`)에 호출하면 **최초 저장** (TRIP-010) → `save_yn = TRUE`
 - 저장 일정에 호출하면 **수정 저장** (TRIP-011)
@@ -269,7 +286,7 @@
 
 ### API-PLAN-005 · 다시 추천 / 조건 수정
 
-`POST /api/plans/{planId}/regenerate` → `200`, `data: PlanDetail` (같은 `planId`에 항목만 교체)
+`POST /api/plans/{planId}/regenerate` → `200`, `data: 일정 상세 응답(3장)` (같은 `planId`에 항목만 교체)
 
 **초안에서만** 사용 (AI-009·010의 화면 범위가 "저장 전 초안").
 
@@ -330,7 +347,7 @@
 
 - 대상: **`save_yn = TRUE`인 일정만** (초안은 목록에 나오지 않음)
 - 정렬: `trip_date` 오름차순 (다가오는 여행 먼저)
-- 응답 항목은 카드용 요약(`PlanSummary`) — 상세(`PlanDetail`)가 아님
+- 응답은 카드용 요약(목록 응답) — 3장 일정 상세 응답이 아님
 - 카드를 누르면 `/my-trips/{planId}`로 이동 → 상세·편집 화면(1팀)이 PLAN-003으로 불러옴
 
 ```json
