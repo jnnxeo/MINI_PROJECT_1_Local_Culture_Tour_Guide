@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import { useAuth } from './contexts/AuthContext.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 
 function ProtectedRoute({ children }) {
@@ -17,6 +18,22 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route
+        path="/trips/draft"
+        element={(
+          <ProtectedRoute>
+            <PlanEditorPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/my-trips/:planId"
+        element={(
+          <ProtectedRoute>
+            <PlanEditorPage />
+          </ProtectedRoute>
+        )}
+      />
       <Route
         path="/"
         element={(
