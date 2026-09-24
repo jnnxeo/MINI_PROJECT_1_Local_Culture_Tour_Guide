@@ -1,35 +1,36 @@
 import React from 'react'
-import { Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
+import Header from './components/Header.jsx'
+import { useAuth } from './contexts/AuthContext.jsx'
+import HomePage from './pages/HomePage.jsx'
+import LoginPage from './pages/LoginPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import MyPage from './pages/MyPage.jsx'
 
-function HomePage() {
-  return (
-    <main>
-      <h1>TripAI</h1>
-      <p>프론트엔드 개발</p>
-    </main>
-  )
-}
+function ProtectedRoute({ children }) {
+  const { isAuthenticated } = useAuth()
 
-function LoginPlaceholder() {
-  return (
-    <main>
-      <h1>로그인</h1>
-      <p>로그인 페이지 작업 중입니다.</p>
-    </main>
-  )
+  return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
-      <Route path="/login" element={<LoginPlaceholder />} />
 
       <Route path="/mypage" element={<MyPage/>}/>
       
+      <Route
+        path="/"
+        element={(
+          <ProtectedRoute>
+            <Header />
+            <HomePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
 }
