@@ -1,8 +1,9 @@
 /*
- * TripAI 공통 UI — Figma(Page Ver2) 디자인 토큰과 공용 컴포넌트 스타일
+ * 나의 일정 화면 기본 스타일 — Figma(Page Ver2) 토큰·버튼·팝업·상단 메뉴
+ * 전역(:root)을 건드리지 않도록 .plan-page 안에서만 적용한다.
  * 토큰 이름은 Figma 변수(--tripai-*)와 같게 맞춘다.
  */
-:root {
+.plan-page {
   --tripai-blue: #2563eb;
   --tripai-navy: #111c3d;
   --tripai-white: #fff;
@@ -26,13 +27,13 @@
 }
 
 @media (max-width: 1024px) {
-  :root {
+  .plan-page {
     --tripai-page-gutter: 32px;
   }
 }
 
 @media (max-width: 640px) {
-  :root {
+  .plan-page {
     --tripai-page-gutter: 16px;
   }
 }

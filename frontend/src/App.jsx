@@ -27,14 +27,6 @@ export default function App() {
         )}
       />
       <Route
-        path="/my-trips/:planId"
-        element={(
-          <ProtectedRoute>
-            <PlanEditorPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
         path="/"
         element={(
           <ProtectedRoute>

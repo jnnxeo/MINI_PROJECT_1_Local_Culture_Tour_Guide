@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Modal from '../common/Modal.jsx'
+import PlanModal from './PlanModal.jsx'
 import { TITLE_MAX_LENGTH } from '../../utils/planTime.js'
 
 /** Figma "rename · 팝업" */
@@ -20,7 +20,7 @@ export default function RenameModal({ title, onSave, onClose }) {
   }
 
   return (
-    <Modal title="일정 이름 변경" onClose={onClose}>
+    <PlanModal title="일정 이름 변경" onClose={onClose}>
       <p className="tp-modal__desc">여행을 기억하기 좋은 이름을 붙여 보세요.</p>
       <form className="plan-form" onSubmit={handleSubmit} noValidate>
         <label className="tp-field">
@@ -41,6 +41,6 @@ export default function RenameModal({ title, onSave, onClose }) {
           이름 저장
         </button>
       </form>
-    </Modal>
+    </PlanModal>
   )
 }

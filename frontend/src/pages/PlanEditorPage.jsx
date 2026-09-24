@@ -1,17 +1,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import ConditionsModal from '../components/plan/ConditionsModal.jsx'
 import ConfirmModal from '../components/plan/ConfirmModal.jsx'
 import GeneratingModal from '../components/plan/GeneratingModal.jsx'
 import PlaceChosenModal from '../components/plan/PlaceChosenModal.jsx'
 import PlaceSearchModal from '../components/plan/PlaceSearchModal.jsx'
+import PlanFooter from '../components/plan/PlanFooter.jsx'
+import PlanHeader from '../components/plan/PlanHeader.jsx'
 import RenameModal from '../components/plan/RenameModal.jsx'
 import RouteMap from '../components/plan/RouteMap.jsx'
 import TimelineItem, { getItemHeading } from '../components/plan/TimelineItem.jsx'
 import TimePickerModal from '../components/plan/TimePickerModal.jsx'
-import SiteFooter from '../components/layout/SiteFooter.jsx'
-import SiteHeader from '../components/layout/SiteHeader.jsx'
-import { getLatestDraft, getPlan, regeneratePlan, savePlan } from '../services/planService.js'
+import {
+  addDraftItem,
+  forgetDraftId,
+  getDraft,
+  regenerateDraft,
+  removeDraftItem,
+  replaceDraftItems,
+  resolveDraftId,
+  saveDraftAsPlan,
+  updateConditions,
+  updateDraftTitle,
+} from '../services/planService.js'
 import {
   distanceMeters,
   findFreeSlot,
@@ -23,7 +34,7 @@ import {
   validatePlan,
 } from '../utils/planTime.js'
 import { withSubject } from '../utils/korean.js'
-import '../styles/common.css'
+import '../styles/plan-base.css'
 import '../styles/plan.css'
 
 const NEW_PLACE_DURATION = 60
@@ -36,79 +47,79 @@ function withKeys(items) {
 function snapshot(title, items) {
   return JSON.stringify([
     title.trim(),
-    items.map(({ type, contentId, startTime, durationMin }) => [type, contentId, startTime, durationMin]),
+    items.map(({ type, placeId, startTime, durationMin }) => [type, placeId, startTime, durationMin]),
   ])
 }
 
-function toPlaceItem(place, { key, startTime, durationMin }) {
+// API-PLACE-001 후보 → 화면 일정 항목 (아직 서버에 추가되지 않아 itemId 없음)
+function toNewItem(place, { key, startTime, durationMin }) {
   return {
     key,
     itemId: null,
     type: 'PLACE',
-    contentId: place.contentId,
+    placeId: place.placeId,
+    sequence: 0,
+    startTime,
+    durationMin,
     name: place.name,
-    category: place.category,
-    address: place.address,
+    addr: place.addr,
     lat: place.lat,
     lng: place.lng,
     imageUrl: place.imageUrl,
-    startTime,
-    durationMin,
-    endTime: getEndTime({ startTime, durationMin }),
-    timeFixed: false,
-    aiReason: null,
     openTime: place.openTime,
+    breakTime: place.breakTime,
     closeTime: place.closeTime,
+    timeFixed: false,
   }
 }
 
 /**
- * SCR-009 나의 일정(저장 전 초안) · SCR-017 저장 일정 상세·편집
+ * SCR-009 나의 일정(저장 전 초안) — /trips/draft
  * Figma: editor · 나의 하루 일정 (+ editortime / editorremoved / editoradded 상태)
- * 편집은 화면 상태에서만 하고 "일정 저장"에서 한 번에 PUT 한다(계약서 1장).
+ * API: 조회 PLAN-002, 조건 수정 PLAN-003 → 다시 추천 PLAN-004, 저장 시 PLAN-008·007·006·005 반영 후 PLAN-009
+ * 팝업에서 바꾼 내용은 화면에만 두었다가 "일정 저장"에서 한 번에 서버에 반영한다(UX-004 미저장 이탈 확인).
  */
 export default function PlanEditorPage() {
-  const { planId } = useParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const mapRef = useRef(null)
-  const loadedPlanIdRef = useRef(null)
   const generationTokenRef = useRef(0)
+  const [draftId] = useState(() => resolveDraftId(location.state?.draftId))
 
   const [status, setStatus] = useState('loading')
   const [loadError, setLoadError] = useState('')
   const [reloadCount, setReloadCount] = useState(0)
-  const [plan, setPlan] = useState(null)
+  const [draft, setDraft] = useState(null)
   const [title, setTitle] = useState('')
   const [items, setItems] = useState([])
   const [selectedKey, setSelectedKey] = useState(null)
   const [modal, setModal] = useState(null)
   const [saving, setSaving] = useState(false)
   const [generation, setGeneration] = useState(null)
+  const [savedPlan, setSavedPlan] = useState(null)
 
-  const applyPlan = useCallback((nextPlan) => {
-    const keyedItems = withKeys(sortItems(nextPlan.items))
-    loadedPlanIdRef.current = String(nextPlan.planId)
-    setPlan(nextPlan)
-    setTitle(nextPlan.title)
+  const applyDraft = useCallback((nextDraft) => {
+    const keyedItems = withKeys(sortItems(nextDraft.items))
+    setDraft(nextDraft)
+    setTitle(nextDraft.title)
     setItems(keyedItems)
     setSelectedKey(keyedItems[0]?.key ?? null)
     setStatus('ready')
   }, [])
 
   useEffect(() => {
-    if (planId && loadedPlanIdRef.current === planId) {
+    if (!draftId) {
+      setStatus('empty')
       return undefined
     }
 
     let ignore = false
     setStatus('loading')
 
-    const load = planId ? () => getPlan(planId) : getLatestDraft
-
-    load()
-      .then((loadedPlan) => {
+    getDraft(draftId)
+      .then((loadedDraft) => {
         if (!ignore) {
-          applyPlan(loadedPlan)
+          applyDraft(loadedDraft)
         }
       })
       .catch((error) => {
@@ -116,7 +127,8 @@ export default function PlanEditorPage() {
           return
         }
 
-        if (!planId && error.status === 404) {
+        if (error.status === 404) {
+          forgetDraftId()
           setStatus('empty')
           return
         }
@@ -128,9 +140,9 @@ export default function PlanEditorPage() {
     return () => {
       ignore = true
     }
-  }, [planId, reloadCount, applyPlan])
+  }, [draftId, reloadCount, applyDraft])
 
-  const isDirty = Boolean(plan) && snapshot(title, items) !== snapshot(plan.title, sortItems(plan.items))
+  const isDirty = Boolean(draft) && !savedPlan && snapshot(title, items) !== snapshot(draft.title, sortItems(draft.items))
 
   // UX-004 새로고침·탭 닫기 이탈 방지
   useEffect(() => {
@@ -147,14 +159,21 @@ export default function PlanEditorPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [isDirty])
 
-  const visitWindow = useMemo(() => ({
-    visitStartTime: plan?.visitStartTime,
-    visitEndTime: plan?.visitEndTime,
-  }), [plan])
+  const timeWindow = useMemo(() => ({
+    startTime: draft?.conditions?.startTime,
+    endTime: draft?.conditions?.endTime,
+  }), [draft])
 
-  const anchorItem = items.find((item) => item.type === 'EVENT' && item.contentId === plan?.anchorEventId)
+  // 핵심 문화행사: 추천 기준 행사(selectedEvent). 없으면 첫 행사 항목
+  const coreEventPlaceId = draft?.selectedEvent?.eventId
+    ?? items.find((item) => item.type === 'EVENT')?.placeId
+  const coreItem = items.find((item) => item.type === 'EVENT' && item.placeId === coreEventPlaceId)
   const selectedItem = items.find((item) => item.key === selectedKey) ?? items[0]
   const warnings = useMemo(() => getPlanWarnings(items), [items])
+  const reasonByItemId = useMemo(
+    () => new Map((draft?.recommendationReasons ?? []).map(({ itemId, reason }) => [itemId, reason])),
+    [draft],
+  )
 
   const closeModal = () => setModal(null)
 
@@ -174,11 +193,12 @@ export default function PlanEditorPage() {
     setModal({ type: 'timeError', conflict, retry })
   }
 
+  // TRIP-004 방문 시간 변경
   const applyItemTime = (key, { startTime, durationMin }) => {
     const nextItems = items.map((item) => (item.key === key
       ? { ...item, startTime, durationMin, endTime: getEndTime({ startTime, durationMin }) }
       : item))
-    const conflict = findTimeConflict(nextItems, visitWindow)
+    const conflict = findTimeConflict(nextItems, timeWindow)
 
     if (conflict) {
       showTimeError(conflict, { type: 'time', key, startTime, durationMin })
@@ -190,20 +210,22 @@ export default function PlanEditorPage() {
     closeModal()
   }
 
+  // TRIP-005 장소 변경 (저장 시 기존 항목 삭제 + 새 항목 추가로 반영)
   const replacePlace = (key, place) => {
-    const newKey = `new-${place.contentId}-${Date.now()}`
+    const newKey = `new-${place.placeId}-${Date.now()}`
 
     setItems((current) => current.map((item) => (item.key === key
-      ? { ...toPlaceItem(place, { key: newKey, startTime: item.startTime, durationMin: item.durationMin }), seq: item.seq }
+      ? { ...toNewItem(place, { key: newKey, startTime: item.startTime, durationMin: item.durationMin }), sequence: item.sequence }
       : item)))
     setSelectedKey(newKey)
     closeModal()
   }
 
+  // TRIP-006 장소 추가
   const addPlace = ({ place, startTime, durationMin }) => {
-    const newItem = toPlaceItem(place, { key: `new-${place.contentId}-${Date.now()}`, startTime, durationMin })
+    const newItem = toNewItem(place, { key: `new-${place.placeId}-${Date.now()}`, startTime, durationMin })
     const nextItems = [...items, newItem]
-    const conflict = findTimeConflict(nextItems, visitWindow)
+    const conflict = findTimeConflict(nextItems, timeWindow)
 
     if (conflict) {
       showTimeError(conflict, { type: 'time', mode: 'add', place, startTime, durationMin })
@@ -215,14 +237,63 @@ export default function PlanEditorPage() {
     closeModal()
   }
 
+  // TRIP-007 일정 장소 삭제
   const removeItem = (key) => {
     setItems((current) => sortItems(current.filter((item) => item.key !== key)))
     setSelectedKey((current) => (current === key ? null : current))
     closeModal()
   }
 
+  /**
+   * 화면에서 바꾼 내용을 API 명세 엔드포인트로 서버 초안에 반영한다.
+   * 삭제(008) → 남은 항목 시간·순서(006) → 새 항목 추가(007) → 최종 순서(006, 달라졌을 때만) → 제목(005)
+   * 남은 항목 시간을 먼저 맞춰야 새 항목 추가 때 옛 시간과 겹쳤다는 오류가 나지 않는다.
+   */
+  const syncDraft = async () => {
+    const keptItemIds = new Set(items.filter((item) => item.itemId != null).map((item) => item.itemId))
+
+    for (const item of draft.items.filter((candidate) => !keptItemIds.has(candidate.itemId))) {
+      await removeDraftItem(draftId, item.itemId)
+    }
+
+    const keptItems = sortItems(items.filter((item) => item.itemId != null))
+    const serverKept = sortItems(draft.items.filter((item) => keptItemIds.has(item.itemId)))
+    let serverItems = serverKept
+
+    if (snapshot('', keptItems) !== snapshot('', serverKept)) {
+      serverItems = (await replaceDraftItems(draftId, keptItems)).items
+    }
+
+    const finalItems = sortItems(items)
+    const addedItemIds = new Map()
+
+    for (const item of finalItems.filter((candidate) => candidate.itemId == null)) {
+      const response = await addDraftItem(draftId, {
+        placeId: item.placeId,
+        type: item.type,
+        startTime: item.startTime,
+        durationMin: item.durationMin,
+        sequence: item.sequence,
+      })
+      addedItemIds.set(item.key, response.itemId)
+      serverItems = response.items
+    }
+
+    const orderedItems = finalItems.map((item) => ({ ...item, itemId: item.itemId ?? addedItemIds.get(item.key) }))
+    const serverOrder = sortItems(serverItems).map((item) => item.itemId).join()
+
+    if (orderedItems.map((item) => item.itemId).join() !== serverOrder) {
+      await replaceDraftItems(draftId, orderedItems)
+    }
+
+    if (title.trim() !== draft.title) {
+      await updateDraftTitle(draftId, title.trim())
+    }
+  }
+
+  // TRIP-010 일정 저장: 초안 반영 후 API-PLAN-009로 확정
   const handleSave = async () => {
-    const error = validatePlan({ title, anchorEventId: plan.anchorEventId, items, ...visitWindow })
+    const error = validatePlan({ title, items, coreEventPlaceId, ...timeWindow })
 
     if (error) {
       setModal({ type: 'notice', title: error.title, message: error.message })
@@ -232,39 +303,38 @@ export default function PlanEditorPage() {
     setSaving(true)
 
     try {
-      const saved = await savePlan(plan.planId, { title, tripDate: plan.tripDate, anchorEventId: plan.anchorEventId, items })
-      applyPlan(saved)
+      await syncDraft()
+      const saved = await saveDraftAsPlan(draftId)
+      forgetDraftId()
+      applyDraft(await getDraft(draftId).catch(() => ({ ...draft, title, items })))
+      // 저장된 초안은 다시 저장할 수 없다(API-PLAN-009 409). 이후 편집은 저장 일정 상세(SCR-017)에서
+      setSavedPlan(saved)
       setModal({ type: 'saved', plan: saved })
-
-      if (String(saved.planId) !== planId) {
-        navigate(`/my-trips/${saved.planId}`, { replace: true })
-      }
     } catch (saveError) {
       setModal({ type: 'notice', title: '저장하지 못했어요', message: saveError.message })
+      setReloadCount((count) => count + 1)
     } finally {
       setSaving(false)
     }
   }
 
-  const startGeneration = (conditions) => {
-    const unchanged = conditions
-      && conditions.headcount === plan.headcount
-      && conditions.transportMode === plan.transportMode
-      && conditions.useAi === plan.aiGenerated
-      && [...conditions.interests].sort().join() === [...(plan.interests ?? [])].sort().join()
-
-    // AI-009 예외: 조건이 그대로면 요청하지 않고 기존 초안을 유지한다.
-    if (unchanged) {
-      setModal({ type: 'notice', title: '조건이 그대로예요', message: '조건이 바뀌지 않아 기존 일정을 유지합니다.' })
-      return
-    }
-
+  // AI-009 조건 수정(PLAN-003 → PLAN-004) / AI-010 다시 추천(PLAN-004)
+  const startGeneration = (conditionChanges) => {
     const token = generationTokenRef.current + 1
     generationTokenRef.current = token
     setGeneration({ status: 'running' })
     setModal({ type: 'generating' })
 
-    regeneratePlan(plan.planId, conditions)
+    const run = async () => {
+      if (conditionChanges) {
+        await updateConditions(draftId, { ...draft.conditions, visitDate: draft.visitDate, ...conditionChanges })
+      }
+
+      await regenerateDraft(draftId)
+      return getDraft(draftId)
+    }
+
+    run()
       .then((result) => {
         if (generationTokenRef.current === token) {
           setGeneration({ status: 'done', result })
@@ -283,6 +353,7 @@ export default function PlanEditorPage() {
     closeModal()
   }
 
+  // TRIP-009 목록·지도 선택 연동
   const showOnMap = (item) => {
     setSelectedKey(item.key)
     mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -324,8 +395,8 @@ export default function PlanEditorPage() {
         return (
           <PlaceSearchModal
             mode="change"
-            eventId={plan.anchorEventId}
-            usedContentIds={items.map((item) => item.contentId)}
+            eventId={coreEventPlaceId}
+            usedPlaceIds={items.map((item) => item.placeId)}
             time={target?.startTime}
             durationMin={target?.durationMin}
             onConfirm={(place) => replacePlace(modal.key, place)}
@@ -337,12 +408,12 @@ export default function PlanEditorPage() {
         return (
           <PlaceSearchModal
             mode="add"
-            eventId={plan.anchorEventId}
-            usedContentIds={items.map((item) => item.contentId)}
+            eventId={coreEventPlaceId}
+            usedPlaceIds={items.map((item) => item.placeId)}
             onConfirm={(place) => setModal({
               type: 'placeChosen',
               place,
-              startTime: findFreeSlot(items, NEW_PLACE_DURATION, visitWindow),
+              startTime: findFreeSlot(items, NEW_PLACE_DURATION, timeWindow),
               durationMin: NEW_PLACE_DURATION,
             })}
             onClose={closeModal}
@@ -358,7 +429,7 @@ export default function PlanEditorPage() {
               ...modal,
               type: 'time',
               mode: 'add',
-              startTime: modal.startTime ?? plan.visitStartTime ?? '12:00',
+              startTime: modal.startTime ?? timeWindow.startTime ?? '12:00',
             })}
             onConfirm={() => addPlace(modal)}
             onClose={closeModal}
@@ -394,10 +465,11 @@ export default function PlanEditorPage() {
         return (
           <ConfirmModal
             title="일정을 저장했어요"
-            description={`${modal.plan.title}\n${formatDate(modal.plan.tripDate)} · 당일 여행`}
+            description={`${modal.plan.title}\n${formatDate(modal.plan.visitDate)} · 당일 여행`}
             confirmLabel="저장한 일정 확인"
             cancelLabel="계속 편집"
-            onConfirm={() => navigate('/mypage')}
+            onConfirm={() => navigate('/my-trips')}
+            onCancel={() => navigate(`/my-trips/${modal.plan.planId}`)}
             onClose={closeModal}
           />
         )
@@ -415,9 +487,10 @@ export default function PlanEditorPage() {
       case 'conditions':
         return (
           <ConditionsModal
-            plan={plan}
-            anchorItem={anchorItem}
-            onSubmit={startGeneration}
+            visitDate={draft.visitDate}
+            conditions={draft.conditions}
+            coreItem={coreItem}
+            onSubmit={({ transportMode }) => startGeneration({ transportMode })}
             onClose={closeModal}
           />
         )
@@ -427,7 +500,7 @@ export default function PlanEditorPage() {
             status={generation?.status ?? 'running'}
             errorMessage={generation?.message}
             onConfirm={() => {
-              applyPlan(generation.result)
+              applyDraft(generation.result)
               setGeneration(null)
               closeModal()
             }}
@@ -467,13 +540,13 @@ export default function PlanEditorPage() {
   if (status !== 'ready') {
     return (
       <div className="plan-page">
-        <SiteHeader />
+        <PlanHeader />
         <main className="plan-status">
           {status === 'loading' && <p aria-live="polite">일정을 불러오는 중이에요…</p>}
           {status === 'empty' && (
             <>
-              <h1>아직 만든 일정이 없어요</h1>
-              <p>문화행사를 고르고 추천을 받아 하루 일정을 만들어 보세요.</p>
+              <h1>아직 만든 일정 초안이 없어요</h1>
+              <p>문화행사를 고르고 AI 추천을 받아 하루 일정을 만들어 보세요.</p>
               <button className="tp-btn tp-btn--primary" type="button" onClick={() => navigate('/')}>
                 문화행사 둘러보기
               </button>
@@ -489,25 +562,23 @@ export default function PlanEditorPage() {
             </>
           )}
         </main>
-        <SiteFooter />
+        <PlanFooter />
       </div>
     )
   }
 
-  const routeSummary = items.map((item) => `${item.seq} ${item.name}`).join(' → ')
+  const routeSummary = items.map((item) => `${item.sequence} ${item.name}`).join(' → ')
 
   return (
     <div className="plan-page">
-      <SiteHeader onNavigate={requestNavigate} />
+      <PlanHeader onNavigate={requestNavigate} />
 
       <section className="plan-heading">
-        <p className="plan-heading__eyebrow">
-          {`나의 일정 · ${plan.saved ? '저장한 일정' : '저장 전 초안'} · ${formatDate(plan.tripDate)}`}
-        </p>
+        <p className="plan-heading__eyebrow">{`나의 일정 · 저장 전 초안 · ${formatDate(draft.visitDate)}`}</p>
         <h1 className="plan-heading__title">{title}</h1>
         <p className="plan-heading__desc">
-          {anchorItem?.timeFixed
-            ? `추천 시간은 조정 가능한 예시입니다. 선택한 행사는 ${anchorItem.startTime}에 시작해요.`
+          {coreItem?.timeFixed
+            ? `추천 시간은 조정 가능한 예시입니다. 선택한 행사는 ${coreItem.startTime}에 시작해요.`
             : '추천 시간은 조정 가능한 예시입니다. 실제 행사 운영시간은 정보 없음.'}
         </p>
         <button
@@ -523,24 +594,21 @@ export default function PlanEditorPage() {
       <main className="plan-editor">
         <div className="plan-toolbar">
           <p className="plan-toolbar__desc">당일 여행 · 선택한 행사에 맞춘 동선</p>
-          {!plan.saved && (
-            <>
-              <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" onClick={() => setModal({ type: 'conditions' })}>
-                조건 수정
-              </button>
-              <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" onClick={() => setModal({ type: 'regenerate' })}>
-                다시 추천
-              </button>
-            </>
-          )}
-          <button
-            className="tp-btn tp-btn--primary plan-toolbar__save"
-            type="button"
-            disabled={saving || (plan.saved && !isDirty)}
-            onClick={handleSave}
-          >
-            {saving ? '저장 중…' : plan.saved ? '변경 저장' : '일정 저장'}
+          <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'conditions' })}>
+            조건 수정
           </button>
+          <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'regenerate' })}>
+            다시 추천
+          </button>
+          {savedPlan ? (
+            <button className="tp-btn tp-btn--primary plan-toolbar__save" type="button" onClick={() => setModal({ type: 'saved', plan: savedPlan })}>
+              저장 완료 · 확인
+            </button>
+          ) : (
+            <button className="tp-btn tp-btn--primary plan-toolbar__save" type="button" disabled={saving} onClick={handleSave}>
+              {saving ? '저장 중…' : '일정 저장'}
+            </button>
+          )}
         </div>
 
         <div className="plan-layout">
@@ -549,7 +617,8 @@ export default function PlanEditorPage() {
               <TimelineItem
                 key={item.key}
                 item={item}
-                isAnchor={item === anchorItem}
+                isCore={item === coreItem}
+                reason={reasonByItemId.get(item.itemId)}
                 isLast={index === items.length - 1}
                 isSelected={item.key === selectedItem?.key}
                 distanceToNext={distanceMeters(item, items[index + 1])}
@@ -581,7 +650,7 @@ export default function PlanEditorPage() {
             <button
               className="tp-btn tp-btn--secondary tp-btn--block"
               type="button"
-              onClick={() => requestNavigate(`/events/${plan.anchorEventId}`)}
+              onClick={() => requestNavigate(`/events/${coreEventPlaceId}`)}
             >
               선택한 행사 다시 보기
             </button>
@@ -601,7 +670,7 @@ export default function PlanEditorPage() {
         </div>
       </main>
 
-      <SiteFooter />
+      <PlanFooter />
       {renderModal()}
     </div>
   )
