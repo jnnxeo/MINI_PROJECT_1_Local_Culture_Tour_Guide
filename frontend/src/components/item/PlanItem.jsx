@@ -14,7 +14,7 @@ const PlanItem = ({ plan, onUpdate }) => {
         await api.delete(`/api/plans/drafts/${plan.planId}`)
             .then(response => {
                 console.log(`debug >>>> plan item delete planId : `, plan.planId)
-                if(response.status === 200){
+                if(response.status === 204){
                     onUpdate();
                 }
             })
