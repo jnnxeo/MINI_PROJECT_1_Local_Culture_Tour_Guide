@@ -9,12 +9,16 @@ import com.tripai.backend.domain.dto.DraftItemRequest;
 import com.tripai.backend.domain.dto.DraftItemsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
 import com.tripai.backend.domain.dto.PlanItemResponse;
+import com.tripai.backend.domain.dto.PlanSaveResponse;
 import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +38,9 @@ class PlanDraftServiceTest {
     @BeforeEach
     void setUp() {
         mapper = new FakePlanDraftMapper();
-        service = new PlanDraftService(mapper);
+        // 오늘 = 2026-09-26 (한국 시간) 으로 고정
+        Clock today = Clock.fixed(ZonedDateTime.of(2026, 9, 26, 1, 0, 0, 0, ZoneId.of("Asia/Seoul")).toInstant(), ZoneId.of("Asia/Seoul"));
+        service = new PlanDraftService(mapper, today);
 
         mapper.plans.put(DRAFT_ID, draft(false));
         mapper.addRow(row(101L, 1, "PLACE", "DEV-PL-001", "12:30", 60, "행사장 반경 · 식사 시간대", false));
@@ -357,6 +363,72 @@ class PlanDraftServiceTest {
         void 다른_사람_초안의_항목은_지울_수_없다() {
             assertErrorCode(() -> service.deleteItem(3L, DRAFT_ID, 101L), ErrorCode.FORBIDDEN);
             assertThat(mapper.rows).containsKey(101L);
+        }
+    }
+
+    @Nested
+    class 저장_확정 {
+
+        @Test
+        void 초안을_저장하면_같은_번호와_디데이를_돌려준다() {
+            PlanSaveResponse response = service.saveDraft(OWNER_ID, DRAFT_ID);
+
+            assertThat(response.planId()).isEqualTo(DRAFT_ID);
+            assertThat(response.title()).isEqualTo("고궁의 밤을 기다리는 하루");
+            assertThat(response.visitDate()).isEqualTo(LocalDate.of(2026, 10, 3));
+            assertThat(response.dDay()).isEqualTo(7);
+            assertThat(mapper.plans.get(DRAFT_ID).getSaveYn()).isTrue();
+        }
+
+        @Test
+        void 디데이는_당일_0_지난_일정은_음수() {
+            mapper.plans.put(DRAFT_ID, draftOn(LocalDate.of(2026, 9, 26)));
+            assertThat(service.saveDraft(OWNER_ID, DRAFT_ID).dDay()).isZero();
+
+            mapper.plans.put(DRAFT_ID, draftOn(LocalDate.of(2026, 9, 24)));
+            assertThat(service.saveDraft(OWNER_ID, DRAFT_ID).dDay()).isEqualTo(-2);
+        }
+
+        @Test
+        void 이미_저장된_초안이면_409() {
+            service.saveDraft(OWNER_ID, DRAFT_ID);
+            assertRule(() -> service.saveDraft(OWNER_ID, DRAFT_ID), HttpStatus.CONFLICT);
+        }
+
+        @Test
+        void 저장된_뒤에는_초안으로_편집할_수_없다() {
+            service.saveDraft(OWNER_ID, DRAFT_ID);
+            assertErrorCode(() -> service.updateTitle(OWNER_ID, DRAFT_ID, "새 제목"), ErrorCode.PLAN_NOT_FOUND);
+        }
+
+        @Test
+        void 항목_규칙에_어긋난_초안은_저장하지_않는다() {
+            mapper.rows.put(101L, row(101L, 1, "PLACE", "DEV-PL-001", "17:30", 60, null, false));
+
+            assertRule(() -> service.saveDraft(OWNER_ID, DRAFT_ID), HttpStatus.BAD_REQUEST);
+            assertThat(mapper.plans.get(DRAFT_ID).getSaveYn()).isFalse();
+        }
+
+        @Test
+        void 없는_초안_404_다른_사람_초안_403() {
+            assertErrorCode(() -> service.saveDraft(OWNER_ID, 999L), ErrorCode.PLAN_NOT_FOUND);
+            assertErrorCode(() -> service.saveDraft(3L, DRAFT_ID), ErrorCode.FORBIDDEN);
+            assertThat(mapper.plans.get(DRAFT_ID).getSaveYn()).isFalse();
+        }
+
+        private TripPlan draftOn(LocalDate date) {
+            TripPlan base = draft(false);
+            return TripPlan.builder()
+                    .tripPlanId(base.getTripPlanId())
+                    .userId(base.getUserId())
+                    .anchorContentId(base.getAnchorContentId())
+                    .title(base.getTitle())
+                    .tripDate(date)
+                    .visitStartTime(base.getVisitStartTime())
+                    .visitEndTime(base.getVisitEndTime())
+                    .saveYn(false)
+                    .headcount(base.getHeadcount())
+                    .build();
         }
     }
 

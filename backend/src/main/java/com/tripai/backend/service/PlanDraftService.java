@@ -8,6 +8,7 @@ import com.tripai.backend.domain.dto.DraftResponse;
 import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.domain.dto.MapPointResponse;
 import com.tripai.backend.domain.dto.PlanItemResponse;
+import com.tripai.backend.domain.dto.PlanSaveResponse;
 import com.tripai.backend.domain.dto.RecommendationReasonResponse;
 import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.PlanItemView;
@@ -17,6 +18,10 @@ import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.repository.PlanDraftMapper;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -24,9 +29,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,10 +46,20 @@ public class PlanDraftService {
 
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final PlanDraftMapper planDraftMapper;
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
+    private final PlanDraftMapper planDraftMapper;
+    private final Clock clock;
+
+    @Autowired
     public PlanDraftService(PlanDraftMapper planDraftMapper) {
+        this(planDraftMapper, Clock.system(SEOUL));
+    }
+
+    // D-day 계산 기준 날짜를 테스트에서 고정하려고 둔 생성자
+    PlanDraftService(PlanDraftMapper planDraftMapper, Clock clock) {
         this.planDraftMapper = planDraftMapper;
+        this.clock = clock;
     }
 
     /**
@@ -59,7 +76,7 @@ public class PlanDraftService {
     /** API-PLAN-005 저장 전 일정 제목 변경 (TRIP-003) — 앞뒤 공백은 빼고 저장 */
     @Transactional
     public DraftTitleResponse updateTitle(Long userId, Long draftId, String title) {
-        findOwnedDraft(userId, draftId);
+        findOwnedDraftForUpdate(userId, draftId);
         String trimmed = title.trim();
         planDraftMapper.updateTitle(draftId, trimmed);
         return new DraftTitleResponse(draftId, trimmed);
@@ -73,7 +90,7 @@ public class PlanDraftService {
      */
     @Transactional
     public DraftItemsResponse updateItems(Long userId, Long draftId, List<DraftItemRequest> requests) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         Map<Long, PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId).stream()
                 .collect(Collectors.toMap(PlanItemView::getTripItemId, Function.identity()));
 
@@ -159,6 +176,40 @@ public class PlanDraftService {
     }
 
     /**
+     * API-PLAN-009 일정 초안을 저장 일정으로 확정 (TRIP-010).
+     * 같은 trip_plan 행의 save_yn 을 TRUE 로 바꾸므로 planId 는 draftId 와 같다.
+     * 저장 전에 항목 규칙을 한 번 더 확인한다 (SEC-005). 명세에 코드가 없어 규칙 위반은 400.
+     * 명세 오류 코드: 이미 저장된 초안 409. 없는 초안 404, 다른 사람 초안 403.
+     */
+    @Transactional
+    public PlanSaveResponse saveDraft(Long userId, Long draftId) {
+        TripPlan plan = planDraftMapper.findPlanByIdForUpdate(draftId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        if (!Objects.equals(plan.getUserId(), userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (Boolean.TRUE.equals(plan.getSaveYn())) {
+            throw new PlanRuleException(HttpStatus.CONFLICT, "이미 저장된 초안입니다.");
+        }
+
+        List<PlanItemRules.Candidate> candidates = planDraftMapper.findItemsByPlanId(draftId).stream()
+                .map(this::toCandidate)
+                .toList();
+        PlanItemRules.check(candidates, plan.getAnchorContentId(), plan.getVisitStartTime(), plan.getVisitEndTime(), true)
+                .ifPresent(result -> {
+                    throw new PlanRuleException(HttpStatus.BAD_REQUEST, result.message());
+                });
+
+        // 동시에 두 번 눌러도 한 번만 저장되도록 save_yn = FALSE 조건으로 바꾼다
+        if (planDraftMapper.markSaved(draftId) == 0) {
+            throw new PlanRuleException(HttpStatus.CONFLICT, "이미 저장된 초안입니다.");
+        }
+
+        long dDay = ChronoUnit.DAYS.between(LocalDate.now(clock), plan.getTripDate());
+        return new PlanSaveResponse(plan.getTripPlanId(), plan.getTitle(), plan.getTripDate(), dDay);
+    }
+
+    /**
      * API-PLAN-007 일정에 맛집(또는 문화행사) 추가 (TRIP-006).
      * 명세 오류 코드: 이미 있는 장소 409, 시간 범위 초과(겹침·방문 가능 시간·행사 날짜) 422.
      * 문화행사 2개 초과는 명세에 코드가 없어 중복과 같은 409 로 둔다.
@@ -166,7 +217,7 @@ public class PlanDraftService {
      */
     @Transactional
     public DraftItemAddResponse addItem(Long userId, Long draftId, DraftItemAddRequest request) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
         LocalTime startTime = LocalTime.parse(request.startTime());
 
@@ -222,7 +273,7 @@ public class PlanDraftService {
      */
     @Transactional
     public void deleteItem(Long userId, Long draftId, Long itemId) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
 
         PlanItemView target = current.stream()
@@ -286,8 +337,19 @@ public class PlanDraftService {
     }
 
     private TripPlan findOwnedDraft(Long userId, Long draftId) {
-        TripPlan plan = planDraftMapper.findPlanById(draftId)
-                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        return checkOwnedDraft(userId, planDraftMapper.findPlanById(draftId));
+    }
+
+    /**
+     * 수정·저장용 — 초안 행을 먼저 잠근다. MariaDB 기본 스냅샷 격리에서는 동시에 들어온 요청이
+     * 예전 값을 보고 UPDATE 하다 "Record has changed since last read" 오류(500)가 나서, 앞 요청이 끝날 때까지 기다리게 한다.
+     */
+    private TripPlan findOwnedDraftForUpdate(Long userId, Long draftId) {
+        return checkOwnedDraft(userId, planDraftMapper.findPlanByIdForUpdate(draftId));
+    }
+
+    private TripPlan checkOwnedDraft(Long userId, Optional<TripPlan> found) {
+        TripPlan plan = found.orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
 
         if (!Objects.equals(plan.getUserId(), userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);

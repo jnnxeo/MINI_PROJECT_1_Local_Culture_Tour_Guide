@@ -14,6 +14,9 @@ public interface PlanDraftMapper {
 
 	Optional<TripPlan> findPlanById(Long tripPlanId);
 
+	/** 수정·저장 전에 초안 행을 잠근다. 동시 요청은 앞 요청이 끝난 뒤 최신 값으로 진행된다 */
+	Optional<TripPlan> findPlanByIdForUpdate(Long tripPlanId);
+
 	List<PlanItemView> findItemsByPlanId(Long tripPlanId);
 
 	int updateTitle(@Param("tripPlanId") Long tripPlanId, @Param("title") String title);
@@ -37,4 +40,7 @@ public interface PlanDraftMapper {
 			@Param("seqOrder") Integer seqOrder);
 
 	int deleteItem(@Param("tripPlanId") Long tripPlanId, @Param("tripItemId") Long tripItemId);
+
+	/** 아직 저장 전인 초안만 저장 상태로 바꾼다. 0 이면 이미 저장된 것 */
+	int markSaved(Long tripPlanId);
 }
