@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.PlanDraftMapper">
+
+	<select id="findPlanById"
+			parameterType="long"
+			resultType="TripPlan">
+		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
+		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
+		       tp.headcount, tp.created_at, tp.upd_at,
+		       e.event_name AS anchor_event_name
+		FROM trip_plan tp
+		JOIN event e ON e.event_content_id = tp.anchor_content_id
+		WHERE tp.trip_plan_id = #{tripPlanId}
+	</select>
+
+	<select id="findItemsByPlanId"
+			parameterType="long"
+			resultType="PlanItemView">
+		SELECT ti.trip_item_id, ti.seq_order, ti.item_type, ti.event_content_id, ti.place_content_id,
+		       ti.start_time, ti.duration_min, ti.ai_reason, ti.time_fix_yn,
+		       COALESCE(e.event_name, p.place_name) AS name,
+		       COALESCE(e.addr, p.addr) AS addr,
+		       COALESCE(e.mapx, p.mapx) AS mapx,
+		       COALESCE(e.mapy, p.mapy) AS mapy,
+		       COALESCE(e.image_url, p.image_url) AS image_url,
+		       p.open_time, p.close_time, p.break_open_time, p.break_close_time
+		FROM trip_item ti
+		LEFT JOIN event e ON ti.item_type = 'EVENT' AND e.event_content_id = ti.event_content_id
+		LEFT JOIN place p ON ti.item_type = 'PLACE' AND p.content_id = ti.place_content_id
+		WHERE ti.trip_plan_id = #{tripPlanId}
+		ORDER BY ti.seq_order
+	</select>
+
+</mapper>
