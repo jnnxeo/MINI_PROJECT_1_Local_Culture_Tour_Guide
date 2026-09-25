@@ -33,4 +33,10 @@
 		ORDER BY ti.seq_order
 	</select>
 
+	<update id="updateTitle">
+		UPDATE trip_plan
+		SET title = #{title}
+		WHERE trip_plan_id = #{tripPlanId}
+	</update>
+
 </mapper>

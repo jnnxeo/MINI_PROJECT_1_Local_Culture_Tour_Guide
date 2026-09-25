@@ -1,14 +1,19 @@
 package com.tripai.backend.controller;
 
 import com.tripai.backend.domain.dto.DraftResponse;
+import com.tripai.backend.domain.dto.DraftTitleRequest;
+import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.global.response.ApiResponse;
 import com.tripai.backend.service.PlanDraftService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -33,6 +38,16 @@ public class PlanDraftController {
             @PathVariable Long draftId
     ) {
         return ResponseEntity.ok(ApiResponse.success(planDraftService.getDraft(userId, draftId)));
+    }
+
+    /** API-PLAN-005 저장 전 일정 제목 변경 */
+    @PatchMapping("/{draftId}/title")
+    public ResponseEntity<ApiResponse<DraftTitleResponse>> updateTitle(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId,
+            @Valid @RequestBody DraftTitleRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(planDraftService.updateTitle(userId, draftId, request.title())));
     }
 
     /**

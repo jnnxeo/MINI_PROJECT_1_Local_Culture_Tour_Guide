@@ -1,6 +1,7 @@
 package com.tripai.backend.service;
 
 import com.tripai.backend.domain.dto.DraftResponse;
+import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.domain.dto.MapPointResponse;
 import com.tripai.backend.domain.dto.PlanItemResponse;
 import com.tripai.backend.domain.dto.RecommendationReasonResponse;
@@ -40,6 +41,15 @@ public class PlanDraftService {
         TripPlan plan = findOwnedDraft(userId, draftId);
         List<PlanItemView> items = planDraftMapper.findItemsByPlanId(draftId);
         return toDraftResponse(plan, items);
+    }
+
+    /** API-PLAN-005 저장 전 일정 제목 변경 (TRIP-003) — 앞뒤 공백은 빼고 저장 */
+    @Transactional
+    public DraftTitleResponse updateTitle(Long userId, Long draftId, String title) {
+        findOwnedDraft(userId, draftId);
+        String trimmed = title.trim();
+        planDraftMapper.updateTitle(draftId, trimmed);
+        return new DraftTitleResponse(draftId, trimmed);
     }
 
     private TripPlan findOwnedDraft(Long userId, Long draftId) {

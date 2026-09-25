@@ -27,6 +27,7 @@ class PlanDraftServiceTest {
 
     private final Map<Long, TripPlan> plans = new HashMap<>();
     private final Map<Long, List<PlanItemView>> items = new HashMap<>();
+    private final Map<Long, String> savedTitles = new HashMap<>();
     private PlanDraftService service;
 
     @BeforeEach
@@ -40,6 +41,12 @@ class PlanDraftServiceTest {
             @Override
             public List<PlanItemView> findItemsByPlanId(Long tripPlanId) {
                 return items.getOrDefault(tripPlanId, List.of());
+            }
+
+            @Override
+            public int updateTitle(Long tripPlanId, String title) {
+                savedTitles.put(tripPlanId, title);
+                return 1;
             }
         };
         service = new PlanDraftService(mapper);
@@ -117,6 +124,24 @@ class PlanDraftServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.PLAN_NOT_FOUND);
+    }
+
+    @Test
+    void 제목은_앞뒤_공백을_빼고_저장한다() {
+        var response = service.updateTitle(OWNER_ID, DRAFT_ID, "  서울에서 보내는 문화 산책  ");
+
+        assertThat(response.draftId()).isEqualTo(DRAFT_ID);
+        assertThat(response.title()).isEqualTo("서울에서 보내는 문화 산책");
+        assertThat(savedTitles).containsEntry(DRAFT_ID, "서울에서 보내는 문화 산책");
+    }
+
+    @Test
+    void 다른_사람_초안_제목은_바꿀_수_없다() {
+        assertThatThrownBy(() -> service.updateTitle(3L, DRAFT_ID, "새 제목"))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.FORBIDDEN);
+        assertThat(savedTitles).isEmpty();
     }
 
     private static TripPlan draft(boolean saved) {
