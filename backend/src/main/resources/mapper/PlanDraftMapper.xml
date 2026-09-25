@@ -39,4 +39,52 @@
 		WHERE trip_plan_id = #{tripPlanId}
 	</update>
 
+	<select id="findPlaceTarget"
+			parameterType="string"
+			resultType="ItemTargetView">
+		SELECT content_id, place_name AS name, display_yn
+		FROM place
+		WHERE content_id = #{contentId}
+		  AND content_type_cd = 39
+	</select>
+
+	<select id="findEventTarget"
+			parameterType="string"
+			resultType="ItemTargetView">
+		SELECT event_content_id AS content_id, event_name AS name, display_yn,
+		       event_start_date, event_end_date, event_start_time
+		FROM event
+		WHERE event_content_id = #{eventContentId}
+	</select>
+
+	<update id="shiftSeqOrders" parameterType="long">
+		UPDATE trip_item
+		SET seq_order = seq_order + 1000
+		WHERE trip_plan_id = #{tripPlanId}
+	</update>
+
+	<update id="clearContentIds">
+		UPDATE trip_item
+		SET event_content_id = NULL, place_content_id = NULL
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND trip_item_id IN
+		<foreach collection="itemIds" item="itemId" open="(" separator="," close=")">
+			#{itemId}
+		</foreach>
+	</update>
+
+	<update id="updateItem" parameterType="TripItem">
+		UPDATE trip_item
+		SET seq_order = #{seqOrder},
+		    item_type = #{itemType},
+		    event_content_id = #{eventContentId},
+		    place_content_id = #{placeContentId},
+		    start_time = #{startTime},
+		    duration_min = #{durationMin},
+		    ai_reason = #{aiReason},
+		    time_fix_yn = #{timeFixYn}
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</update>
+
 </mapper>

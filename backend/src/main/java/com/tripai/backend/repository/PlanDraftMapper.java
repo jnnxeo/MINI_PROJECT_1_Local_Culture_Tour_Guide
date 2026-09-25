@@ -1,6 +1,8 @@
 package com.tripai.backend.repository;
 
+import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.PlanItemView;
+import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import java.util.List;
 import java.util.Optional;
@@ -15,4 +17,16 @@ public interface PlanDraftMapper {
 	List<PlanItemView> findItemsByPlanId(Long tripPlanId);
 
 	int updateTitle(@Param("tripPlanId") Long tripPlanId, @Param("title") String title);
+
+	Optional<ItemTargetView> findPlaceTarget(String contentId);
+
+	Optional<ItemTargetView> findEventTarget(String eventContentId);
+
+	/** seq_order UNIQUE 충돌을 피하려고 순번을 잠깐 뒤로 미룬다 (CHECK seq_order > 0 이라 음수는 못 씀) */
+	int shiftSeqOrders(Long tripPlanId);
+
+	/** 장소를 바꾸는 항목의 참조를 잠깐 비운다 (UNIQUE(plan, event/place) 충돌 방지) */
+	int clearContentIds(@Param("tripPlanId") Long tripPlanId, @Param("itemIds") List<Long> itemIds);
+
+	int updateItem(TripItem item);
 }

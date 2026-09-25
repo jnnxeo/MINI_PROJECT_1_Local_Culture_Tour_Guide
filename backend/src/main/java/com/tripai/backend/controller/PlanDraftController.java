@@ -1,11 +1,14 @@
 package com.tripai.backend.controller;
 
+import com.tripai.backend.domain.dto.DraftItemsRequest;
+import com.tripai.backend.domain.dto.DraftItemsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
 import com.tripai.backend.domain.dto.DraftTitleRequest;
 import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.global.response.ApiResponse;
 import com.tripai.backend.service.PlanDraftService;
+import com.tripai.backend.service.PlanRuleException;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -48,6 +52,22 @@ public class PlanDraftController {
             @Valid @RequestBody DraftTitleRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(planDraftService.updateTitle(userId, draftId, request.title())));
+    }
+
+    /** API-PLAN-006 일정 항목·시간·방문 순서 일괄 수정 */
+    @PutMapping("/{draftId}/items")
+    public ResponseEntity<ApiResponse<DraftItemsResponse>> updateItems(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId,
+            @Valid @RequestBody DraftItemsRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(planDraftService.updateItems(userId, draftId, request.items())));
+    }
+
+    /** 일정 편집 규칙 위반 — 명세의 API별 오류 코드(400·404·409·422)로 응답 */
+    @ExceptionHandler(PlanRuleException.class)
+    public ResponseEntity<ApiResponse<Void>> handlePlanRule(PlanRuleException exception) {
+        return ResponseEntity.status(exception.getStatus()).body(ApiResponse.failure(exception.getMessage()));
     }
 
     /**
