@@ -8,6 +8,7 @@ import com.tripai.backend.domain.dto.DraftResponse;
 import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.domain.dto.MapPointResponse;
 import com.tripai.backend.domain.dto.PlanItemResponse;
+import com.tripai.backend.domain.dto.PlanSaveResponse;
 import com.tripai.backend.domain.dto.RecommendationReasonResponse;
 import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.PlanItemView;
@@ -17,6 +18,10 @@ import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.repository.PlanDraftMapper;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -28,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,10 +46,20 @@ public class PlanDraftService {
 
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
 
-    private final PlanDraftMapper planDraftMapper;
+    private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
+    private final PlanDraftMapper planDraftMapper;
+    private final Clock clock;
+
+    @Autowired
     public PlanDraftService(PlanDraftMapper planDraftMapper) {
+        this(planDraftMapper, Clock.system(SEOUL));
+    }
+
+    // D-day 계산 기준 날짜를 테스트에서 고정하려고 둔 생성자
+    PlanDraftService(PlanDraftMapper planDraftMapper, Clock clock) {
         this.planDraftMapper = planDraftMapper;
+        this.clock = clock;
     }
 
     /**
@@ -157,6 +173,40 @@ public class PlanDraftService {
                 .map(this::toItemResponse)
                 .toList();
         return new DraftItemsResponse(draftId, items, toMapPoints(items));
+    }
+
+    /**
+     * API-PLAN-009 일정 초안을 저장 일정으로 확정 (TRIP-010).
+     * 같은 trip_plan 행의 save_yn 을 TRUE 로 바꾸므로 planId 는 draftId 와 같다.
+     * 저장 전에 항목 규칙을 한 번 더 확인한다 (SEC-005). 명세에 코드가 없어 규칙 위반은 400.
+     * 명세 오류 코드: 이미 저장된 초안 409. 없는 초안 404, 다른 사람 초안 403.
+     */
+    @Transactional
+    public PlanSaveResponse saveDraft(Long userId, Long draftId) {
+        TripPlan plan = planDraftMapper.findPlanByIdForUpdate(draftId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        if (!Objects.equals(plan.getUserId(), userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (Boolean.TRUE.equals(plan.getSaveYn())) {
+            throw new PlanRuleException(HttpStatus.CONFLICT, "이미 저장된 초안입니다.");
+        }
+
+        List<PlanItemRules.Candidate> candidates = planDraftMapper.findItemsByPlanId(draftId).stream()
+                .map(this::toCandidate)
+                .toList();
+        PlanItemRules.check(candidates, plan.getAnchorContentId(), plan.getVisitStartTime(), plan.getVisitEndTime(), true)
+                .ifPresent(result -> {
+                    throw new PlanRuleException(HttpStatus.BAD_REQUEST, result.message());
+                });
+
+        // 동시에 두 번 눌러도 한 번만 저장되도록 save_yn = FALSE 조건으로 바꾼다
+        if (planDraftMapper.markSaved(draftId) == 0) {
+            throw new PlanRuleException(HttpStatus.CONFLICT, "이미 저장된 초안입니다.");
+        }
+
+        long dDay = ChronoUnit.DAYS.between(LocalDate.now(clock), plan.getTripDate());
+        return new PlanSaveResponse(plan.getTripPlanId(), plan.getTitle(), plan.getTripDate(), dDay);
     }
 
     /**

@@ -118,5 +118,11 @@
 		  AND trip_plan_id = #{tripPlanId}
 	</delete>
 
+	<update id="markSaved" parameterType="long">
+		UPDATE trip_plan
+		SET save_yn = TRUE
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND save_yn = FALSE
+	</update>
 
 </mapper>

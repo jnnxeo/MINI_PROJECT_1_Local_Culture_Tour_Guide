@@ -40,4 +40,7 @@ public interface PlanDraftMapper {
 			@Param("seqOrder") Integer seqOrder);
 
 	int deleteItem(@Param("tripPlanId") Long tripPlanId, @Param("tripItemId") Long tripItemId);
+
+	/** 아직 저장 전인 초안만 저장 상태로 바꾼다. 0 이면 이미 저장된 것 */
+	int markSaved(Long tripPlanId);
 }

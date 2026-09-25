@@ -140,6 +140,29 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         return 1;
     }
 
+    @Override
+    public int markSaved(Long tripPlanId) {
+        TripPlan plan = plans.get(tripPlanId);
+        if (plan == null || Boolean.TRUE.equals(plan.getSaveYn())) {
+            return 0;
+        }
+        plans.put(tripPlanId, TripPlan.builder()
+                .tripPlanId(plan.getTripPlanId())
+                .userId(plan.getUserId())
+                .anchorContentId(plan.getAnchorContentId())
+                .anchorEventName(plan.getAnchorEventName())
+                .title(plan.getTitle())
+                .tripDate(plan.getTripDate())
+                .visitStartTime(plan.getVisitStartTime())
+                .visitEndTime(plan.getVisitEndTime())
+                .saveYn(true)
+                .aiYn(plan.getAiYn())
+                .transportMd(plan.getTransportMd())
+                .headcount(plan.getHeadcount())
+                .build());
+        return 1;
+    }
+
     private void checkConstraints(Long tripPlanId) {
         List<TripItem> planRows = rows.values().stream().filter(row -> row.getTripPlanId().equals(tripPlanId)).toList();
         if (planRows.stream().anyMatch(row -> row.getSeqOrder() <= 0)) {
