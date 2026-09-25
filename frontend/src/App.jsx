@@ -4,6 +4,7 @@ import Header from './components/Header.jsx'
 import { useAuth } from './contexts/AuthContext.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import MyPage from './pages/MyPage.jsx'
 
@@ -21,6 +22,14 @@ export default function App() {
 
       <Route path="/mypage" element={<MyPage/>}/>
       
+      <Route
+        path="/trips/draft"
+        element={(
+          <ProtectedRoute>
+            <PlanEditorPage />
+          </ProtectedRoute>
+        )}
+      />
       <Route
         path="/"
         element={(
