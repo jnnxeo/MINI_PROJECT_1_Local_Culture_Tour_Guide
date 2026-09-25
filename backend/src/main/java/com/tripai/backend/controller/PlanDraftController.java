@@ -1,5 +1,7 @@
 package com.tripai.backend.controller;
 
+import com.tripai.backend.domain.dto.DraftItemAddRequest;
+import com.tripai.backend.domain.dto.DraftItemAddResponse;
 import com.tripai.backend.domain.dto.DraftItemsRequest;
 import com.tripai.backend.domain.dto.DraftItemsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
@@ -10,12 +12,14 @@ import com.tripai.backend.global.response.ApiResponse;
 import com.tripai.backend.service.PlanDraftService;
 import com.tripai.backend.service.PlanRuleException;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,6 +66,17 @@ public class PlanDraftController {
             @Valid @RequestBody DraftItemsRequest request
     ) {
         return ResponseEntity.ok(ApiResponse.success(planDraftService.updateItems(userId, draftId, request.items())));
+    }
+
+    /** API-PLAN-007 맛집 일정에 추가 */
+    @PostMapping("/{draftId}/items")
+    public ResponseEntity<ApiResponse<DraftItemAddResponse>> addItem(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId,
+            @Valid @RequestBody DraftItemAddRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(planDraftService.addItem(userId, draftId, request)));
     }
 
     /** 일정 편집 규칙 위반 — 명세의 API별 오류 코드(400·404·409·422)로 응답 */

@@ -1,5 +1,7 @@
 package com.tripai.backend.service;
 
+import com.tripai.backend.domain.dto.DraftItemAddRequest;
+import com.tripai.backend.domain.dto.DraftItemAddResponse;
 import com.tripai.backend.domain.dto.DraftItemRequest;
 import com.tripai.backend.domain.dto.DraftItemsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
@@ -154,6 +156,76 @@ public class PlanDraftService {
                 .map(this::toItemResponse)
                 .toList();
         return new DraftItemsResponse(draftId, items, toMapPoints(items));
+    }
+
+    /**
+     * API-PLAN-007 일정에 맛집(또는 문화행사) 추가 (TRIP-006).
+     * 명세 오류 코드: 이미 있는 장소 409, 시간 범위 초과(겹침·방문 가능 시간·행사 날짜) 422.
+     * 문화행사 2개 초과는 명세에 코드가 없어 중복과 같은 409 로 둔다.
+     * 추가한 뒤 시작 시간 순으로 방문 순서를 다시 매긴다 (TRIP-004).
+     */
+    @Transactional
+    public DraftItemAddResponse addItem(Long userId, Long draftId, DraftItemAddRequest request) {
+        TripPlan plan = findOwnedDraft(userId, draftId);
+        List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
+        LocalTime startTime = LocalTime.parse(request.startTime());
+
+        ItemTargetView target = findTarget(request.type(), request.placeId(), plan, HttpStatus.UNPROCESSABLE_ENTITY);
+        boolean timeFixed = target.getEventStartTime() != null;
+        if (timeFixed && !startTime.equals(target.getEventStartTime())) {
+            throw new PlanRuleException(HttpStatus.UNPROCESSABLE_ENTITY,
+                    target.getName() + "은(는) " + format(target.getEventStartTime()) + "에 시작하는 행사입니다.");
+        }
+
+        List<PlanItemRules.Candidate> candidates = new ArrayList<>(current.stream().map(this::toCandidate).toList());
+        candidates.add(new PlanItemRules.Candidate(
+                request.type(), request.placeId(), target.getName(), startTime, request.durationMin(), null));
+
+        PlanItemRules.check(candidates, plan.getAnchorContentId(), plan.getVisitStartTime(), plan.getVisitEndTime(), false)
+                .ifPresent(result -> {
+                    throw new PlanRuleException(addStatus(result.violation()), result.message());
+                });
+
+        // 새 항목은 뒤쪽 임시 순번으로 넣고, 전체를 시간 순서대로 다시 매긴다
+        planDraftMapper.shiftSeqOrders(draftId);
+        TripItem newItem = TripItem.builder()
+                .tripPlanId(draftId)
+                .seqOrder(2000 + candidates.size())
+                .itemType(request.type())
+                .eventContentId("EVENT".equals(request.type()) ? request.placeId() : null)
+                .placeContentId("PLACE".equals(request.type()) ? request.placeId() : null)
+                .startTime(startTime)
+                .durationMin(request.durationMin())
+                .aiReason(null)
+                .timeFixYn(timeFixed)
+                .build();
+        planDraftMapper.insertItem(newItem);
+
+        Map<String, Long> itemIdByTarget = current.stream()
+                .collect(Collectors.toMap(item -> item.getItemType() + ":" + contentIdOf(item), PlanItemView::getTripItemId));
+        itemIdByTarget.put(request.type() + ":" + request.placeId(), newItem.getTripItemId());
+        for (PlanItemRules.Candidate candidate : PlanItemRules.resequenceByTime(candidates)) {
+            Long itemId = itemIdByTarget.get(candidate.type() + ":" + candidate.contentId());
+            planDraftMapper.updateSeqOrder(draftId, itemId, candidate.sequence());
+        }
+
+        List<PlanItemResponse> items = planDraftMapper.findItemsByPlanId(draftId).stream()
+                .map(this::toItemResponse)
+                .toList();
+        return new DraftItemAddResponse(newItem.getTripItemId(), items, toMapPoints(items));
+    }
+
+    private static HttpStatus addStatus(PlanItemRules.Violation violation) {
+        return switch (violation) {
+            case DUPLICATE, EVENT_LIMIT -> HttpStatus.CONFLICT;
+            case OUT_OF_RANGE, TIME_OVERLAP, INVALID_DURATION -> HttpStatus.UNPROCESSABLE_ENTITY;
+            default -> HttpStatus.BAD_REQUEST;
+        };
+    }
+
+    private PlanItemRules.Candidate toCandidate(PlanItemView item) {
+        return new PlanItemRules.Candidate(
+                item.getItemType(), contentIdOf(item), item.getName(), item.getStartTime(), item.getDurationMin(), item.getSeqOrder());
     }
 
     /**

@@ -87,4 +87,18 @@
 		  AND trip_plan_id = #{tripPlanId}
 	</update>
 
+	<insert id="insertItem" parameterType="TripItem" useGeneratedKeys="true" keyProperty="tripItemId">
+		INSERT INTO trip_item (trip_plan_id, seq_order, item_type, event_content_id, place_content_id,
+		                       start_time, duration_min, ai_reason, time_fix_yn)
+		VALUES (#{tripPlanId}, #{seqOrder}, #{itemType}, #{eventContentId}, #{placeContentId},
+		        #{startTime}, #{durationMin}, #{aiReason}, #{timeFixYn})
+	</insert>
+
+	<update id="updateSeqOrder">
+		UPDATE trip_item
+		SET seq_order = #{seqOrder}
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</update>
+
 </mapper>

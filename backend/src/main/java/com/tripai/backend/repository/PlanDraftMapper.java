@@ -29,4 +29,10 @@ public interface PlanDraftMapper {
 	int clearContentIds(@Param("tripPlanId") Long tripPlanId, @Param("itemIds") List<Long> itemIds);
 
 	int updateItem(TripItem item);
+
+	/** useGeneratedKeys 로 tripItemId 가 채워진다 */
+	int insertItem(TripItem item);
+
+	int updateSeqOrder(@Param("tripPlanId") Long tripPlanId, @Param("tripItemId") Long tripItemId,
+			@Param("seqOrder") Integer seqOrder);
 }

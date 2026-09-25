@@ -3,6 +3,8 @@ package com.tripai.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tripai.backend.domain.dto.DraftItemAddRequest;
+import com.tripai.backend.domain.dto.DraftItemAddResponse;
 import com.tripai.backend.domain.dto.DraftItemRequest;
 import com.tripai.backend.domain.dto.DraftItemsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
@@ -244,6 +246,79 @@ class PlanDraftServiceTest {
             assertErrorCode(() -> service.updateItems(3L, DRAFT_ID, List.of(
                     request(101L, "PLACE", "DEV-PL-001", "12:30", 60, 1))), ErrorCode.FORBIDDEN);
         }
+    }
+
+    @Nested
+    class 항목_추가 {
+
+        @Test
+        void 맛집을_추가하면_시간순으로_순번을_다시_매긴다() {
+            DraftItemAddResponse response = service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-002", "14:00", 60));
+
+            assertThat(response.itemId()).isNotNull();
+            assertThat(response.items()).extracting(PlanItemResponse::placeId).containsExactly("DEV-PL-001", "DEV-PL-002", CORE_EVENT);
+            assertThat(response.items()).extracting(PlanItemResponse::sequence).containsExactly(1, 2, 3);
+            assertThat(mapper.rows.get(response.itemId()).getAiReason()).isNull();
+            assertThat(mapper.rows.get(response.itemId()).getTimeFixYn()).isFalse();
+        }
+
+        @Test
+        void 맨_앞에_추가해도_기존_항목번호는_그대로다() {
+            DraftItemAddResponse response = service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-003", "11:00", 60));
+
+            assertThat(response.items()).extracting(PlanItemResponse::itemId)
+                    .containsExactly(response.itemId(), 101L, 102L);
+        }
+
+        @Test
+        void 이미_있는_장소면_409() {
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-001", "15:00", 60)), HttpStatus.CONFLICT);
+        }
+
+        @Test
+        void 시간이_겹치거나_가능_시간을_넘으면_422() {
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-002", "13:00", 60)), HttpStatus.UNPROCESSABLE_ENTITY);
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-002", "21:00", 30)), HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @Test
+        void 없거나_비표출인_장소면_404() {
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "NO-SUCH", "15:00", 60)), HttpStatus.NOT_FOUND);
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("PLACE", "DEV-PL-006", "15:00", 60)), HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void 여행_날짜에_하지_않는_행사면_422() {
+            mapper.events.put("DEV-EV-004", event("DEV-EV-004", "2026-08-01", "2026-08-15", "15:00"));
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-004", "15:00", 60)), HttpStatus.UNPROCESSABLE_ENTITY);
+        }
+
+        @Test
+        void 시작_시간이_정해진_행사를_다른_시간에_넣으면_422() {
+            mapper.events.put("DEV-EV-002", event("DEV-EV-002", "2026-09-10", "2026-11-30", "15:00"));
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-002", "14:00", 60)), HttpStatus.UNPROCESSABLE_ENTITY);
+
+            DraftItemAddResponse response = service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-002", "15:00", 60));
+            assertThat(mapper.rows.get(response.itemId()).getTimeFixYn()).isTrue();
+        }
+
+        @Test
+        void 문화행사가_이미_2개면_409() {
+            mapper.events.put("DEV-EV-002", event("DEV-EV-002", "2026-09-10", "2026-11-30", "15:00"));
+            mapper.events.put("DEV-EV-003", event("DEV-EV-003", "2026-09-10", "2026-11-30", "13:30"));
+            service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-002", "15:00", 60));
+
+            assertRule(() -> service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-003", "13:30", 60)), HttpStatus.CONFLICT);
+        }
+
+        @Test
+        void 다른_사람_초안에는_추가할_수_없다() {
+            assertErrorCode(() -> service.addItem(3L, DRAFT_ID, add("PLACE", "DEV-PL-002", "14:00", 60)), ErrorCode.FORBIDDEN);
+        }
+    }
+
+    private static DraftItemAddRequest add(String type, String placeId, String start, int duration) {
+        return new DraftItemAddRequest(placeId, type, start, duration, null);
     }
 
     private static void assertErrorCode(Runnable call, ErrorCode expected) {

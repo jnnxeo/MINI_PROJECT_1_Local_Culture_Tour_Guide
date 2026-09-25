@@ -96,6 +96,35 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         return 1;
     }
 
+    private long nextItemId = 500L;
+
+    @Override
+    public int insertItem(TripItem item) {
+        TripItem saved = copy(item).tripItemId(nextItemId++).build();
+        rows.put(saved.getTripItemId(), saved);
+        checkConstraints(saved.getTripPlanId());
+        // MyBatis useGeneratedKeys 처럼 넘겨받은 객체에 번호를 채운다
+        try {
+            var field = TripItem.class.getDeclaredField("tripItemId");
+            field.setAccessible(true);
+            field.set(item, saved.getTripItemId());
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+        return 1;
+    }
+
+    @Override
+    public int updateSeqOrder(Long tripPlanId, Long tripItemId, Integer seqOrder) {
+        TripItem row = rows.get(tripItemId);
+        if (row == null || !row.getTripPlanId().equals(tripPlanId)) {
+            return 0;
+        }
+        rows.put(tripItemId, copy(row).seqOrder(seqOrder).build());
+        checkConstraints(tripPlanId);
+        return 1;
+    }
+
     private void checkConstraints(Long tripPlanId) {
         List<TripItem> planRows = rows.values().stream().filter(row -> row.getTripPlanId().equals(tripPlanId)).toList();
         if (planRows.stream().anyMatch(row -> row.getSeqOrder() <= 0)) {
