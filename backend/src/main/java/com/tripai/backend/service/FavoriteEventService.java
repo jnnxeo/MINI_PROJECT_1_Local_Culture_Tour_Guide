@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import com.tripai.backend.domain.dto.EventListResponse;
 import com.tripai.backend.domain.dto.EventSummary;
 import com.tripai.backend.repository.FavoriteEventMapper;
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,10 +30,12 @@ public class FavoriteEventService {
         return new EventListResponse(events, page, totalCount);
     }
 
-    public Integer deleteFavoriteEvent(Long userId, String eventId){
-        Integer response = favoriteEventMapper.deleteEventByEventId(userId, eventId);
-        
-        return response;
+    public void deleteFavoriteEvent(Long userId, String eventId){
+        Integer deleteRows = favoriteEventMapper.deleteEventByEventId(userId, eventId);
+        if(deleteRows == 0){
+            throw new CustomException(ErrorCode.EVENT_NOT_FOUND);
+        }
+
     }
 
 }

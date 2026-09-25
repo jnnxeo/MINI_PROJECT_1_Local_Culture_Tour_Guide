@@ -28,7 +28,7 @@
 
     </select>
 
-    <delete id="deleteEventByEventId">
+    <delete id="deleteEventByEventId" resultType = "Integer">
         DELETE FROM favorite_event
         WHERE event_content_id = #{eventId}
         AND user_id = #{userId}

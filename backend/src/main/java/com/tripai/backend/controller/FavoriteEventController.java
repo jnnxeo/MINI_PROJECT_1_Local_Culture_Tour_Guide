@@ -12,6 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
+
 @RestController
 @RequestMapping("/api/favorites/events")
 @RequiredArgsConstructor
@@ -26,8 +29,16 @@ public class FavoriteEventController {
             @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
     ) {
-        EventListResponse response = favoriteEventService.getFavoriteEvents(userId, page, size);
 
+        if(page < 0){
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (size != 5 && size != 10 && size != 20) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        EventListResponse response = favoriteEventService.getFavoriteEvents(userId, page, size);
         return ResponseEntity.status(HttpStatus.OK)
                             .body(ApiResponse.success(response));
     }
@@ -38,7 +49,7 @@ public class FavoriteEventController {
             @AuthenticationPrincipal Long userId,
             @PathVariable String eventId
     ) {
-        Integer response = favoriteEventService.deleteFavoriteEvent(userId, eventId);
+        favoriteEventService.deleteFavoriteEvent(userId, eventId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                             .body(ApiResponse.success(null));

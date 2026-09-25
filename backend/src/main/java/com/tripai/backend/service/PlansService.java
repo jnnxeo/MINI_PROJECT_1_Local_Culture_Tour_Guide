@@ -6,6 +6,8 @@ import com.tripai.backend.domain.dto.PlanListResponse;
 import com.tripai.backend.domain.dto.PlanSummary;
 import com.tripai.backend.domain.dto.UpdatePlanTitleResponse;
 import com.tripai.backend.repository.PlanMapper;
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 import java.util.List;
@@ -31,17 +33,23 @@ public class PlansService {
         }
 
     public void deletePlan(Long userId, Integer planId){
-        planMapper.deletePlanByPlanId(userId, planId);
+        Integer deleteRows = planMapper.deletePlanByPlanId(userId, planId);
+
+        if(deleteRows == 0){
+            throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
+        }
+
     }
 
-    public Integer updatePlanTitle(     Long userId,             
+    public void updatePlanTitle(     Long userId,             
                                         Integer planId,
                                         String title)
     {
         
-        Integer response = planMapper.updatePlanTitleByPlanId(userId, planId, title);
-        
-        return response;
+        Integer updatedRows = planMapper.updatePlanTitleByPlanId(userId, planId, title);
+        if (updatedRows == 0) {
+            throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
+        }
     }
 
 

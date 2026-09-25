@@ -9,10 +9,10 @@ import java.util.List;
 
 @Mapper 
 public interface FavoriteEventMapper {
-    List<EventSummary> findEventsByUserId(  @Param("userId") Long userId, 
+    public List<EventSummary> findEventsByUserId(  @Param("userId") Long userId, 
                                             @Param("offset") Integer offset, 
                                             @Param("size") Integer size);
-    Integer countEventsByUserId(@Param("userId") Long userId);
-    Integer deleteEventByEventId(   @Param("userId") Long userId,
+    public Integer countEventsByUserId(@Param("userId") Long userId);
+    public Integer deleteEventByEventId(   @Param("userId") Long userId,
                                     @Param("eventId") String eventId);
 }

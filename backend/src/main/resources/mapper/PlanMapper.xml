@@ -23,7 +23,7 @@
         WHERE user_id = #{userId}
     </select>
 
-    <delete id="deletePlanByPlanId">
+    <delete id="deletePlanByPlanId" resultType="Integer">
 
         DELETE FROM trip_plan
         WHERE trip_plan_id = #{planId}
@@ -31,7 +31,7 @@
 
     </delete>
 
-    <update id="updatePlanTitleByPlanId">
+    <update id="updatePlanTitleByPlanId" resultType = "Integer">
 
         UPDATE trip_plan
         SET title = #{title}
