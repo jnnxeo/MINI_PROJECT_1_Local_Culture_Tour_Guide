@@ -4,7 +4,7 @@
 <mapper namespace="com.tripai.backend.repository.FavoriteEventMapper">
 
     <select id="findEventsByUserId"
-            resultType="com.tripai.backend.repository.dto.EventSummary">
+            resultType="com.tripai.backend.domain.dto.EventSummary">
         SELECT
             e.event_content_id    AS eventId,
             e.event_name       AS title,

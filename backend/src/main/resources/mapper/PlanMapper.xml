@@ -4,7 +4,7 @@
 <mapper namespace="com.tripai.backend.repository.PlanMapper">
 
     <select id="findPlansByUserId"
-            resultType="com.tripai.backend.repository.dto.PlanSummary">
+            resultType="com.tripai.backend.domain.dto.PlanSummary">
 
         SELECT
             trip_plan_id AS planId,
