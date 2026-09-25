@@ -125,6 +125,16 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         return 1;
     }
 
+    @Override
+    public int deleteItem(Long tripPlanId, Long tripItemId) {
+        TripItem row = rows.get(tripItemId);
+        if (row == null || !row.getTripPlanId().equals(tripPlanId)) {
+            return 0;
+        }
+        rows.remove(tripItemId);
+        return 1;
+    }
+
     private void checkConstraints(Long tripPlanId) {
         List<TripItem> planRows = rows.values().stream().filter(row -> row.getTripPlanId().equals(tripPlanId)).toList();
         if (planRows.stream().anyMatch(row -> row.getSeqOrder() <= 0)) {

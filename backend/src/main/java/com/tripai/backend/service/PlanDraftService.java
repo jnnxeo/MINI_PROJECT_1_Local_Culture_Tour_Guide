@@ -215,6 +215,37 @@ public class PlanDraftService {
         return new DraftItemAddResponse(newItem.getTripItemId(), items, toMapPoints(items));
     }
 
+    /**
+     * API-PLAN-008 일정 항목 삭제 (TRIP-007).
+     * 명세 오류 코드: 없는 항목 404, 핵심 문화행사 409 (재추천 또는 다른 행사 선택 필요).
+     * 삭제 후 남은 항목의 방문 순서를 1부터 다시 매긴다.
+     */
+    @Transactional
+    public void deleteItem(Long userId, Long draftId, Long itemId) {
+        TripPlan plan = findOwnedDraft(userId, draftId);
+        List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
+
+        PlanItemView target = current.stream()
+                .filter(item -> item.getTripItemId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new PlanRuleException(HttpStatus.NOT_FOUND, "일정 항목을 찾을 수 없습니다."));
+
+        if ("EVENT".equals(target.getItemType()) && Objects.equals(target.getEventContentId(), plan.getAnchorContentId())) {
+            throw new PlanRuleException(HttpStatus.CONFLICT,
+                    "핵심 문화행사는 삭제할 수 없습니다. 다시 추천받거나 다른 행사를 선택해 주세요.");
+        }
+
+        planDraftMapper.deleteItem(draftId, itemId);
+
+        List<PlanItemView> remaining = current.stream()
+                .filter(item -> !item.getTripItemId().equals(itemId))
+                .toList();
+        planDraftMapper.shiftSeqOrders(draftId);
+        for (int index = 0; index < remaining.size(); index++) {
+            planDraftMapper.updateSeqOrder(draftId, remaining.get(index).getTripItemId(), index + 1);
+        }
+    }
+
     private static HttpStatus addStatus(PlanItemRules.Violation violation) {
         return switch (violation) {
             case DUPLICATE, EVENT_LIMIT -> HttpStatus.CONFLICT;

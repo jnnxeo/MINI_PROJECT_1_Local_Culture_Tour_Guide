@@ -101,4 +101,10 @@
 		  AND trip_plan_id = #{tripPlanId}
 	</update>
 
+	<delete id="deleteItem">
+		DELETE FROM trip_item
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</delete>
+
 </mapper>

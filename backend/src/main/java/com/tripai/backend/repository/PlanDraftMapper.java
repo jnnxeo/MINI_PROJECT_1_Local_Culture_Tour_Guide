@@ -35,4 +35,6 @@ public interface PlanDraftMapper {
 
 	int updateSeqOrder(@Param("tripPlanId") Long tripPlanId, @Param("tripItemId") Long tripItemId,
 			@Param("seqOrder") Integer seqOrder);
+
+	int deleteItem(@Param("tripPlanId") Long tripPlanId, @Param("tripItemId") Long tripItemId);
 }

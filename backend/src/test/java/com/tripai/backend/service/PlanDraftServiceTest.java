@@ -317,6 +317,49 @@ class PlanDraftServiceTest {
         }
     }
 
+    @Nested
+    class 항목_삭제 {
+
+        @Test
+        void 맛집을_지우면_남은_항목_순번을_다시_매긴다() {
+            mapper.addRow(row(103L, 3, "PLACE", "DEV-PL-002", "20:00", 30, null, false));
+            mapper.rows.put(102L, row(102L, 2, "EVENT", CORE_EVENT, "18:00", 120, "검색 조건 일치", true));
+
+            service.deleteItem(OWNER_ID, DRAFT_ID, 101L);
+
+            assertThat(mapper.rows).doesNotContainKey(101L);
+            assertThat(mapper.rows.get(102L).getSeqOrder()).isEqualTo(1);
+            assertThat(mapper.rows.get(103L).getSeqOrder()).isEqualTo(2);
+        }
+
+        @Test
+        void 핵심_문화행사는_지울_수_없어_409() {
+            assertRule(() -> service.deleteItem(OWNER_ID, DRAFT_ID, 102L), HttpStatus.CONFLICT);
+            assertThat(mapper.rows).containsKey(102L);
+        }
+
+        @Test
+        void 추가로_넣은_행사는_지울_수_있다() {
+            mapper.events.put("DEV-EV-002", event("DEV-EV-002", "2026-09-10", "2026-11-30", "15:00"));
+            Long added = service.addItem(OWNER_ID, DRAFT_ID, add("EVENT", "DEV-EV-002", "15:00", 60)).itemId();
+
+            service.deleteItem(OWNER_ID, DRAFT_ID, added);
+
+            assertThat(mapper.rows).doesNotContainKey(added);
+        }
+
+        @Test
+        void 없는_항목이면_404() {
+            assertRule(() -> service.deleteItem(OWNER_ID, DRAFT_ID, 999L), HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        void 다른_사람_초안의_항목은_지울_수_없다() {
+            assertErrorCode(() -> service.deleteItem(3L, DRAFT_ID, 101L), ErrorCode.FORBIDDEN);
+            assertThat(mapper.rows).containsKey(101L);
+        }
+    }
+
     private static DraftItemAddRequest add(String type, String placeId, String start, int duration) {
         return new DraftItemAddRequest(placeId, type, start, duration, null);
     }

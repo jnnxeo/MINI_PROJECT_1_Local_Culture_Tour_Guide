@@ -15,6 +15,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -79,6 +80,17 @@ public class PlanDraftController {
                 .body(ApiResponse.success(planDraftService.addItem(userId, draftId, request)));
     }
 
+    /** API-PLAN-008 일정 항목 삭제 — 성공 시 204 No Content */
+    @DeleteMapping("/{draftId}/items/{itemId}")
+    public ResponseEntity<Void> deleteItem(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId,
+            @PathVariable Long itemId
+    ) {
+        planDraftService.deleteItem(userId, draftId, itemId);
+        return ResponseEntity.noContent().build();
+    }
+
     /** 일정 편집 규칙 위반 — 명세의 API별 오류 코드(400·404·409·422)로 응답 */
     @ExceptionHandler(PlanRuleException.class)
     public ResponseEntity<ApiResponse<Void>> handlePlanRule(PlanRuleException exception) {
@@ -86,7 +98,7 @@ public class PlanDraftController {
     }
 
     /**
-     * draftId 에 숫자가 아닌 값이 오면 400 (SEC-005).
+     * draftId·itemId 에 숫자가 아닌 값이 오면 400 (SEC-005).
      * 공통 GlobalExceptionHandler 에는 아직 이 처리가 없어 500 이 나가서, 이 컨트롤러에서만 먼저 막는다.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
