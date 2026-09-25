@@ -38,6 +38,8 @@ public class FavoriteEventController {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
+        System.out.println("favorite event controller getevnets list");
+
         EventListResponse response = favoriteEventService.getFavoriteEvents(userId, page, size);
         return ResponseEntity.status(HttpStatus.OK)
                             .body(ApiResponse.success(response));

@@ -9,26 +9,25 @@
         SELECT
             trip_plan_id AS planId,
             title,
-            visit_start_date AS visitDate,
-            DATEDIFF(visit_start_date, CURDATE()) AS dDay
+            trip_date AS visitDate,
+            DATEDIFF(trip_date, CURDATE()) AS dDay
         FROM trip_plan
         WHERE user_id = #{userId}
-        ORDER BY visit_date ASC
+        AND save_yn = 1
+        ORDER BY trip_date ASC
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <select id="countPlansByUserId">
+    <select id="countPlansByUserId" resultType = "long">
         SELECT COUNT(*)
         FROM trip_plan
         WHERE user_id = #{userId}
     </select>
 
     <delete id="deletePlanByPlanId">
-
         DELETE FROM trip_plan
         WHERE trip_plan_id = #{planId}
         AND user_id = #{userId}
-
     </delete>
 
     <update id="updatePlanTitleByPlanId">

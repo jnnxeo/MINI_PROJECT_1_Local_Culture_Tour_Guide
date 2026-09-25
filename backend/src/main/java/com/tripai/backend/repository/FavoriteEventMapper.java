@@ -12,7 +12,7 @@ public interface FavoriteEventMapper {
     public List<EventSummary> findEventsByUserId(  @Param("userId") Long userId, 
                                             @Param("offset") Integer offset, 
                                             @Param("size") Integer size);
-    public Integer countEventsByUserId(@Param("userId") Long userId);
+    public long countEventsByUserId(@Param("userId") Long userId);
     public Integer deleteEventByEventId(   @Param("userId") Long userId,
                                     @Param("eventId") String eventId);
 }

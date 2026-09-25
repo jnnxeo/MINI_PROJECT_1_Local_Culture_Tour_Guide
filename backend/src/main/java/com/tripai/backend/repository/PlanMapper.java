@@ -13,7 +13,7 @@ public interface PlanMapper {
     public List<PlanSummary> findPlansByUserId( @Param("userId") Long userId, 
                                                 @Param("offset") Integer offset, 
                                                 @Param("size") Integer size);
-    public Integer countPlansByUserId(@Param("userId") Long userId);
+    public long countPlansByUserId(@Param("userId") Long userId);
     public Integer deletePlanByPlanId(  @Param("userId") Long userId,
                                         @Param("planId") Integer planId);
     public Integer updatePlanTitleByPlanId( @Param("userId") Long userId,

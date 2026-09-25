@@ -14,14 +14,13 @@
             e.addr     AS address
         FROM favorite_event fe
         INNER JOIN event e
-            ON fe.event_id = e.event_id
+            ON fe.event_content_id = e.event_content_id
         WHERE fe.user_id = #{userId}
         ORDER BY fe.created_at DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <select id="countEventsByUserId">
-
+    <select id="countEventsByUserId" resultType = "long">
         SELECT COUNT(*)
         FROM favorite_event
         WHERE user_id = #{userId}

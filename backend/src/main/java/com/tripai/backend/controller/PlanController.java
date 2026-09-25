@@ -33,7 +33,7 @@ public class PlanController {
     @GetMapping("")
     public ResponseEntity<ApiResponse<PlanListResponse>> getPlans(
             @AuthenticationPrincipal Long userId,
-            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size
         ) 
     {
@@ -44,6 +44,8 @@ public class PlanController {
         if (size != 5 && size != 10 && size != 20) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
+
+        System.out.println("debug >>>> plancontroller getPlans : " + userId);
 
         PlanListResponse response = plansService.getPlans(userId, page, size);
         return ResponseEntity.status(HttpStatus.OK)

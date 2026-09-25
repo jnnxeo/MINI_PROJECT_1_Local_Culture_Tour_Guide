@@ -24,8 +24,11 @@ public class FavoriteEventService {
 
         List<EventSummary> events =
             favoriteEventMapper.findEventsByUserId(userId, offset, size);
+        System.out.println("debug >>>> favorite event service get list");
 
-        Integer totalCount = favoriteEventMapper.countEventsByUserId(userId);
+        long totalCount = favoriteEventMapper.countEventsByUserId(userId);
+
+        System.out.println("debug >>>> favorite event service get totalCount");
 
         return new EventListResponse(events, page, totalCount);
     }

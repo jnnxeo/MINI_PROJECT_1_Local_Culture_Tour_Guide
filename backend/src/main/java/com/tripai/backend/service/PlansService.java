@@ -24,10 +24,14 @@ public class PlansService {
         {
             int offset = page * size;
 
+            System.out.println("debug >>>> planservice getplans userId : " + userId);
+
+            long totalCount = planMapper.countPlansByUserId(userId);
+            System.out.println("debug >>>> planservice getplans totalCount : " + totalCount);
+
             List<PlanSummary> plans =
                     planMapper.findPlansByUserId(userId, offset, size);
-
-            Integer totalCount = planMapper.countPlansByUserId(userId);
+            System.out.println("debug >>>> planservice getplans plans : " + plans);
 
             return new PlanListResponse(plans, page, totalCount);
         }
