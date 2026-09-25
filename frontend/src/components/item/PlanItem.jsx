@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
+import api from '../../services/api.js'
 
 const PlanItem = ({ plan, onUpdate }) => {
 
@@ -8,35 +8,32 @@ const PlanItem = ({ plan, onUpdate }) => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(plan.title);
-    const at = localStorage.getItem("at");
 
     const deletePlan = async () => {
 
-        try {
-            await axios.delete(
-                `http://localhost:8080/api/plans/drafts/${plan.planId}`,
-                {headers : { Authorization : at ? at : ""}});
-            
-            onUpdate()
-        } 
-        catch (error) {
-            console.error("일정 삭제 실패:", error);
-        }
-    };
+        await api.delete(`/api/plans/drafts/${plan.planId}`)
+            .then(response => {
+                console.log(`debug >>>> plan item delete planId : `, plan.planId)
+                if(response.status === 200){
+                    onUpdate();
+                }
+            })
+            .catch(error => {
+                console.log(`debug >>>> plan item delete error : `, error)
+            })
+    }
 
     const updatePlanName = async () => {
-        try {
-            await axios.patch(
-                `http://localhost:8080/api/plans/drafts/${plan.planId}/title`,
-                    {title : title},
-                    {headers : { Authorization : at ? at : ""}});
-
-            setIsEditing(false);
-            onUpdate(); // List → MyPage가 가진 목록 조회 함수를 실행
-        } 
-        catch (error) {
-            console.error("일정 이름 변경 실패:", error);
-        }
+        await api.patch(`/api/plans/drafts/${plan.planId}/title`, {title : title})
+            .then(response => {
+                if(response.status === 200){
+                    setIsEditing(false)
+                    onUpdate()
+                }
+            })
+            .catch(error => {
+                console.log('debug >>>> error plan item update plan name : ', error)
+            })
     }
 
   return (
@@ -47,12 +44,12 @@ const PlanItem = ({ plan, onUpdate }) => {
                         //나의 일정 페이지로 이동 (endPoint는 추후 페이지 추가에 따라 변경)
                         //나의 일정 페이지로 이동하며 이대 planId를 전달한다.
                         moveUrl(`/plans/drafts/${plan.planId}/conditions`)
-                    }}/>
+                    }}>일정 상세</button>
 
         <button     title = "일정 삭제"
                     onClick = {()=>{
                         deletePlan()
-                    }}/>
+                    }}>일정 삭제</button>
 
         {isEditing ? (
                 <>

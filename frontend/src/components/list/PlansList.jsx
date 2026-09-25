@@ -1,4 +1,4 @@
-import PlanItem from "../item/PlansItem";
+import PlanItem from "../item/PlanItem";
 
 const PlansList = ({ary, onUpdate}) => {
     if(ary.length === 0){

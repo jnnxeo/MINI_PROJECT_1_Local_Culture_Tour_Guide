@@ -1,15 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { signup } from '../services/authService'
+import api from '../services/api.js'
 import '../styles/signup.css'
-import axios from 'axios'
+
+import PlansList from '../components/list/PlansList'
+import EventsList from '../components/list/EventsList'
 
 const MyPage = () => {
-
-    //access token & email 
-    const userid = localStorage.getItem('userid')
-    const at = localStorage.getItem('at')
-    const rt = localStorage.getItem('rt')
 
     //페이지 훅
     const [activeTab, setActiveTab] = useState("plans");
@@ -23,58 +19,52 @@ const MyPage = () => {
 
     const loadPlans = async () =>{
 
-        await axios.get(  `http://localhost:8080/api/plans`, 
-                    {   headers : { Authorization : at ? at : ""},
-                        params  : { user_id : userid,
-                                    page : page,
-                                    size : pageSize}
-                    }
-                )
-            .then(response => {
-                console.log(`debug >>>> MyPage loadPlans response : `, response)
-                if(response.status === 200){
-                    setPlans(response.data.items)
-
-                    const totalPageCount = Math.ceil(response.data.totalCount / pageSize);
-                    setTotalPages(totalPageCount);
-                }
-            })
-            .catch(error => {
-                if(error.response?.status === 404){
+        await api.get('/api/plans', {
+            params : {
+                page : page,
+                size : pageSize
+            }
+        })
+        .then(response => {
+            console.log('Mypage loadPlans response : ', response)
+            if(response.status === 200){
+                const result = response.data.data
+                setPlans(result.plans)
+                const totalPageCount = Math.ceil(result.totalCount / pageSize)
+                setTotalPages(totalPageCount)
+            }
+        })
+        .catch(error=>{
+            if(error.response?.status === 404){
                     setPlans([])
                     setTotalPages(0)
-                }
             }
-            )
-            .finally()
+        })
     }
 
     const loadEvents = async () => {
 
-        await axios.get(  `http://localhost:8080/api/favorites/events`, 
-                    {   headers : { Authorization : at ? at : ""},
-                        params  : { user_id : userid,
-                                    page : page,
-                                    size : pageSize}
-                    }
-                )
-            .then(response => {
+        await api.get('/api/favorites/events', {
+            params : {
+                page : page,
+                size : pageSize
+            }
+        })
+        .then(response => {
                 console.log(`debug >>>> MyPage loadEvents response : `, response)
                 if(response.status === 200){
-                    setEvents(response.data.items)
-
-                    const totalPageCount = Math.ceil(response.data.totalCount / pageSize);
+                    const result = response.data.data
+                    setEvents(result.events)
+                    const totalPageCount = Math.ceil(result.totalCount / pageSize);
                     setTotalPages(totalPageCount);
                 }
-            })
-            .catch(error => {
+        })
+        .catch(error => {
                 if(error.response?.status === 404){
                     setEvents([])
                     setTotalPages(0)
                 }
             })
-            .finally()
-
     }
 
     useEffect(()=>{
@@ -102,21 +92,21 @@ const MyPage = () => {
                 <option value={20}>20개씩 보기</option>
             </select>
 
-            <Button     title = "저장한 일정"
+            <button     title = "저장한 일정"
                         onClick = {()=>{
                             setActiveTab("plans")
                             setPage(0)
                         }}>
                 저장한 일정
-            </Button>
+            </button>
 
-            <Button     title = "관심 행사"
+            <button     title = "관심 행사"
                         onClick = {()=>{
                             setActiveTab("events")
                             setPage(0)
                         }}>
                 관심 행사
-            </Button>
+            </button>
 
             {activeTab === "plans" && <PlansList ary={plans} onUpdate = {loadPlans}/>}
             {activeTab === "events" && <EventsList ary={events} onUpdate = {loadEvents}/>}

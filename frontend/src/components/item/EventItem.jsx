@@ -1,23 +1,23 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
-import axios from "axios";
+import api from '../../services/api.js'
 
 const EventItem = ({ event, onUpdate }) => {
 
     const moveUrl = useNavigate();
-    const at = localStorage.getItem("at");
 
     const deleteEvent = async () => {
 
-        try {
-            await axios.delete(
-                `http://localhost:8080/api/favorites/events/${event.eventId}`,
-                {headers : { Authorization : at ? at : ""}});
-            onUpdate()
-        } 
-        catch (error) {
-            console.error("일정 삭제 실패:", error);
-        }
+        await api.delete(`/api/favorites/events/${event.eventId}`)
+            .then(response => {
+                console.log(`debug >>>> event item delete response : `, response)
+                if(response.status === 200){
+                    onUpdate()
+                }
+            })
+            .catch(error => {
+                console.log(`debug >>>> event item delete error : `, error)
+            })
     };
 
   return (
@@ -41,4 +41,4 @@ const EventItem = ({ event, onUpdate }) => {
   );
 };
 
-export default PlanItem;
+export default EventItem;
