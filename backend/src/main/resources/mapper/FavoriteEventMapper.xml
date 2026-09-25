@@ -20,7 +20,7 @@
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <select id="countEventsByUserId" resultType="Integer">
+    <select id="countEventsByUserId">
 
         SELECT COUNT(*)
         FROM favorite_event
@@ -28,7 +28,7 @@
 
     </select>
 
-    <delete id="deleteEventByEventId" resultType = "Integer">
+    <delete id="deleteEventByEventId">
         DELETE FROM favorite_event
         WHERE event_content_id = #{eventId}
         AND user_id = #{userId}

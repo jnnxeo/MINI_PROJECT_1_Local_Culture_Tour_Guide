@@ -17,13 +17,13 @@
         LIMIT #{size} OFFSET #{offset}
     </select>
 
-    <select id="countPlansByUserId" resultType="Integer">
+    <select id="countPlansByUserId">
         SELECT COUNT(*)
         FROM trip_plan
         WHERE user_id = #{userId}
     </select>
 
-    <delete id="deletePlanByPlanId" resultType="Integer">
+    <delete id="deletePlanByPlanId">
 
         DELETE FROM trip_plan
         WHERE trip_plan_id = #{planId}
@@ -31,7 +31,7 @@
 
     </delete>
 
-    <update id="updatePlanTitleByPlanId" resultType = "Integer">
+    <update id="updatePlanTitleByPlanId">
 
         UPDATE trip_plan
         SET title = #{title}
