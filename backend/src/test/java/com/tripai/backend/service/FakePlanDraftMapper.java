@@ -45,6 +45,11 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     }
 
     @Override
+    public Optional<TripPlan> findPlanByIdForUpdate(Long tripPlanId) {
+        return findPlanById(tripPlanId);
+    }
+
+    @Override
     public List<PlanItemView> findItemsByPlanId(Long tripPlanId) {
         return rows.values().stream()
                 .filter(row -> row.getTripPlanId().equals(tripPlanId))

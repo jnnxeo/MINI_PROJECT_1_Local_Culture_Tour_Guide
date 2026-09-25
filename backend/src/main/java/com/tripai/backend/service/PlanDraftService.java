@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -59,7 +60,7 @@ public class PlanDraftService {
     /** API-PLAN-005 저장 전 일정 제목 변경 (TRIP-003) — 앞뒤 공백은 빼고 저장 */
     @Transactional
     public DraftTitleResponse updateTitle(Long userId, Long draftId, String title) {
-        findOwnedDraft(userId, draftId);
+        findOwnedDraftForUpdate(userId, draftId);
         String trimmed = title.trim();
         planDraftMapper.updateTitle(draftId, trimmed);
         return new DraftTitleResponse(draftId, trimmed);
@@ -73,7 +74,7 @@ public class PlanDraftService {
      */
     @Transactional
     public DraftItemsResponse updateItems(Long userId, Long draftId, List<DraftItemRequest> requests) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         Map<Long, PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId).stream()
                 .collect(Collectors.toMap(PlanItemView::getTripItemId, Function.identity()));
 
@@ -166,7 +167,7 @@ public class PlanDraftService {
      */
     @Transactional
     public DraftItemAddResponse addItem(Long userId, Long draftId, DraftItemAddRequest request) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
         LocalTime startTime = LocalTime.parse(request.startTime());
 
@@ -222,7 +223,7 @@ public class PlanDraftService {
      */
     @Transactional
     public void deleteItem(Long userId, Long draftId, Long itemId) {
-        TripPlan plan = findOwnedDraft(userId, draftId);
+        TripPlan plan = findOwnedDraftForUpdate(userId, draftId);
         List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
 
         PlanItemView target = current.stream()
@@ -286,8 +287,19 @@ public class PlanDraftService {
     }
 
     private TripPlan findOwnedDraft(Long userId, Long draftId) {
-        TripPlan plan = planDraftMapper.findPlanById(draftId)
-                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        return checkOwnedDraft(userId, planDraftMapper.findPlanById(draftId));
+    }
+
+    /**
+     * 수정·저장용 — 초안 행을 먼저 잠근다. MariaDB 기본 스냅샷 격리에서는 동시에 들어온 요청이
+     * 예전 값을 보고 UPDATE 하다 "Record has changed since last read" 오류(500)가 나서, 앞 요청이 끝날 때까지 기다리게 한다.
+     */
+    private TripPlan findOwnedDraftForUpdate(Long userId, Long draftId) {
+        return checkOwnedDraft(userId, planDraftMapper.findPlanByIdForUpdate(draftId));
+    }
+
+    private TripPlan checkOwnedDraft(Long userId, Optional<TripPlan> found) {
+        TripPlan plan = found.orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
 
         if (!Objects.equals(plan.getUserId(), userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);

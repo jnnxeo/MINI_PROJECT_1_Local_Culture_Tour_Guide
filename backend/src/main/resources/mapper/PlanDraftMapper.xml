@@ -15,6 +15,17 @@
 		WHERE tp.trip_plan_id = #{tripPlanId}
 	</select>
 
+	<select id="findPlanByIdForUpdate"
+			parameterType="long"
+			resultType="TripPlan">
+		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
+		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
+		       tp.headcount, tp.created_at, tp.upd_at
+		FROM trip_plan tp
+		WHERE tp.trip_plan_id = #{tripPlanId}
+		FOR UPDATE
+	</select>
+
 	<select id="findItemsByPlanId"
 			parameterType="long"
 			resultType="PlanItemView">
@@ -106,5 +117,6 @@
 		WHERE trip_item_id = #{tripItemId}
 		  AND trip_plan_id = #{tripPlanId}
 	</delete>
+
 
 </mapper>

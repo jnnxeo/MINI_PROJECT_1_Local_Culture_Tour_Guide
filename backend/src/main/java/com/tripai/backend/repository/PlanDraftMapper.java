@@ -14,6 +14,9 @@ public interface PlanDraftMapper {
 
 	Optional<TripPlan> findPlanById(Long tripPlanId);
 
+	/** 수정·저장 전에 초안 행을 잠근다. 동시 요청은 앞 요청이 끝난 뒤 최신 값으로 진행된다 */
+	Optional<TripPlan> findPlanByIdForUpdate(Long tripPlanId);
+
 	List<PlanItemView> findItemsByPlanId(Long tripPlanId);
 
 	int updateTitle(@Param("tripPlanId") Long tripPlanId, @Param("title") String title);
