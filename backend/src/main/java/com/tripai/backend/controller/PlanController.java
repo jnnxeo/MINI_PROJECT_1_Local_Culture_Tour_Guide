@@ -52,7 +52,7 @@ public class PlanController {
                                 .body(ApiResponse.success(response));
     }
 
-    @DeleteMapping("/drafts/{tripPlanId}")
+    @DeleteMapping("/{tripPlanId}")
     public ResponseEntity<ApiResponse<Void>> deletePlan(
             @AuthenticationPrincipal Long userId,
             @PathVariable Integer tripPlanId
@@ -63,7 +63,7 @@ public class PlanController {
                             .body(ApiResponse.success(null));
     }
 
-    @PatchMapping("/drafts/{tripPlanId}/title")
+    @PatchMapping("/{tripPlanId}")
     public ResponseEntity<ApiResponse<UpdatePlanTitleResponse>> updatePlanTitle(
             @AuthenticationPrincipal Long userId,    
             @PathVariable Integer tripPlanId,
