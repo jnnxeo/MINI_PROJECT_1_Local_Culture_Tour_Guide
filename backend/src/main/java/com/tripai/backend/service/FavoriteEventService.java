@@ -33,12 +33,10 @@ public class FavoriteEventService {
         return new EventListResponse(events, page, totalCount);
     }
 
-    public void deleteFavoriteEvent(Long userId, String eventId){
-        Integer deleteRows = favoriteEventMapper.deleteEventByEventId(userId, eventId);
+    public void deleteFavoriteEvent(Long userId, String eventContentId){
+        Integer deleteRows = favoriteEventMapper.deleteEventByEventId(userId, eventContentId);
         if(deleteRows == 0){
             throw new CustomException(ErrorCode.EVENT_NOT_FOUND);
         }
-
     }
-
 }

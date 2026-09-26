@@ -14,5 +14,5 @@ public interface FavoriteEventMapper {
                                             @Param("size") Integer size);
     public long countEventsByUserId(@Param("userId") Long userId);
     public Integer deleteEventByEventId(   @Param("userId") Long userId,
-                                    @Param("eventId") String eventId);
+                                    @Param("eventContentId") String eventContentId);
 }

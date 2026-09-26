@@ -46,12 +46,12 @@ public class FavoriteEventController {
     }
 
     // 5. 관심 행사 삭제
-    @DeleteMapping("/{eventId}")
+    @DeleteMapping("/{eventContentId}")
     public ResponseEntity<ApiResponse<Void>> deleteFavoriteEvent(
             @AuthenticationPrincipal Long userId,
-            @PathVariable String eventId
+            @PathVariable String eventContentId
     ) {
-        favoriteEventService.deleteFavoriteEvent(userId, eventId);
+        favoriteEventService.deleteFavoriteEvent(userId, eventContentId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                             .body(ApiResponse.success(null));

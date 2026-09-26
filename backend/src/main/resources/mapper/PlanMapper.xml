@@ -7,9 +7,9 @@
             resultType="com.tripai.backend.domain.dto.PlanSummary">
 
         SELECT
-            trip_plan_id AS planId,
+            trip_plan_id AS tripPlanId,
             title,
-            trip_date AS visitDate,
+            trip_date AS tripDate,
             DATEDIFF(trip_date, CURDATE()) AS dDay
         FROM trip_plan
         WHERE user_id = #{userId}
@@ -27,7 +27,7 @@
 
     <delete id="deletePlanByPlanId">
         DELETE FROM trip_plan
-        WHERE trip_plan_id = #{planId}
+        WHERE trip_plan_id = #{tripPlanId}
         AND user_id = #{userId}
         AND save_yn = 1
     </delete>
@@ -36,7 +36,7 @@
 
         UPDATE trip_plan
         SET title = #{title}
-        WHERE trip_plan_id = #{planId}
+        WHERE trip_plan_id = #{tripPlanId}
         AND user_id = #{userId}
     </update>
 

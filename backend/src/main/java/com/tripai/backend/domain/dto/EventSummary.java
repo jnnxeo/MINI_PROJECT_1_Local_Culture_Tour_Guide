@@ -9,10 +9,10 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public class EventSummary {
-    private final String eventId;
+    private final String eventContentId;
     private final String title;
-    private final LocalDate startDate;
-    private final LocalDate endDate;
-    private final String address;
+    private final LocalDate eventStartDate;
+    private final LocalDate eventEndDate;
+    private final String addr;
     private final String imageUrl;
 }

@@ -7,8 +7,8 @@ import java.time.LocalDate;
 @Getter 
 @AllArgsConstructor 
 public class PlanSummary {
-    private final Long planId;
+    private final Long tripPlanId;
     private final String title;
-    private final LocalDate visitDate;
+    private final LocalDate tripDate;
     private final Integer dDay;
 }

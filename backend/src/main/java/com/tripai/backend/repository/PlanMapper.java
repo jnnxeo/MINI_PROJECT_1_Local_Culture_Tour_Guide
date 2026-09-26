@@ -15,9 +15,9 @@ public interface PlanMapper {
                                                 @Param("size") Integer size);
     public long countPlansByUserId(@Param("userId") Long userId);
     public Integer deletePlanByPlanId(  @Param("userId") Long userId,
-                                        @Param("planId") Integer planId);
+                                        @Param("tripPlanId") Integer tripPlanId);
     public Integer updatePlanTitleByPlanId( @Param("userId") Long userId,
-                                            @Param("planId") Integer planId, 
+                                            @Param("tripPlanId") Integer tripPlanId, 
                                             @Param("title") String title);
 
 }

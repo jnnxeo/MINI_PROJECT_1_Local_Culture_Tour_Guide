@@ -52,24 +52,24 @@ public class PlanController {
                                 .body(ApiResponse.success(response));
     }
 
-    @DeleteMapping("/drafts/{planId}")
+    @DeleteMapping("/drafts/{tripPlanId}")
     public ResponseEntity<ApiResponse<Void>> deletePlan(
             @AuthenticationPrincipal Long userId,
-            @PathVariable Integer planId
+            @PathVariable Integer tripPlanId
     ){
-        plansService.deletePlan(userId, planId);
+        plansService.deletePlan(userId, tripPlanId);
 
         return ResponseEntity.status(HttpStatus.NO_CONTENT)
                             .body(ApiResponse.success(null));
     }
 
-    @PatchMapping("/drafts/{planId}/title")
+    @PatchMapping("/drafts/{tripPlanId}/title")
     public ResponseEntity<ApiResponse<UpdatePlanTitleResponse>> updatePlanTitle(
             @AuthenticationPrincipal Long userId,    
-            @PathVariable Integer planId,
+            @PathVariable Integer tripPlanId,
             @RequestBody UpdatePlanTitleRequest request
     ) {
-        plansService.updatePlanTitle(userId, planId, request.getTitle());
+        plansService.updatePlanTitle(userId, tripPlanId, request.getTitle());
 
         return ResponseEntity.status(HttpStatus.OK)
                             .body(ApiResponse.success(null));

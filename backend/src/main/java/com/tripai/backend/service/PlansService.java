@@ -36,8 +36,8 @@ public class PlansService {
             return new PlanListResponse(plans, page, totalCount);
         }
 
-    public void deletePlan(Long userId, Integer planId){
-        Integer deleteRows = planMapper.deletePlanByPlanId(userId, planId);
+    public void deletePlan(Long userId, Integer tripPlanId){
+        Integer deleteRows = planMapper.deletePlanByPlanId(userId, tripPlanId);
 
         if(deleteRows == 0){
             throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
@@ -46,11 +46,11 @@ public class PlansService {
     }
 
     public void updatePlanTitle(     Long userId,             
-                                        Integer planId,
+                                        Integer tripPlanId,
                                         String title)
     {
         
-        Integer updatedRows = planMapper.updatePlanTitleByPlanId(userId, planId, title);
+        Integer updatedRows = planMapper.updatePlanTitleByPlanId(userId, tripPlanId, title);
         if (updatedRows == 0) {
             throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
         }
