@@ -22,12 +22,14 @@
         SELECT COUNT(*)
         FROM trip_plan
         WHERE user_id = #{userId}
+        AND save_yn = 1
     </select>
 
     <delete id="deletePlanByPlanId">
         DELETE FROM trip_plan
         WHERE trip_plan_id = #{planId}
         AND user_id = #{userId}
+        AND save_yn = 1
     </delete>
 
     <update id="updatePlanTitleByPlanId">
