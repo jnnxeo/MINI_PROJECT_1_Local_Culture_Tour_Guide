@@ -7,7 +7,6 @@
  * 사진은 Figma 시안의 참고 이미지이며 실제 데이터 연결 시 API imageUrl로 대체된다.
  */
 import cafeImage from '../../assets/mock/cafe.jpg'
-import galleryImage from '../../assets/mock/gallery.jpg'
 import hanokImage from '../../assets/mock/hanok.jpg'
 import palaceImage from '../../assets/mock/palace.jpg'
 import restaurantImage from '../../assets/mock/restaurant.jpg'
@@ -35,20 +34,14 @@ const EVENTS = {
 
 // 맛집 (API-PLACE-001 응답 필드 이름 기준)
 const RESTAURANTS = [
-  { placeId: 'DEV-PL-001', name: '행사장 근처 한식당', addr: '서울 종로구 사직로 125', lat: 37.5758, lng: 126.9731, imageUrl: restaurantImage, openTime: '11:00', breakTime: '15:00~17:00', closeTime: '21:00', firstMenu: '비빔밥' },
-  { placeId: 'DEV-PL-002', name: '서촌 동네 카페', addr: '서울 종로구 자하문로 20', lat: 37.5788, lng: 126.9703, imageUrl: cafeImage, openTime: '10:00', breakTime: null, closeTime: '22:00', firstMenu: '핸드드립' },
-  { placeId: 'DEV-PL-003', name: '종로 한식당', addr: '서울 종로구 세종대로 175', lat: 37.572, lng: 126.9769, imageUrl: hanokImage, openTime: '07:00', breakTime: null, closeTime: '22:00', firstMenu: '국밥' },
-  { placeId: 'DEV-PL-004', name: '한옥 카페', addr: '서울 종로구 삼청로 101', lat: 37.583, lng: 126.9817, imageUrl: restaurantImage, openTime: '10:30', breakTime: null, closeTime: '20:00', firstMenu: '쌍화차' },
-  { placeId: 'DEV-PL-005', name: '서촌 베이커리 카페', addr: '서울 종로구 필운대로 12', lat: 37.5795, lng: 126.969, imageUrl: galleryImage, openTime: '08:00', breakTime: null, closeTime: '19:00', firstMenu: '소금빵' },
-  { placeId: 'DEV-PL-006', name: '삼청동 칼국수', addr: '서울 종로구 삼청로 110', lat: 37.5835, lng: 126.982, imageUrl: null, openTime: '10:30', breakTime: null, closeTime: '20:00', firstMenu: '칼국수' },
-  { placeId: 'DEV-PL-007', name: '영업시간 미상 식당', addr: '서울 종로구 율곡로 50', lat: 37.576, lng: 126.985, imageUrl: null, openTime: null, breakTime: null, closeTime: null, firstMenu: null },
-]
-
-// 다시 추천할 때 돌려 쓰는 [점심, 오후] 조합
-const COURSES = [
-  ['DEV-PL-001', 'DEV-PL-002'],
-  ['DEV-PL-003', 'DEV-PL-004'],
-  ['DEV-PL-006', 'DEV-PL-005'],
+  { placeId: 'DEV-PL-001', name: '행사장 근처 한식당', addr: '서울 종로구 사직로 125', lat: 37.5758, lng: 126.9731, imageUrl: restaurantImage, openTime: '11:00', breakTime: '15:00~17:00', closeTime: '21:00', firstMenu: '비빔밥', cuisineType: 'KOREAN' },
+  { placeId: 'DEV-PL-002', name: '서촌 동네 카페', addr: '서울 종로구 자하문로 20', lat: 37.5788, lng: 126.9703, imageUrl: cafeImage, openTime: '10:00', breakTime: null, closeTime: '22:00', firstMenu: '핸드드립', cuisineType: 'OTHER' },
+  { placeId: 'DEV-PL-003', name: '종로 한식당', addr: '서울 종로구 세종대로 175', lat: 37.572, lng: 126.9769, imageUrl: hanokImage, openTime: '07:00', breakTime: null, closeTime: '22:00', firstMenu: '국밥', cuisineType: 'KOREAN' },
+  { placeId: 'DEV-PL-004', name: '삼청동 중식당', addr: '서울 종로구 삼청로 101', lat: 37.583, lng: 126.9817, imageUrl: restaurantImage, openTime: '11:30', breakTime: '15:00~17:00', closeTime: '21:30', firstMenu: '짜장면', cuisineType: 'CHINESE' },
+  { placeId: 'DEV-PL-005', name: '서촌 일식당', addr: '서울 종로구 필운대로 12', lat: 37.5795, lng: 126.969, imageUrl: cafeImage, openTime: '11:00', breakTime: null, closeTime: '21:00', firstMenu: '사케동', cuisineType: 'JAPANESE' },
+  { placeId: 'DEV-PL-006', name: '삼청동 칼국수', addr: '서울 종로구 삼청로 110', lat: 37.5835, lng: 126.982, imageUrl: null, openTime: '10:30', breakTime: null, closeTime: '20:00', firstMenu: '칼국수', cuisineType: 'KOREAN' },
+  { placeId: 'DEV-PL-007', name: '영업시간 미상 식당', addr: '서울 종로구 율곡로 50', lat: 37.576, lng: 126.985, imageUrl: null, openTime: null, breakTime: null, closeTime: null, firstMenu: null, cuisineType: 'WESTERN' },
+  { placeId: 'DEV-PL-008', name: '광화문 양식당', addr: '서울 종로구 세종대로 151', lat: 37.5711, lng: 126.9761, imageUrl: restaurantImage, openTime: '11:30', breakTime: '15:00~17:00', closeTime: '22:00', firstMenu: '파스타', cuisineType: 'WESTERN' },
 ]
 
 const wait = (milliseconds) => new Promise((resolve) => {
@@ -59,6 +52,19 @@ function mockError(status, message) {
   const error = new Error(message)
   error.status = status
   return error
+}
+
+function isOpenAt(place, time) {
+  if (!place.openTime || !place.closeTime || time < place.openTime || time > place.closeTime) {
+    return false
+  }
+
+  if (!place.breakTime) {
+    return true
+  }
+
+  const [breakStart, breakEnd] = place.breakTime.split('~')
+  return time < breakStart || time >= breakEnd
 }
 
 /** [제안] 일정 항목 모양 — 명세는 items:[...]만 정의. PUT 요청 필드(itemId,type,placeId,startTime,durationMin,sequence) + 화면 표시 필드 */
@@ -109,33 +115,45 @@ function toMapPoints(items) {
     .map(({ sequence, lat, lng }) => ({ sequence, lat, lng }))
 }
 
-function buildCourse(courseIndex, store) {
-  const [lunchId, afternoonId] = COURSES[courseIndex % COURSES.length]
+function buildCourse(courseIndex, store, conditions) {
   const nextId = () => {
     store.nextItemId += 1
     return store.nextItemId
   }
-  const lunch = RESTAURANTS.find((place) => place.placeId === lunchId)
-  const afternoon = RESTAURANTS.find((place) => place.placeId === afternoonId)
+  const foodPreference = conditions.foodPreference ?? 'ALL'
+  const mealStartTime = conditions.mealType === 'DINNER' ? '17:00' : '12:30'
+  const candidates = RESTAURANTS
+    .filter((place) => place.cuisineType !== 'OTHER')
+    .filter((place) => foodPreference === 'ALL' || place.cuisineType === foodPreference)
+    .filter((place) => isOpenAt(place, mealStartTime))
+    .sort((a, b) => distanceMeters(EVENTS['DEV-EV-001'], a) - distanceMeters(EVENTS['DEV-EV-001'], b))
+  const restaurant = candidates[courseIndex % candidates.length]
   const items = sortItems([
-    toRestaurantItem(lunch, { itemId: nextId(), startTime: '12:30', durationMin: 60 }),
-    toRestaurantItem(afternoon, { itemId: nextId(), startTime: '14:00', durationMin: 60 }),
+    ...(restaurant ? [toRestaurantItem(restaurant, { itemId: nextId(), startTime: mealStartTime, durationMin: 60 })] : []),
     toEventItem(EVENTS['DEV-EV-001'], { itemId: nextId() }),
   ])
 
   // [제안] recommendationReasons 모양 — 항목별 근거 (AI-007)
-  const recommendationReasons = [
-    { itemId: items[0].itemId, reason: '행사장 반경 · 식사 시간대 · 영업 중' },
-    { itemId: items[1].itemId, reason: '행사장 반경 · 쉬어 가기 좋은 시간대' },
-    { itemId: items[2].itemId, reason: '검색 조건 일치' },
-  ]
+  const recommendationReasons = items.map((item) => ({
+    itemId: item.itemId,
+    reason: item.type === 'PLACE' ? '음식 종류 · 식사 시간대 · 행사장 거리' : '검색 조건 일치',
+  }))
 
   return { items, recommendationReasons }
 }
 
 function createInitialStore() {
   const store = { nextItemId: 100, nextPlanId: 30, drafts: {}, plans: {} }
-  const { items, recommendationReasons } = buildCourse(0, store)
+  const conditions = {
+    visitDate: '2026-10-03',
+    startTime: '11:00',
+    endTime: '21:00',
+    companion: null,
+    foodPreference: 'ALL',
+    mealType: 'LUNCH',
+    transportMode: 'WALK_TRANSIT',
+  }
+  const { items, recommendationReasons } = buildCourse(0, store, conditions)
 
   store.drafts[MOCK_DRAFT_ID] = {
     draftId: MOCK_DRAFT_ID,
@@ -143,14 +161,7 @@ function createInitialStore() {
     visitDate: '2026-10-03',
     tripType: 'DAY_TRIP',
     selectedEvent: { eventId: 'DEV-EV-001', title: EVENTS['DEV-EV-001'].title },
-    conditions: {
-      visitDate: '2026-10-03',
-      startTime: '11:00',
-      endTime: '21:00',
-      companion: null,
-      foodPreference: null,
-      transportMode: 'WALK_TRANSIT',
-    },
+    conditions,
     items,
     recommendationReasons,
     courseIndex: 0,
@@ -238,7 +249,7 @@ export async function mockRegenerate(draftId) {
   }
 
   draft.courseIndex += 1
-  const { items, recommendationReasons } = buildCourse(draft.courseIndex, store)
+  const { items, recommendationReasons } = buildCourse(draft.courseIndex, store, draft.conditions)
   draft.items = items
   draft.recommendationReasons = recommendationReasons
   writeStore(store)

@@ -50,7 +50,17 @@ function describePlace(place, time, durationMin) {
 }
 
 /** Figma "place · 팝업"(추가, SCR-014) / "placechange · 팝업"(변경, SCR-013) */
-export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, durationMin, onConfirm, onClose }) {
+export default function PlaceSearchModal({
+  mode,
+  eventId,
+  usedPlaceIds,
+  time,
+  durationMin,
+  foodPreference,
+  mealType,
+  onConfirm,
+  onClose,
+}) {
   const copy = COPY[mode]
   const [keyword, setKeyword] = useState('')
   const [state, setState] = useState({ status: 'loading', places: [], message: '' })
@@ -68,7 +78,7 @@ export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, du
     let ignore = false
     setState((previous) => ({ ...previous, status: 'loading' }))
 
-    searchRestaurants({ eventId })
+    searchRestaurants({ eventId, foodPreference, mealType })
       .then(({ items }) => {
         if (!ignore) {
           setState({ status: 'done', places: items, message: '' })
@@ -83,7 +93,7 @@ export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, du
     return () => {
       ignore = true
     }
-  }, [eventId, retryCount])
+  }, [eventId, foodPreference, mealType, retryCount])
 
   const selectedPlace = state.places.find((place) => place.placeId === selectedId)
 
