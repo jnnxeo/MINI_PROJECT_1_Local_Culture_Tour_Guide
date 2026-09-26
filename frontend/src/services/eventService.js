@@ -1,18 +1,16 @@
-import axios from "axios";
+import api from './api.js'
 
-
-// EVENT-001 : 행사 ID로 상세 정보를 조회한다.
 export async function getEventDetail(eventId) {
-    try{
-        const response = await axios.get(
-            `/api/events/${encodeURIComponent(eventId)}`,
-        )
-        return response.data.data
-    } catch(error) {
-        const eventError = new Error(
-            error.response?.data?.message || `행사 정보를 불러오지 못했습니다.`
-        )
-        eventError.status = error.response?.status
-        throw eventError
-    }   
+  try {
+    const response = await api.get(
+      `/api/events/${encodeURIComponent(eventId)}`
+    )
+    return response.data.data
+  } catch (error) {
+    const eventError = new Error(
+      error.response?.data?.message || '행사 정보를 불러오지 못했습니다.'
+    )
+    eventError.status = error.response?.status
+    throw eventError
+  }
 }

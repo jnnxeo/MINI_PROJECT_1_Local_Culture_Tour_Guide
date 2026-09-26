@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
 import ConditionsModal from '../components/plan/ConditionsModal.jsx'
 import ConfirmModal from '../components/plan/ConfirmModal.jsx'
 import GeneratingModal from '../components/plan/GeneratingModal.jsx'
@@ -25,6 +24,8 @@ import {
 import { withSubject } from '../utils/korean.js'
 import '../styles/common.css'
 import '../styles/plan.css'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { buildEventPlanItem } from '../utils/eventPlan.js'
 
 const NEW_PLACE_DURATION = 60
 
@@ -65,11 +66,16 @@ function toPlaceItem(place, { key, startTime, durationMin }) {
 /**
  * SCR-009 나의 일정(저장 전 초안) · SCR-017 저장 일정 상세·편집
  * Figma: editor · 나의 하루 일정 (+ editortime / editorremoved / editoradded 상태)
- * 편집은 화면 상태에서만 하고 "일정 저장"에서 한 번에 PUT 한다(계약서 1장).
+ * 편집은 화면 상태에서만 하고 "일정 저장"에서 한 번에 서버에 반영한다.
  */
 export default function PlanEditorPage() {
   const { planId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const query = new URLSearchParams(location.search)
+  const draftId = query.get('draftId')
+  const eventToAdd = location.state?.eventToAdd
+  const forceApi = Boolean(location.state?.useRealPlanApi || draftId || query.get('eventApi') === '1')
   const mapRef = useRef(null)
   const loadedPlanIdRef = useRef(null)
   const generationTokenRef = useRef(0)
@@ -103,32 +109,47 @@ export default function PlanEditorPage() {
     let ignore = false
     setStatus('loading')
 
-    const load = planId ? () => getPlan(planId) : getLatestDraft
+    const load = planId
+      ? () => getPlan(planId, { forceApi })
+      : () => getLatestDraft({ forceApi, draftId })
 
     load()
-      .then((loadedPlan) => {
-        if (!ignore) {
-          applyPlan(loadedPlan)
-        }
-      })
-      .catch((error) => {
-        if (ignore) {
-          return
+    .then((loadedPlan) => {
+      if (ignore) return
+
+      applyPlan(loadedPlan)
+
+      if (eventToAdd) {
+        const result = buildEventPlanItem(loadedPlan, eventToAdd)
+
+        if (result.error) {
+          setModal({
+            type: 'notice',
+            title: '행사를 추가할 수 없어요',
+            message: result.error,
+          })
+        } else {
+          setItems(withKeys(sortItems([...loadedPlan.items, result.item])))
         }
 
-        if (!planId && error.status === 404) {
-          setStatus('empty')
-          return
-        }
+      }
+    })
+    .catch((error) => {
+      if (ignore) return
 
-        setLoadError(error.message)
-        setStatus('error')
-      })
+      if (!planId && error.status === 404) {
+        setStatus('empty')
+        return
+      }
+
+      setLoadError(error.message)
+      setStatus('error')
+    })
 
     return () => {
       ignore = true
     }
-  }, [planId, reloadCount, applyPlan])
+    }, [planId, draftId, reloadCount, applyPlan, eventToAdd, forceApi])
 
   const isDirty = Boolean(plan) && snapshot(title, items) !== snapshot(plan.title, sortItems(plan.items))
 
@@ -232,12 +253,25 @@ export default function PlanEditorPage() {
     setSaving(true)
 
     try {
-      const saved = await savePlan(plan.planId, { title, tripDate: plan.tripDate, anchorEventId: plan.anchorEventId, items })
+      const saved = await savePlan(
+        plan.planId,
+        { title, tripDate: plan.tripDate, anchorEventId: plan.anchorEventId, items },
+        { forceApi, saved: plan.saved },
+      )
       applyPlan(saved)
+      if (eventToAdd) {
+        navigate(location.pathname + location.search, {
+          replace: true,
+          state: { useRealPlanApi: true },
+        })
+      }
       setModal({ type: 'saved', plan: saved })
 
       if (String(saved.planId) !== planId) {
-        navigate(`/my-trips/${saved.planId}`, { replace: true })
+        navigate(`/my-trips/${saved.planId}${forceApi ? '?eventApi=1' : ''}`, {
+          replace: true,
+          state: forceApi ? { useRealPlanApi: true } : null,
+        })
       }
     } catch (saveError) {
       setModal({ type: 'notice', title: '저장하지 못했어요', message: saveError.message })
