@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.PlaceMapper">
+
+	<select id="findEventLocation"
+			parameterType="string"
+			resultType="EventLocationView">
+		SELECT event_content_id, mapx, mapy, display_yn
+		FROM event
+		WHERE event_content_id = #{eventContentId}
+	</select>
+
+	<!-- 직선거리(m): 하버사인 공식, 지구 반지름 6371000m. mapy = 위도, mapx = 경도 -->
+	<select id="findRestaurantsNear" resultType="RestaurantView">
+		SELECT *
+		FROM (
+			SELECT p.content_id, p.place_name, p.addr, p.mapx, p.mapy, p.image_url,
+			       p.open_time, p.close_time, p.break_open_time, p.break_close_time,
+			       6371000 * 2 * ASIN(SQRT(
+			           POW(SIN(RADIANS(p.mapy - #{lat}) / 2), 2)
+			           + COS(RADIANS(#{lat})) * COS(RADIANS(p.mapy)) * POW(SIN(RADIANS(p.mapx - #{lng}) / 2), 2)
+			       )) AS distance
+			FROM place p
+			WHERE p.display_yn = TRUE
+			  AND p.content_type_cd = 39
+			  AND p.mapy BETWEEN #{minLat} AND #{maxLat}
+			  AND p.mapx BETWEEN #{minLng} AND #{maxLng}
+		) near
+		WHERE near.distance &lt;= #{radius}
+		ORDER BY near.distance, near.content_id
+		LIMIT #{limit} OFFSET #{offset}
+	</select>
+
+</mapper>
