@@ -626,10 +626,19 @@ export default function PlanEditorPage() {
                 distanceToNext={distanceMeters(item, items[index + 1])}
                 locked={Boolean(savedPlan)}
                 onEditTime={() => setModal({ type: 'time', key: item.key, startTime: item.startTime, durationMin: item.durationMin })}
+                onChangePlace={() => setModal({ type: 'placeChange', key: item.key })}
                 onRemove={() => setModal({ type: 'remove', key: item.key })}
                 onShowOnMap={() => showOnMap(item)}
               />
             ))}
+            <button
+              className="tp-btn tp-btn--secondary tp-btn--block"
+              type="button"
+              disabled={Boolean(savedPlan)}
+              onClick={() => setModal({ type: 'placeAdd' })}
+            >
+              + 장소 직접 추가
+            </button>
           </div>
 
           <aside className="plan-route" ref={mapRef} aria-label="오늘의 이동 동선">

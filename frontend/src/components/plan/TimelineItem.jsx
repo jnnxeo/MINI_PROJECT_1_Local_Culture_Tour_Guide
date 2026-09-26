@@ -19,6 +19,7 @@ export default function TimelineItem({
   isSelected,
   locked = false,
   onEditTime,
+  onChangePlace,
   onRemove,
   onShowOnMap,
 }) {
@@ -50,6 +51,9 @@ export default function TimelineItem({
         <div className="plan-item__actions">
           <button className="tp-btn tp-btn--secondary plan-item__action" type="button" disabled={locked} onClick={onEditTime}>
             시간 변경
+          </button>
+          <button className="tp-btn tp-btn--secondary plan-item__action" type="button" disabled={locked} onClick={onChangePlace}>
+            장소 변경
           </button>
           <button className="tp-btn tp-btn--danger plan-item__remove" type="button" disabled={locked} onClick={onRemove}>
             삭제
