@@ -20,7 +20,14 @@ export default function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      <Route path="/mypage" element={<MyPage/>}/>
+      <Route
+        path="/mypage"
+        element={(
+          <ProtectedRoute>
+            <MyPage />
+          </ProtectedRoute>
+        )}
+      />
       
       <Route
         path="/trips/draft"

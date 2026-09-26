@@ -9,12 +9,12 @@ const PlanItem = ({ plan, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [title, setTitle] = useState(plan.title);
 
-    const dDay = plan.dday
+    const dDay = plan.dDay
     const dDayText = dDay === 0 ? 'D-Day' : dDay > 0 ? `D-${dDay}` : `D+${Math.abs(dDay)}`
 
     const deletePlan = async () => {
 
-        await api.delete(`/api/plans/drafts/${plan.tripPlanId}`)
+        await api.delete(`/api/plans/${plan.tripPlanId}`)
             .then(response => {
                 console.log(`debug >>>> plan item delete planId : `, plan.tripPlanId)
                 if(response.status === 204){onUpdate();}
@@ -32,7 +32,7 @@ const PlanItem = ({ plan, onUpdate }) => {
             return
         }
 
-        await api.patch(`/api/plans/drafts/${plan.tripPlanId}/title`, {title : trimmedTitle})
+        await api.patch(`/api/plans/${plan.tripPlanId}`, {title : trimmedTitle})
             .then(response => {
                 if(response.status === 200){
                     setIsEditing(false)
