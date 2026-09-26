@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import api from '../../services/api.js'
+import '../../styles/myPage.css'
 
 const EventItem = ({ event, onUpdate }) => {
 

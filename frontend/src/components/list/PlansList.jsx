@@ -1,13 +1,13 @@
 import PlanItem from "../item/PlanItem";
+import '../../styles/myPage.css'
 
 const PlansList = ({ary, onUpdate}) => {
-    if(ary.length === 0){
+    if (ary.length === 0) {
         return (
-            <div>
-                <p>저장한 일정이 없습니다.</p>
-                <button onClick={() => {}}>
-                    일정 만들기
-                </button>
+            <div className="empty-state">
+            <p className="empty-state-title">아직 저장한 일정이 없어요.</p>
+            <p>마음에 드는 여행 코스를 만들어보세요.</p>
+            <button className="primary-button">일정 만들기</button>
             </div>
         )
     }

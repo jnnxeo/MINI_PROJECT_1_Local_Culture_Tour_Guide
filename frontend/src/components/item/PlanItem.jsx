@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from '../../services/api.js'
+import '../../styles/myPage.css'
 
 const PlanItem = ({ plan, onUpdate }) => {
 
@@ -112,7 +113,7 @@ const PlanItem = ({ plan, onUpdate }) => {
                 <div className="saved-card-actions">
                 <button
                     onClick={() =>
-                    navigate(`/plans/drafts/${plan.planId}/conditions`)
+                        moveUrl(`/plans/drafts/${plan.planId}/conditions`)
                     }
                 >
                     일정 보기

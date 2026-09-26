@@ -1,13 +1,13 @@
 import EventItem from "../item/EventItem";
+import '../../styles/myPage.css'
 
 const EventsList = ({ ary, onUpdate}) => {
-    if(ary.length === 0){
+    if (ary.length === 0) {
         return (
-            <div>
-                <p>관심있는 행사가 없습니다.</p>
-                <button onClick={() => {}}>
-                    행사 추가하기
-                </button>
+            <div className="empty-state">
+                <p className="empty-state-title">아직 관심 있는 행사가 없어요.</p>
+                <p>마음에 드는 행사를 저장해보세요.</p>
+                <button className="primary-button">행사 둘러보기</button>
             </div>
         )
     }
