@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.TourRestaurantMapper">
+
+    <insert id="upsertRestaurant" parameterType="com.tripai.backend.external.tour.TourRestaurantRecord">
+        INSERT INTO place (
+            content_id, content_type_cd, place_name, addr, district_name,
+            mapx, mapy, image_url, tel_no, tour_cat3_code, cuisine_type,
+            open_time, close_time, business_hours_text, display_yn, collected_at
+        ) VALUES (
+            #{contentId}, 39, #{name}, #{address}, #{districtName},
+            #{longitude}, #{latitude}, #{imageUrl}, #{telNo}, #{tourCat3Code}, #{cuisineType},
+            #{openTime}, #{closeTime}, #{businessHoursText}, TRUE, NOW()
+        )
+        ON DUPLICATE KEY UPDATE
+            place_name = VALUES(place_name),
+            addr = VALUES(addr),
+            district_name = VALUES(district_name),
+            mapx = VALUES(mapx),
+            mapy = VALUES(mapy),
+            image_url = VALUES(image_url),
+            tel_no = VALUES(tel_no),
+            tour_cat3_code = VALUES(tour_cat3_code),
+            cuisine_type = VALUES(cuisine_type),
+            open_time = VALUES(open_time),
+            close_time = VALUES(close_time),
+            business_hours_text = VALUES(business_hours_text),
+            display_yn = TRUE,
+            collected_at = NOW()
+    </insert>
+
+</mapper>
