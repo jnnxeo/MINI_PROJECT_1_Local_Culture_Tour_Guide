@@ -8,7 +8,7 @@ const EventItem = ({ event, onUpdate }) => {
 
     const deleteEvent = async () => {
 
-        await api.delete(`/api/favorites/events/${event.eventId}`)
+        await api.delete(`/api/favorites/events/${event.eventContentId}`)
             .then(response => {
                 console.log(`debug >>>> event item delete response : `, response)
                 if(response.status === 204){
@@ -50,14 +50,14 @@ const EventItem = ({ event, onUpdate }) => {
 
       <div className="saved-card-content">
         <p className="saved-card-date">
-          {event.startDate} ~ {event.endDate}
+          {event.eventStartDate} ~ {event.eventEndDate}
         </p>
 
         <h3>{event.title}</h3>
-        <p className="saved-card-address">{event.address}</p>
+        <p className="saved-card-address">{event.addr}</p>
 
         <div className="saved-card-actions">
-          <button onClick={() => moveUrl(`/events/${event.eventId}`)}>
+          <button onClick={() => moveUrl(`/events/${event.eventContentId}`)}>
             상세 보기
           </button>
           <button className="delete-button" onClick={deleteEvent}>

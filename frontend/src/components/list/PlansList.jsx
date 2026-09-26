@@ -20,7 +20,7 @@ const PlansList = ({ary, onUpdate}) => {
     <div>
       {ary.map((plan) => (
         <PlanItem
-            key = {plan.planId}
+            key = {plan.tripPlanId}
             plan={plan}
             onUpdate={onUpdate}
         />

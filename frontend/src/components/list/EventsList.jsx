@@ -20,7 +20,7 @@ const EventsList = ({ ary, onUpdate}) => {
     <div>
       {ary.map((event) => (
         <EventItem
-            key = {event.eventId}
+            key = {event.eventContentId}
             event={event}
             onUpdate={onUpdate}
         />

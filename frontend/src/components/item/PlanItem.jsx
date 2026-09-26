@@ -14,9 +14,9 @@ const PlanItem = ({ plan, onUpdate }) => {
 
     const deletePlan = async () => {
 
-        await api.delete(`/api/plans/drafts/${plan.planId}`)
+        await api.delete(`/api/plans/drafts/${plan.tripPlanId}`)
             .then(response => {
-                console.log(`debug >>>> plan item delete planId : `, plan.planId)
+                console.log(`debug >>>> plan item delete planId : `, plan.tripPlanId)
                 if(response.status === 204){onUpdate();}
             })
             .catch(error => {
@@ -32,7 +32,7 @@ const PlanItem = ({ plan, onUpdate }) => {
             return
         }
 
-        await api.patch(`/api/plans/drafts/${plan.planId}/title`, {title : trimmedTitle})
+        await api.patch(`/api/plans/drafts/${plan.tripPlanId}/title`, {title : trimmedTitle})
             .then(response => {
                 if(response.status === 200){
                     setIsEditing(false)
@@ -87,7 +87,7 @@ const PlanItem = ({ plan, onUpdate }) => {
 
         <div className="saved-card-content">
             <p className="saved-card-date">
-            {plan.visitDate} · {dDayText}
+            {plan.tripDate} · {dDayText}
             </p>
 
             {isEditing ? (
@@ -113,7 +113,7 @@ const PlanItem = ({ plan, onUpdate }) => {
                 <div className="saved-card-actions">
                 <button
                     onClick={() =>
-                        moveUrl(`/plans/drafts/${plan.planId}/conditions`)
+                        moveUrl(`/plans/drafts/${plan.tripPlanId}/conditions`)
                     }
                 >
                     일정 보기
