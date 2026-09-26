@@ -30,4 +30,29 @@ class OpeningHoursParserTest {
         assertThat(OpeningHoursParser.parse("상세 운영시간은 전화 문의")).isEmpty();
         assertThat(OpeningHoursParser.parse(null)).isEmpty();
     }
+
+    @Test
+    void 자정을_24시로_적은_영업시간은_00시로_정규화한다() {
+        OpeningHours result = OpeningHoursParser.parse("- 12:00~24:00<br>- 점심 준비시간 15:00~17:30").orElseThrow();
+
+        assertThat(result.openTime()).isEqualTo(LocalTime.of(12, 0));
+        assertThat(result.closeTime()).isEqualTo(LocalTime.MIDNIGHT);
+        assertThat(result.breakOpenTime()).isEqualTo(LocalTime.of(15, 0));
+        assertThat(result.breakCloseTime()).isEqualTo(LocalTime.of(17, 30));
+    }
+
+    @Test
+    void 영업시간이_준비시간_뒤에_와도_준비시간을_영업시간으로_읽지_않는다() {
+        OpeningHours result = OpeningHoursParser.parse("월요일~토요일 11:00~24:00 (준비시간 17:00~18:00)").orElseThrow();
+
+        assertThat(result.openTime()).isEqualTo(LocalTime.of(11, 0));
+        assertThat(result.closeTime()).isEqualTo(LocalTime.MIDNIGHT);
+        assertThat(result.breakOpenTime()).isEqualTo(LocalTime.of(17, 0));
+        assertThat(result.breakCloseTime()).isEqualTo(LocalTime.of(18, 0));
+    }
+
+    @Test
+    void 영업시간_원문이_깨져있으면_뒤의_준비시간을_영업시간으로_읽지_않고_전체를_제외한다() {
+        assertThat(OpeningHoursParser.parse("- 11:30~22:3 <br>- 준비시간 15:00~17:00")).isEmpty();
+    }
 }
