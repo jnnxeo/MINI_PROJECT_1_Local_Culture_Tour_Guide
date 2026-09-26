@@ -399,6 +399,8 @@ export default function PlanEditorPage() {
             usedPlaceIds={items.map((item) => item.placeId)}
             time={target?.startTime}
             durationMin={target?.durationMin}
+            foodPreference={draft?.conditions?.foodPreference}
+            mealType={draft?.conditions?.mealType}
             onConfirm={(place) => replacePlace(modal.key, place)}
             onClose={closeModal}
           />
