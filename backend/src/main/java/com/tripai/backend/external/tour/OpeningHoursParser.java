@@ -14,6 +14,11 @@ public final class OpeningHoursParser {
     private static final Pattern TIME_RANGE = Pattern.compile(
             "(?<!\\d)([01]?\\d|2[0-3]):([0-5]\\d)\\s*(?:~|∼|-|–)\\s*([01]?\\d|2[0-3]):([0-5]\\d)(?!\\d)"
     );
+    private static final Pattern BREAK_TIME_RANGE = Pattern.compile(
+            "(?:브레이크\\s*타임|브레이크|준비시간|휴게시간|휴식시간)\\s*[:：]?\\s*"
+                    + "([01]?\\d|2[0-3]):([0-5]\\d)\\s*(?:~|∼|-|–)\\s*([01]?\\d|2[0-3]):([0-5]\\d)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     private OpeningHoursParser() {
     }
@@ -28,8 +33,25 @@ public final class OpeningHoursParser {
             return Optional.empty();
         }
 
-        LocalTime openTime = LocalTime.of(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2)));
-        LocalTime closeTime = LocalTime.of(Integer.parseInt(matcher.group(3)), Integer.parseInt(matcher.group(4)));
-        return Optional.of(new OpeningHours(openTime, closeTime));
+        TimeRange businessHours = toRange(matcher);
+        Matcher breakMatcher = BREAK_TIME_RANGE.matcher(businessHoursText);
+        TimeRange breakHours = breakMatcher.find() ? toRange(breakMatcher) : null;
+
+        return Optional.of(new OpeningHours(
+                businessHours.start(),
+                businessHours.end(),
+                breakHours == null ? null : breakHours.start(),
+                breakHours == null ? null : breakHours.end()
+        ));
+    }
+
+    private static TimeRange toRange(Matcher matcher) {
+        return new TimeRange(
+                LocalTime.of(Integer.parseInt(matcher.group(1)), Integer.parseInt(matcher.group(2))),
+                LocalTime.of(Integer.parseInt(matcher.group(3)), Integer.parseInt(matcher.group(4)))
+        );
+    }
+
+    private record TimeRange(LocalTime start, LocalTime end) {
     }
 }

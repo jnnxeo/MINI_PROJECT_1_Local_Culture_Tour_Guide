@@ -17,6 +17,8 @@ public record TourRestaurantRecord(
         RestaurantCuisine cuisineType,
         LocalTime openTime,
         LocalTime closeTime,
+        LocalTime breakOpenTime,
+        LocalTime breakCloseTime,
         String businessHoursText
 ) {
 }

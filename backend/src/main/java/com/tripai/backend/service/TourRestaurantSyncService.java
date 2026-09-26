@@ -87,6 +87,8 @@ public class TourRestaurantSyncService {
                 summary.cuisine(),
                 openingHours.map(OpeningHours::openTime).orElse(null),
                 openingHours.map(OpeningHours::closeTime).orElse(null),
+                openingHours.map(OpeningHours::breakOpenTime).orElse(null),
+                openingHours.map(OpeningHours::breakCloseTime).orElse(null),
                 detail.businessHoursText()
         ));
     }

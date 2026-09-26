@@ -7,11 +7,13 @@
         INSERT INTO place (
             content_id, content_type_cd, place_name, addr, district_name,
             mapx, mapy, image_url, tel_no, tour_cat3_code, cuisine_type,
-            open_time, close_time, business_hours_text, display_yn, collected_at
+            open_time, close_time, break_open_time, break_close_time,
+            business_hours_text, display_yn, collected_at
         ) VALUES (
             #{contentId}, 39, #{name}, #{address}, #{districtName},
             #{longitude}, #{latitude}, #{imageUrl}, #{telNo}, #{tourCat3Code}, #{cuisineType},
-            #{openTime}, #{closeTime}, #{businessHoursText}, TRUE, NOW()
+            #{openTime}, #{closeTime}, #{breakOpenTime}, #{breakCloseTime},
+            #{businessHoursText}, TRUE, NOW()
         )
         ON DUPLICATE KEY UPDATE
             place_name = VALUES(place_name),
@@ -25,6 +27,8 @@
             cuisine_type = VALUES(cuisine_type),
             open_time = VALUES(open_time),
             close_time = VALUES(close_time),
+            break_open_time = VALUES(break_open_time),
+            break_close_time = VALUES(break_close_time),
             business_hours_text = VALUES(business_hours_text),
             display_yn = TRUE,
             collected_at = NOW()

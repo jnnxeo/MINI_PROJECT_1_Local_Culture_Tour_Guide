@@ -13,6 +13,16 @@ class OpeningHoursParserTest {
 
         assertThat(result.openTime()).isEqualTo(LocalTime.of(11, 0));
         assertThat(result.closeTime()).isEqualTo(LocalTime.of(22, 30));
+        assertThat(result.breakOpenTime()).isNull();
+        assertThat(result.breakCloseTime()).isNull();
+    }
+
+    @Test
+    void 준비시간_표현은_브레이크타임으로_변환한다() {
+        OpeningHours result = OpeningHoursParser.parse("11:30~21:00 (준비시간 15:00~18:00)").orElseThrow();
+
+        assertThat(result.breakOpenTime()).isEqualTo(LocalTime.of(15, 0));
+        assertThat(result.breakCloseTime()).isEqualTo(LocalTime.of(18, 0));
     }
 
     @Test

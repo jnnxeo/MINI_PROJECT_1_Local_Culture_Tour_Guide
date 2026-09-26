@@ -7,12 +7,13 @@
 | 파일 | 내용 | 행 수 |
 | --- | --- | ---: |
 | `01_place_tourapi_seoul_2026-09-27.sql` | 서울 음식점 TourAPI 수집·전처리 결과 | 800 |
+| `02_place_tourapi_seoul_break_time_2026-09-27.sql` | 원문에서 명확히 파싱한 브레이크타임 보완 | 282 |
 
 - 원본: 한국관광공사 TourAPI `KorService2`
 - 수집일: 2026-09-27
 - 초기 API 확인 총량: 서울 음식점 961건
 - 현재 1~8페이지(800건) 수집 완료. 개발키 일일 호출 한도(1,000회)에 도달해 9~10페이지는 다음 날 보완한다.
-- `INSERT IGNORE` 형식이라 `source_content_id` 중복 행은 건너뛴다.
+- `INSERT IGNORE` 형식이라 `content_id` 중복 행은 건너뛴다.
 
 ## 적용 순서
 
@@ -21,9 +22,10 @@
 mysql -u root -p tripai < database/schema/01_tripai_ddl_v3.2.1.sql
 mysql -u root -p tripai < database/schema/02_place_food_category_v3.2.2.sql
 mysql -u root -p tripai < database/seed/01_place_tourapi_seoul_2026-09-27.sql
+mysql -u root -p tripai < database/seed/02_place_tourapi_seoul_break_time_2026-09-27.sql
 ```
 
-이미 팀 DDL이 적용된 DB라면 마지막 두 명령만 실행한다. 적용 뒤 아래처럼 확인한다.
+이미 팀 DDL이 적용된 DB라면 마지막 세 명령만 실행한다. 적용 뒤 아래처럼 확인한다.
 
 ```sql
 SELECT cuisine_type, COUNT(*)
@@ -35,5 +37,5 @@ GROUP BY cuisine_type;
 ## 주의
 
 - 이 파일은 **개발·시연용 공통 시드**다. 운영 환경에 그대로 적용하지 않는다.
-- 영업시간 원문은 보존했지만, 일부 장소의 브레이크타임·요일별 시간은 아직 구조화하지 않았다.
+- `02_...break_time...sql`은 원문에서 `준비시간`, `브레이크타임`, `휴게시간`, `휴식시간`으로 명확히 표기된 시간만 보완한다. 요일별·복수 영업 구간은 원문으로 보존한다.
 - TourAPI 데이터 갱신 및 폐업 여부는 시연 전에 별도로 확인한다.
