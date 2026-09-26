@@ -28,7 +28,6 @@ public enum ErrorCode {
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "요청 값을 확인해주세요."),          // 필수값 누락 등
     INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했습니다."); // 서버 오류
 
-
     // ② 필드 — 각 값이 들고 있을 데이터의 자리
     private final HttpStatus status;
     private final String message;

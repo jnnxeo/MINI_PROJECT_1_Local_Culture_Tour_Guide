@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import MyPage from './pages/MyPage.jsx'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -18,6 +19,16 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+
+      <Route
+        path="/mypage"
+        element={(
+          <ProtectedRoute>
+            <MyPage />
+          </ProtectedRoute>
+        )}
+      />
+      
       <Route
         path="/trips/draft"
         element={(

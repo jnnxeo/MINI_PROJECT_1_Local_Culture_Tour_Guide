@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.FavoriteEventMapper">
+
+    <select id="findEventsByUserId"
+            resultType="com.tripai.backend.domain.dto.EventSummary">
+        SELECT
+            e.event_content_id    AS eventContentId,
+            e.event_name       AS title,
+            e.event_start_date  AS eventStartDate,
+            e.event_end_date    AS eventEndDate,
+            e.image_url   AS imageUrl,
+            e.addr     AS addr
+        FROM favorite_event fe
+        INNER JOIN event e
+            ON fe.event_content_id = e.event_content_id
+        WHERE fe.user_id = #{userId}
+        ORDER BY fe.created_at DESC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countEventsByUserId" resultType = "long">
+        SELECT COUNT(*)
+        FROM favorite_event
+        WHERE user_id = #{userId}
+    </select>
+
+    <delete id="deleteEventByEventId">
+        DELETE FROM favorite_event
+        WHERE event_content_id = #{eventContentId}
+        AND user_id = #{userId}
+    </delete>
+
+</mapper>
