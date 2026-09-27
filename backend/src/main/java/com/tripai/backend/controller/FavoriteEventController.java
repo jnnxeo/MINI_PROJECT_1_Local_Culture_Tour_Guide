@@ -1,62 +1,68 @@
 package com.tripai.backend.controller;
 
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.tripai.backend.domain.dto.favorite.FavoriteEventResponse;
-import com.tripai.backend.service.FavoriteEventService;
-
 import lombok.RequiredArgsConstructor;
 
-import java.util.List;
+import com.tripai.backend.domain.dto.EventListResponse;
+import com.tripai.backend.domain.dto.favorite.FavoriteStatusResponse;
+import com.tripai.backend.global.response.ApiResponse;
 
+import com.tripai.backend.service.FavoriteEventService;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
 
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
 
-
-
-@RestController 
+@RestController
 @RequestMapping("/api/favorites/events")
-@RequiredArgsConstructor 
+@RequiredArgsConstructor
 public class FavoriteEventController {
 
     private final FavoriteEventService favoriteEventService;
 
-   @PostMapping("/{eventContentId}")
-   public ResponseEntity<Void> addFavorite(@PathVariable String eventContentId) {
-      
-        Long userId = 1L; // TODO: 로그인 구현 후 인증 사용자로 변경예정
-        
-        favoriteEventService.addFavorite(userId, eventContentId);
+    // FAV-001: 현재 로그인한 사용자의 관심 행사 저장
+    @PostMapping("/{eventContentId}")
+    public ResponseEntity<ApiResponse<FavoriteStatusResponse>> addFavoriteEvent(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String eventContentId
+    ) {
+        favoriteEventService.addFavoriteEvent(userId, eventContentId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(new FavoriteStatusResponse(eventContentId, true)));
+    }
 
-       
-       return ResponseEntity.ok().build(); // TODO: 팀 응답 포맷(ApiResponse) 확정되면 교체
-   }
-   
+    // 2. 관심 행사 목록 조회
+    @GetMapping
+    public ResponseEntity<ApiResponse<EventListResponse>> getFavoriteEvents(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(defaultValue = "0") Integer page,
+            @RequestParam(defaultValue = "10") Integer size
+    ) {
 
-   @DeleteMapping ("/{eventContentId}")
-   public ResponseEntity<Void> deleteFavorite(@PathVariable String eventContentId) {
-      
-        Long userId = 1L; // TODO: 로그인 구현 후 인증 사용자로 변경예정
-        
-        favoriteEventService.deleteFavorite(userId, eventContentId);
+        if(page < 0){
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
 
-       
-       return ResponseEntity.noContent().build(); // TODO: 팀 응답 포맷·상태코드(204 vs 200) 확정 후 교체
-   }
+        if (size != 5 && size != 10 && size != 20) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
 
-   @GetMapping
-   public ResponseEntity<List<FavoriteEventResponse>> getFavorite() {
-        Long userId = 1L; // TODO: 로그인 구현 후 인증 사용자로 변경예정
-        List<FavoriteEventResponse> favorite = favoriteEventService.getFavorite(userId);
+        EventListResponse response = favoriteEventService.getFavoriteEvents(userId, page, size);
+        return ResponseEntity.status(HttpStatus.OK)
+                            .body(ApiResponse.success(response));
+    }
 
-       return ResponseEntity.ok(favorite);
-   }
-   
-    
+    // 5. 관심 행사 삭제
+    @DeleteMapping("/{eventContentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteFavoriteEvent(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String eventContentId
+    ) {
+        favoriteEventService.deleteFavoriteEvent(userId, eventContentId);
+
+        return ResponseEntity.noContent().build();
+    }
 }
