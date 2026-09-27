@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { getErrorMessage, requestLogin } from '../services/authService.js'
 
@@ -26,19 +26,14 @@ function validate(form) {
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { isAuthenticated, login } = useAuth()
-  const from = location.state?.from
-  const redirectTo = from && from.pathname !== '/login'
-    ? `${from.pathname}${from.search ?? ''}${from.hash ?? ''}`
-    : '/'
   const [form, setForm] = useState(INITIAL_FORM)
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to="/" replace />
   }
 
   const handleChange = (event) => {
@@ -64,7 +59,7 @@ export default function LoginPage() {
     try {
       const loginResponse = await requestLogin(form)
       login(loginResponse)
-      navigate(redirectTo, { replace: true })
+      navigate('/', { replace: true })
     } catch (error) {
       setServerError(getErrorMessage(error))
     } finally {

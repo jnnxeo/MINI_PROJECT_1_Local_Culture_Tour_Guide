@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Modal from '../common/Modal.jsx'
+import PlanModal from './PlanModal.jsx'
 import { formatDate } from '../../utils/planTime.js'
 
 export const INTERESTS = ['문화·역사', '음악·공연', '미술·전시']
@@ -8,12 +8,16 @@ export const TRANSPORT_LABELS = {
   WALK: '도보 위주',
 }
 
-/** Figma "conditions · 팝업" — 인원·이동 방법은 드롭다운(people/transport 팝업 대체) */
-export default function ConditionsModal({ plan, anchorItem, onSubmit, onClose }) {
-  const [headcount, setHeadcount] = useState(plan.headcount)
-  const [transportMode, setTransportMode] = useState(plan.transportMode)
-  const [interests, setInterests] = useState(plan.interests ?? [])
-  const [useAi, setUseAi] = useState(plan.aiGenerated)
+/**
+ * Figma "conditions · 팝업" (SCR-010) — 인원·이동 방법은 드롭다운(people/transport 팝업 대체)
+ * API-PLAN-003 Body는 {visitDate,startTime,endTime,companion,foodPreference,transportMode}라
+ * 화면의 인원·관심사·AI 추천받기는 대응 필드가 없다 → 팀 확인 전까지 이동 방법만 전송한다.
+ */
+export default function ConditionsModal({ visitDate, conditions, coreItem, onSubmit, onClose }) {
+  const [headcount, setHeadcount] = useState(2)
+  const [transportMode, setTransportMode] = useState(conditions?.transportMode ?? 'WALK_TRANSIT')
+  const [interests, setInterests] = useState([])
+  const [useAi, setUseAi] = useState(true)
 
   const toggleInterest = (interest) => {
     setInterests((current) => (current.includes(interest)
@@ -21,15 +25,15 @@ export default function ConditionsModal({ plan, anchorItem, onSubmit, onClose })
       : [...current, interest]))
   }
 
-  const anchorInfo = anchorItem?.timeFixed ? `${anchorItem.startTime} 시작` : '운영시간 정보 없음'
+  const coreInfo = coreItem?.timeFixed ? `${coreItem.startTime} 시작` : '운영시간 정보 없음'
 
   return (
-    <Modal title="어떤 하루를 만들어 볼까요?" onClose={onClose}>
-      <p className="tp-modal__desc">{`선택한 행사 · ${anchorInfo}`}</p>
+    <PlanModal title="어떤 하루를 만들어 볼까요?" onClose={onClose}>
+      <p className="tp-modal__desc">{`선택한 행사 · ${coreInfo}`}</p>
 
       <div className="tp-field">
         <span className="tp-field__label">여행 날짜</span>
-        <span className="tp-field__value">{`${formatDate(plan.tripDate)} · 당일 여행`}</span>
+        <span className="tp-field__value">{`${formatDate(visitDate)} · 당일 여행`}</span>
       </div>
 
       <div className="plan-conditions__row">
@@ -90,6 +94,6 @@ export default function ConditionsModal({ plan, anchorItem, onSubmit, onClose })
         {useAi ? 'AI로 하루 일정 만들기' : '하루 일정 만들기'}
       </button>
       <p className="plan-conditions__note">AI 해제 시 규칙에 따른 기본 코스를 구성합니다.</p>
-    </Modal>
+    </PlanModal>
   )
 }

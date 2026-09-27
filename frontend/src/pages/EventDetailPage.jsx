@@ -4,7 +4,7 @@ import { getEventDetail } from '../services/eventService.js'
 import EventCreateModal from '../components/layout/event/EventCreateModal.jsx'
 import SiteHeader from '../components/layout/SiteHeader.jsx'
 import SiteFooter from '../components/layout/SiteFooter.jsx'
-import '../styles/common.css'
+import '../styles/event-base.css'
 import '../styles/eventdetail.css'
 import EventSavedPlanModal from '../components/plan/EventSavedPlanModal.jsx'
 
@@ -205,10 +205,9 @@ export default function EventDetailPage() {
         <EventCreateModal
           event={event}
           onClose={() => setCreateModalOpen(false)}
-          onCreated={(draft) => navigate(
-            `/trips/draft?draftId=${encodeURIComponent(draft.draftId)}`,
-            { state: { useRealPlanApi: true } },
-          )}
+          onCreated={(draft) => navigate('/trips/draft', {
+            state: { draftId: draft.draftId },
+          })}
         />
       )}
       {savedPlanModalOpen && (

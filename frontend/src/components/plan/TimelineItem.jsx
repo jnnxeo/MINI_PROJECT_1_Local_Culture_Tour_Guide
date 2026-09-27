@@ -1,40 +1,19 @@
 import React from 'react'
-import { formatDistance, toMinutes } from '../../utils/planTime.js'
+import { formatDistance } from '../../utils/planTime.js'
 
-const LUNCH = [toMinutes('11:00'), toMinutes('14:30')]
-const DINNER = [toMinutes('17:00'), toMinutes('20:30')]
-
-/** 식사 장소는 시간대에 따라 "점심 · " / "저녁 · "을 붙인다 (Figma: "12:30  점심 · 행사장 근처 한식당") */
-export function getItemLabel(item) {
-  if (item.type !== 'PLACE' || item.category !== '식사') {
-    return item.name
-  }
-
-  const start = toMinutes(item.startTime)
-
-  if (start >= LUNCH[0] && start < LUNCH[1]) {
-    return `점심 · ${item.name}`
-  }
-
-  if (start >= DINNER[0] && start < DINNER[1]) {
-    return `저녁 · ${item.name}`
-  }
-
-  return item.name
-}
-
-/** 시간이 정해지지 않은 행사는 Figma처럼 이름만, 나머지는 "HH:mm  이름" */
+/** 카드 제목: "HH:mm  이름" (Figma). 시작 시간이 정해지지 않은 행사는 이름만 */
 export function getItemHeading(item) {
   if (item.type === 'EVENT' && !item.timeFixed) {
     return item.name
   }
 
-  return `${item.startTime}  ${getItemLabel(item)}`
+  return `${item.startTime}  ${item.name}`
 }
 
 export default function TimelineItem({
   item,
-  isAnchor,
+  isCore,
+  reason,
   distanceToNext,
   isLast,
   isSelected,
@@ -49,7 +28,7 @@ export default function TimelineItem({
   return (
     <article
       className={`plan-item${isEvent ? ' plan-item--event' : ''}${isSelected ? ' is-selected' : ''}`}
-      aria-label={`${item.seq}번째 일정 ${item.name}`}
+      aria-label={`${item.sequence}번째 일정 ${item.name}`}
     >
       <div className="plan-item__photo">
         {item.imageUrl
@@ -61,8 +40,8 @@ export default function TimelineItem({
 
       <p className="plan-item__meta">
         {isEvent
-          ? `${isAnchor ? '선택한 행사' : '추가한 행사'} · ${item.timeFixed ? '시작 시간 고정' : '운영시간 정보 없음'} · ${item.durationMin}분`
-          : `${item.durationMin}분 · ${item.category ?? '맛집'}`}
+          ? `${isCore ? '선택한 행사' : '추가한 행사'} · ${item.timeFixed ? '시작 시간 고정' : '운영시간 정보 없음'} · ${item.durationMin}분`
+          : `${item.durationMin}분 · 맛집`}
       </p>
 
       {isEvent ? (
@@ -81,7 +60,7 @@ export default function TimelineItem({
         </div>
       )}
 
-      {item.aiReason && <p className="plan-item__reason">{`추천 기준 · ${item.aiReason}`}</p>}
+      {reason && <p className="plan-item__reason">{`추천 기준 · ${reason}`}</p>}
 
       {!isLast && (
         <p className="plan-item__distance">

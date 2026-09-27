@@ -1,18 +1,29 @@
 import api from './api.js'
 import { getErrorMessage } from './authService.js'
 import {
-  mockGetLatestDraft,
-  mockGetPlan,
-  mockRegeneratePlan,
-  mockSavePlan,
-  mockSearchPlaces,
+  MOCK_DRAFT_ID,
+  mockAddItem,
+  mockGetDraft,
+  mockRegenerate,
+  mockRemoveItem,
+  mockReplaceItems,
+  mockSaveDraft,
+  mockSearchRestaurants,
+  mockUpdateConditions,
+  mockUpdateTitle,
   resetMockPlans,
 } from './mock/planMock.js'
 
-// 나의 일정 API — 팀 시트의 API-PLAN 명세와 기존 편집 화면 응답을 연결한다.
+/*
+ * 나의 일정(저장 전 초안) API
+ * 기준: 08_TripAI_요구사항정의서 「API 명세」 API-PLAN-001~009, API-PLACE-001
+ * 저장 일정(API-PLAN-010~013)은 내 여행 화면 담당 범위라 여기 두지 않는다.
+ */
 const USE_MOCK_API = import.meta.env.VITE_USE_PLAN_MOCK_API
   ? import.meta.env.VITE_USE_PLAN_MOCK_API !== 'false'
   : import.meta.env.VITE_USE_MOCK_API !== 'false'
+
+const DRAFT_ID_KEY = 'tripai.draftId'
 
 if (USE_MOCK_API && import.meta.env.DEV) {
   window.tripaiResetMockPlans = resetMockPlans
@@ -22,11 +33,11 @@ async function request(call) {
   try {
     const { data } = await call()
 
-    if (!data.success) {
+    if (data && data.success === false) {
       throw new Error(data.message ?? '요청을 처리하지 못했습니다.')
     }
 
-    return data.data
+    return data?.data
   } catch (error) {
     const planError = new Error(error.response ? getErrorMessage(error) : error.message)
     planError.status = error.response?.status ?? error.status
@@ -44,115 +55,149 @@ async function withMock(mockCall) {
   }
 }
 
-// API 명세의 draftId/visitDate/placeId와 화면의 planId/tripDate/contentId를 연결한다.
-function normalizePlan(detail) {
-  if (!detail || typeof detail !== 'object') {
-    throw new Error('일정 상세 응답 형식이 맞지 않습니다.')
-  }
-  const items = (detail.items ?? []).map((item) => ({
-    ...item,
-    contentId: item.contentId ?? item.placeId,
-    seq: item.seq ?? item.sequence,
-    address: item.address ?? item.addr,
-    endTime: item.endTime ?? (item.startTime && item.durationMin
-      ? (() => {
-        const [hours, minutes] = item.startTime.split(':').map(Number)
-        const total = hours * 60 + minutes + item.durationMin
-        return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-      })()
-      : null),
-  }))
-  const anchorEventId = detail.anchorEventId
-    ?? detail.selectedEvent?.eventId
-    ?? items.find((item) => item.type === 'EVENT')?.contentId
+const draftPath = (draftId) => `/api/plans/drafts/${draftId}`
 
-  return {
-    ...detail,
-    planId: detail.planId ?? detail.draftId,
-    tripDate: detail.tripDate ?? detail.visitDate,
-    anchorEventId,
-    visitStartTime: detail.visitStartTime ?? detail.conditions?.startTime,
-    visitEndTime: detail.visitEndTime ?? detail.conditions?.endTime,
-    saved: detail.saved ?? (detail.draftId == null),
-    items,
+/**
+ * 지금 편집할 초안 ID (UX-005 초안 복원)
+ * 추천 생성(API-PLAN-001) 후 /trips/draft로 이동할 때 state 또는 sessionStorage로 넘겨받는다.
+ * 목업 모드에서는 개발용 초안을 쓴다.
+ */
+export function resolveDraftId(stateDraftId) {
+  if (stateDraftId) {
+    rememberDraftId(stateDraftId)
+    return stateDraftId
+  }
+
+  try {
+    const stored = sessionStorage.getItem(DRAFT_ID_KEY)
+
+    if (stored) {
+      return Number(stored)
+    }
+  } catch {
+    // 저장소를 읽을 수 없으면 아래로 진행
+  }
+
+  return USE_MOCK_API ? MOCK_DRAFT_ID : null
+}
+
+export function rememberDraftId(draftId) {
+  try {
+    sessionStorage.setItem(DRAFT_ID_KEY, String(draftId))
+  } catch {
+    // 저장소를 쓸 수 없어도 현재 화면은 동작한다.
   }
 }
 
-/** API-PLAN-002 최근 초안 복원 */
-export function getLatestDraft({ forceApi = false, draftId = null } = {}) {
-  if (USE_MOCK_API && !forceApi) {
-    return withMock(mockGetLatestDraft)
+export function forgetDraftId() {
+  try {
+    sessionStorage.removeItem(DRAFT_ID_KEY)
+  } catch {
+    // 무시
   }
-
-  return request(() => api.get(draftId
-    ? `/api/plans/drafts/${encodeURIComponent(draftId)}`
-    : '/api/plans/drafts/latest')).then(normalizePlan)
 }
 
-/** API-PLAN-003 일정 상세 */
-export function getPlan(planId, { forceApi = false } = {}) {
-  if (USE_MOCK_API && !forceApi) {
-    return withMock(() => mockGetPlan(planId))
+/** API-PLAN-002 저장 전 일정 초안 조회 */
+export function getDraft(draftId) {
+  if (USE_MOCK_API) {
+    return withMock(() => mockGetDraft(draftId))
   }
 
-  return request(() => api.get(`/api/plans/${planId}`)).then(normalizePlan)
+  return request(() => api.get(draftPath(draftId)))
 }
 
-/** 저장 전 초안은 PUT, 저장 일정 수정(API-PLAN-012)은 PATCH로 전체 항목을 보낸다. */
-export function savePlan(planId, { title, tripDate, anchorEventId, items }, { forceApi = false, saved = false } = {}) {
+/** API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,transportMode} */
+export function updateConditions(draftId, { visitDate, startTime, endTime, companion, foodPreference, transportMode }) {
+  const body = { visitDate, startTime, endTime, companion, foodPreference, transportMode }
+
+  if (USE_MOCK_API) {
+    return withMock(() => mockUpdateConditions(draftId, body))
+  }
+
+  return request(() => api.patch(`${draftPath(draftId)}/conditions`, body))
+}
+
+/** API-PLAN-004 (수정한) 조건으로 일정 다시 추천 */
+export function regenerateDraft(draftId) {
+  if (USE_MOCK_API) {
+    return withMock(() => mockRegenerate(draftId))
+  }
+
+  return request(() => api.post(`${draftPath(draftId)}/regenerate`))
+}
+
+/** API-PLAN-005 저장 전 일정 제목 변경 */
+export function updateDraftTitle(draftId, title) {
+  if (USE_MOCK_API) {
+    return withMock(() => mockUpdateTitle(draftId, title))
+  }
+
+  return request(() => api.patch(`${draftPath(draftId)}/title`, { title }))
+}
+
+/** API-PLAN-006 일정 항목·시간·방문 순서 일괄 수정 — Body: {items:[{itemId,type,placeId,startTime,durationMin,sequence}]} */
+export function replaceDraftItems(draftId, items) {
   const body = {
-    title: title.trim(),
-    tripDate,
-    anchorEventId,
-    items: items.map(({ type, contentId, startTime, durationMin, aiReason }) => ({
+    items: items.map(({ itemId, type, placeId, startTime, durationMin, sequence }) => ({
+      itemId,
       type,
-      contentId,
+      placeId,
       startTime,
       durationMin,
-      aiReason: aiReason ?? null,
+      sequence,
     })),
   }
 
-  if (USE_MOCK_API && !forceApi) {
-    return withMock(() => mockSavePlan(planId, body))
+  if (USE_MOCK_API) {
+    return withMock(() => mockReplaceItems(draftId, body.items))
   }
 
-  return request(() => saved
-    ? api.patch(`/api/plans/${planId}`, body)
-    : api.put(`/api/plans/${planId}`, body))
+  return request(() => api.put(`${draftPath(draftId)}/items`, body))
 }
 
-/** API-PLAN-005 다시 추천(conditions = null) / 조건 수정 */
-export function regeneratePlan(planId, conditions = null) {
+/** API-PLAN-007 맛집 일정에 추가 — Body: {placeId,type,startTime,durationMin,sequence} */
+export function addDraftItem(draftId, { placeId, type, startTime, durationMin, sequence }) {
+  const body = { placeId, type, startTime, durationMin, sequence }
+
   if (USE_MOCK_API) {
-    return withMock(() => mockRegeneratePlan(planId, conditions))
+    return withMock(() => mockAddItem(draftId, body))
   }
 
-  return request(() => api.post(`/api/plans/${planId}/regenerate`, { conditions }))
+  return request(() => api.post(`${draftPath(draftId)}/items`, body))
 }
 
-/** API-PLACE-001 맛집 후보 */
-export function searchPlaces({ eventId, keyword = '', time, durationMin }) {
+/** API-PLAN-008 일정 항목 삭제 */
+export function removeDraftItem(draftId, itemId) {
   if (USE_MOCK_API) {
-    return withMock(() => mockSearchPlaces({ eventId, keyword, time, durationMin }))
+    return withMock(() => mockRemoveItem(draftId, itemId))
   }
 
-  return request(() => api.get('/api/places', {
-    params: { eventId, keyword: keyword || undefined, time, durationMin },
+  return request(() => api.delete(`${draftPath(draftId)}/items/${itemId}`))
+}
+
+/** API-PLAN-009 일정 초안을 저장 일정으로 확정 — Body: {draftId} → {planId,title,visitDate,dDay} */
+export function saveDraftAsPlan(draftId) {
+  if (USE_MOCK_API) {
+    return withMock(() => mockSaveDraft(draftId))
+  }
+
+  return request(() => api.post('/api/plans', { draftId }))
+}
+
+/** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, category, page, size */
+export function searchRestaurants({ eventId, radius, category, page, size }) {
+  if (USE_MOCK_API) {
+    return withMock(() => mockSearchRestaurants({ eventId }))
+  }
+
+  return request(() => api.get('/api/places/restaurants', {
+    params: { eventId, radius, category, page, size },
   }))
 }
 
-
-/** EVENT-003: 선택한 행사를 기준으로 당일 일정 초안을 만든다. */
-export function createEventDraft({
-  eventId,
-  tripDate,
-  headcount,
-  transportMode,
-  interests,
-  useAi,
-}) {
-  return request(() => api.post('/api/plans/recommend', {
+/** EVENT-004: 선택 행사로 당일 일정 초안을 만든다. */
+export async function createEventDraft({ eventId, tripDate, headcount, transportMode, interests, useAi }) {
+  const draft = await request(() => api.post('/api/plans/recommend', {
     eventId,
     visitDate: tripDate,
     headcount,
@@ -160,18 +205,43 @@ export function createEventDraft({
     interests,
     useAi,
   }))
+  if (draft?.draftId == null) {
+    throw new Error('일정 초안 ID를 받지 못했습니다.')
+  }
+  rememberDraftId(draft.draftId)
+  return draft
 }
 
-/** EVENT-004: 저장한 일정 목록. 실제 서버 응답은 팀 계약 확정 후 하나로 통일한다. */
+/** EVENT-003: 저장 일정 선택 팝업용 목록. 목록 API는 내 여행 담당 구현과 연동한다. */
 export async function getSavedPlans() {
   const all = []
   const pageSize = 20
   for (let page = 0; page < 100; page += 1) {
     const data = await request(() => api.get('/api/plans', { params: { page, size: pageSize } }))
-    const plans = Array.isArray(data) ? data : (data.items ?? data.plans)
+    const plans = Array.isArray(data) ? data : (data?.items ?? data?.plans)
     if (!Array.isArray(plans)) throw new Error('저장한 일정 목록의 응답 형식이 맞지 않습니다.')
-    all.push(...plans)
-    if (plans.length < pageSize || data.totalCount != null && all.length >= data.totalCount) return all
+    all.push(...plans.map((plan) => ({
+      ...plan,
+      planId: plan.planId ?? plan.tripPlanId,
+      tripDate: plan.tripDate ?? plan.visitDate,
+    })))
+    if (plans.length < pageSize || data?.totalCount != null && all.length >= data.totalCount) return all
   }
   throw new Error('저장한 일정이 많아 목록을 모두 불러오지 못했습니다.')
+}
+
+/** EVENT-003: 저장 일정의 행사 중복·날짜 충돌을 확인할 상세 조회. */
+export async function getPlan(planId) {
+  const data = await request(() => api.get(`/api/plans/${encodeURIComponent(planId)}`))
+  if (!data || typeof data !== 'object') throw new Error('일정 상세 응답 형식이 맞지 않습니다.')
+  return {
+    ...data,
+    planId: data.planId ?? data.tripPlanId,
+    tripDate: data.tripDate ?? data.visitDate,
+    items: (data.items ?? []).map((item) => ({
+      ...item,
+      contentId: item.contentId ?? item.eventId ?? item.placeId,
+      seq: item.seq ?? item.sequence,
+    })),
+  }
 }

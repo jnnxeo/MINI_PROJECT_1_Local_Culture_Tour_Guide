@@ -1,11 +1,11 @@
 /*
  * 나의 일정 — 시간 계산·검증 도우미
  * 화면(버튼 막기)과 목업 API(저장 검증)가 같은 규칙을 쓰도록 여기 모아 둔다.
- * 규칙 기준: docs/07_나의일정_API_계약.md 의 V1~V11
+ * 규칙 근거: 요구사항정의서(08) TRIP-004·005·006·007, API-PLAN-006~008 오류 조건,
+ *           테이블정의서 v3.2.1(title 100자, UNIQUE 항목)
+ * 필드 이름은 API 명세(08)를 따른다: sequence, placeId, startTime, durationMin
  */
 
-export const DEFAULT_VISIT_START = '10:00'
-export const DEFAULT_VISIT_END = '21:00'
 export const TITLE_MAX_LENGTH = 100
 export const EVENT_LIMIT = 2
 export const MINUTE_STEP = 5
@@ -40,21 +40,23 @@ export function formatDate(date) {
   return date ? date.replaceAll('-', '.') : ''
 }
 
-/** 시작 시각 순으로 정렬하고 seq를 1부터 다시 매긴다. */
+/** 시작 시각 순으로 정렬하고 sequence를 1부터 다시 매긴다 (TRIP-004: 시간 변경 후 방문 순서 재계산). */
 export function sortItems(items) {
   return [...items]
     .sort((a, b) => toMinutes(a.startTime) - toMinutes(b.startTime))
-    .map((item, index) => ({ ...item, seq: index + 1 }))
+    .map((item, index) => ({ ...item, sequence: index + 1 }))
 }
 
 /**
  * 시간 충돌을 찾는다. 없으면 null.
  * 반환: { title, message, itemKey } — itemKey는 사용자가 방금 고친 항목을 다시 열 때 쓴다.
  */
-export function findTimeConflict(items, { visitStartTime, visitEndTime } = {}) {
-  const windowStart = toMinutes(visitStartTime ?? DEFAULT_VISIT_START)
-  const windowEnd = toMinutes(visitEndTime ?? DEFAULT_VISIT_END)
+export function findTimeConflict(items, { startTime, endTime } = {}) {
   const sorted = sortItems(items)
+
+  // TRIP-004: 일정 범위(추천 조건의 startTime~endTime)를 벗어나면 차단. 범위 정보가 없으면 하루 안인지만 본다.
+  const windowStart = startTime ? toMinutes(startTime) : 0
+  const windowEnd = endTime ? toMinutes(endTime) : 24 * 60
 
   for (const item of sorted) {
     const start = toMinutes(item.startTime)
@@ -98,43 +100,43 @@ export function findTimeConflict(items, { visitStartTime, visitEndTime } = {}) {
 }
 
 /**
- * 저장 전 검증 (서버 V1~V11과 같은 순서). 통과하면 null, 아니면 { code, title, message }.
+ * 저장 전 검증. 통과하면 null, 아니면 { status, title, message } — status는 API 명세의 오류 코드와 같게 둔다.
+ * - 제목: 빈 제목·100자 초과 (API-PLAN-005 400, TRIP-003)
+ * - 핵심 문화행사 필수 (TRIP-007, API-PLAN-008 409)
+ * - 문화행사 일정당 최대 2개, 중복 장소 차단 (TRIP-006, API-PLAN-007 409)
+ * - 체류 시간 > 0, 시간 중복·범위 초과 (TRIP-004, API-PLAN-006 400)
  */
-export function validatePlan({ title, anchorEventId, items, visitStartTime, visitEndTime }) {
+export function validatePlan({ title, items, coreEventPlaceId, startTime, endTime }) {
   const trimmedTitle = (title ?? '').trim()
 
   if (!trimmedTitle || trimmedTitle.length > TITLE_MAX_LENGTH) {
-    return { code: 'INVALID_INPUT', title: '일정 이름을 확인해 주세요', message: `일정 이름은 1~${TITLE_MAX_LENGTH}자로 입력해 주세요.` }
-  }
-
-  if (items.length === 0) {
-    return { code: 'INVALID_INPUT', title: '일정이 비어 있어요', message: '장소나 행사를 하나 이상 추가해 주세요.' }
+    return { status: 400, title: '일정 이름을 확인해 주세요', message: `일정 이름은 1~${TITLE_MAX_LENGTH}자로 입력해 주세요.` }
   }
 
   const events = items.filter((item) => item.type === 'EVENT')
 
-  if (!events.some((item) => item.contentId === anchorEventId)) {
-    return { code: 'PLAN_ANCHOR_REQUIRED', title: '기준 행사가 필요해요', message: '기준 문화행사가 필요합니다. 다시 추천받거나 다른 행사를 선택해 주세요.' }
+  if (!events.some((item) => item.placeId === coreEventPlaceId)) {
+    return { status: 409, title: '핵심 문화행사가 필요해요', message: '핵심 문화행사가 없으면 일정을 저장할 수 없습니다. 다시 추천받거나 다른 행사를 선택해 주세요.' }
   }
 
   if (events.length > EVENT_LIMIT) {
-    return { code: 'PLAN_EVENT_LIMIT', title: '행사는 2개까지예요', message: '문화행사는 일정당 최대 2개까지 추가할 수 있습니다.' }
+    return { status: 409, title: '행사는 2개까지예요', message: '문화행사는 일정당 최대 2개까지 추가할 수 있습니다.' }
   }
 
-  const contentIds = items.map((item) => `${item.type}:${item.contentId}`)
+  const placeKeys = items.map((item) => `${item.type}:${item.placeId}`)
 
-  if (new Set(contentIds).size !== contentIds.length) {
-    return { code: 'PLAN_ITEM_DUPLICATED', title: '이미 있는 장소예요', message: '이미 일정에 있는 장소입니다.' }
+  if (new Set(placeKeys).size !== placeKeys.length) {
+    return { status: 409, title: '이미 있는 장소예요', message: '이미 일정에 있는 장소입니다.' }
   }
 
-  if (items.some((item) => !(item.durationMin > 0) || (item.aiReason?.length ?? 0) > 100)) {
-    return { code: 'INVALID_INPUT', title: '입력값을 확인해 주세요', message: '머무는 시간과 추천 이유를 확인해 주세요.' }
+  if (items.some((item) => !(item.durationMin > 0))) {
+    return { status: 400, title: '머무는 시간을 확인해 주세요', message: '머무는 시간은 0분보다 길어야 합니다.' }
   }
 
-  const conflict = findTimeConflict(items, { visitStartTime, visitEndTime })
+  const conflict = findTimeConflict(items, { startTime, endTime })
 
   if (conflict) {
-    return { code: 'PLAN_TIME_CONFLICT', ...conflict }
+    return { status: 400, ...conflict }
   }
 
   return null
@@ -143,9 +145,9 @@ export function validatePlan({ title, anchorEventId, items, visitStartTime, visi
 /**
  * 새 장소를 넣을 첫 빈 시간을 찾는다(5분 단위). 없으면 null.
  */
-export function findFreeSlot(items, durationMin, { visitStartTime, visitEndTime } = {}) {
-  const windowStart = toMinutes(visitStartTime ?? DEFAULT_VISIT_START)
-  const windowEnd = toMinutes(visitEndTime ?? DEFAULT_VISIT_END)
+export function findFreeSlot(items, durationMin, { startTime, endTime } = {}) {
+  const windowStart = startTime ? toMinutes(startTime) : 9 * 60
+  const windowEnd = endTime ? toMinutes(endTime) : 24 * 60
   const alignStep = (minutes) => Math.ceil(minutes / MINUTE_STEP) * MINUTE_STEP
   let cursor = windowStart
 
@@ -187,22 +189,22 @@ export function formatDistance(meters) {
 }
 
 /**
- * 저장을 막지는 않지만 알려야 할 사항 (계약서 warnings[]와 같은 모양).
- * 음식점 영업시간이 없거나, 방문 시간이 영업시간 밖이면 안내한다.
+ * 저장을 막지는 않지만 알려야 할 사항 — 화면 안내용(API 응답 필드 아님).
+ * FOOD-002: 영업시간 미확인·영업시간 밖 방문 맛집을 알린다.
  */
 export function getPlanWarnings(items) {
   return items
     .filter((item) => item.type === 'PLACE')
     .flatMap((item) => {
       if (!item.openTime || !item.closeTime) {
-        return [{ itemSeq: item.seq, code: 'HOURS_UNKNOWN', message: `${item.name} · 영업시간 정보가 없어 방문 전 확인이 필요합니다.` }]
+        return [{ sequence: item.sequence, code: 'HOURS_UNKNOWN', message: `${item.name} · 영업시간 정보가 없어 방문 전 확인이 필요합니다.` }]
       }
 
       const start = toMinutes(item.startTime)
       const end = start + item.durationMin
 
       if (start < toMinutes(item.openTime) || end > toMinutes(item.closeTime)) {
-        return [{ itemSeq: item.seq, code: 'OUTSIDE_HOURS', message: `${item.name} · 영업시간(${item.openTime}–${item.closeTime}) 밖 방문입니다.` }]
+        return [{ sequence: item.sequence, code: 'OUTSIDE_HOURS', message: `${item.name} · 영업시간(${item.openTime}–${item.closeTime}) 밖 방문입니다.` }]
       }
 
       return []

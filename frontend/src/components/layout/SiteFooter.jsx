@@ -1,5 +1,5 @@
 import React from 'react'
-import '../../styles/common.css'
+import '../../styles/event-base.css'
 
 /** Figma Footer */
 export default function SiteFooter() {

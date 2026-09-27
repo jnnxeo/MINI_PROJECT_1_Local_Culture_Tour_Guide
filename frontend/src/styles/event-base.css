@@ -2,7 +2,7 @@
  * TripAI 공통 UI — Figma(Page Ver2) 디자인 토큰과 공용 컴포넌트 스타일
  * 토큰 이름은 Figma 변수(--tripai-*)와 같게 맞춘다.
  */
-:root {
+.event-page {
   --tripai-blue: #2563eb;
   --tripai-navy: #111c3d;
   --tripai-white: #fff;
@@ -26,19 +26,19 @@
 }
 
 @media (max-width: 1024px) {
-  :root {
+  .event-page {
     --tripai-page-gutter: 32px;
   }
 }
 
 @media (max-width: 640px) {
-  :root {
+  .event-page {
     --tripai-page-gutter: 16px;
   }
 }
 
 /* ---------- 버튼 (Figma Button/primary·secondary·ghost·danger) ---------- */
-.tp-btn {
+.event-page .tp-btn {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
@@ -56,43 +56,43 @@
   text-decoration: none;
 }
 
-.tp-btn:disabled {
+.event-page .tp-btn:disabled {
   cursor: not-allowed;
   opacity: .5;
 }
 
-.tp-btn:focus-visible,
-.tp-field:focus-within,
-.tp-marker:focus-visible {
+.event-page .tp-btn:focus-visible,
+.event-page .tp-field:focus-within,
+.event-page .tp-marker:focus-visible {
   outline: 3px solid rgb(37 99 235 / 35%);
   outline-offset: 2px;
 }
 
-.tp-btn--primary {
+.event-page .tp-btn--primary {
   background: var(--tripai-blue);
   color: var(--tripai-white);
 }
 
-.tp-btn--secondary {
+.event-page .tp-btn--secondary {
   border-color: var(--tripai-line);
 }
 
-.tp-btn--danger {
+.event-page .tp-btn--danger {
   border-color: var(--tripai-danger-line);
   background: var(--tripai-danger-bg);
   color: var(--tripai-danger);
 }
 
-.tp-btn--block {
+.event-page .tp-btn--block {
   width: 100%;
 }
 
-.tp-btn--bold {
+.event-page .tp-btn--bold {
   font-weight: 700;
 }
 
 /* ---------- 입력 박스 (Figma go:placesearch / go:renamedinput) ---------- */
-.tp-field {
+.event-page .tp-field {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -106,15 +106,15 @@
   text-align: left;
 }
 
-.tp-field__label {
+.event-page .tp-field__label {
   color: var(--tripai-muted);
   font-size: 12px;
   font-weight: 500;
 }
 
-.tp-field__value,
-.tp-field input,
-.tp-field select {
+.event-page .tp-field__value,
+.event-page .tp-field input,
+.event-page .tp-field select {
   width: 100%;
   padding: 0;
   border: 0;
@@ -125,13 +125,13 @@
   font-weight: 600;
 }
 
-.tp-field select {
+.event-page .tp-field select {
   appearance: none;
   cursor: pointer;
 }
 
 /* ---------- 팝업 (Figma *· 팝업, 620px) ---------- */
-.tp-modal-backdrop {
+.event-page .tp-modal-backdrop {
   position: fixed;
   z-index: 100;
   inset: 0;
@@ -141,7 +141,7 @@
   background: rgb(15 23 42 / 45%);
 }
 
-.tp-modal {
+.event-page .tp-modal {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -155,22 +155,22 @@
   box-shadow: var(--tripai-shadow-modal);
 }
 
-.tp-modal:focus {
+.event-page .tp-modal:focus {
   outline: none;
 }
 
-.tp-modal--list {
+.event-page .tp-modal--list {
   gap: 12px;
   padding: 24px 32px;
 }
 
-.tp-modal__heading {
+.event-page .tp-modal__heading {
   display: flex;
   gap: 12px;
   align-items: flex-start;
 }
 
-.tp-modal__title {
+.event-page .tp-modal__title {
   flex: 1;
   margin: 0;
   color: var(--tripai-navy);
@@ -179,11 +179,11 @@
   line-height: 1.45;
 }
 
-.tp-modal__close {
+.event-page .tp-modal__close {
   width: 64px;
 }
 
-.tp-modal__desc {
+.event-page .tp-modal__desc {
   margin: 0;
   color: var(--tripai-muted);
   font-size: 15px;
@@ -191,7 +191,7 @@
   white-space: pre-line;
 }
 
-.tp-modal__hint {
+.event-page .tp-modal__hint {
   margin: 0;
   color: var(--tripai-blue);
   font-size: 15px;
@@ -199,7 +199,7 @@
   line-height: 1.45;
 }
 
-.tp-modal__error {
+.event-page .tp-modal__error {
   margin: 0;
   color: var(--tripai-danger);
   font-size: 14px;
@@ -207,14 +207,14 @@
 }
 
 @media (max-width: 640px) {
-  .tp-modal,
-  .tp-modal--list {
+  .event-page .tp-modal,
+  .event-page .tp-modal--list {
     padding: 24px 20px;
   }
 }
 
 /* ---------- 상단 내비게이션 · 푸터 (Figma Navigation / Footer) ---------- */
-.tp-nav {
+.event-page .tp-nav {
   display: flex;
   gap: 24px;
   align-items: center;
@@ -222,7 +222,7 @@
   background: var(--tripai-white);
 }
 
-.tp-nav__brand {
+.event-page .tp-nav__brand {
   display: inline-flex;
   gap: 24px;
   align-items: center;
@@ -235,41 +235,41 @@
   line-height: 1.45;
 }
 
-.tp-nav__symbol {
+.event-page .tp-nav__symbol {
   width: 28px;
   height: 32px;
 }
 
-.tp-nav__spacer {
+.event-page .tp-nav__spacer {
   flex: 1;
 }
 
-.tp-nav__link {
+.event-page .tp-nav__link {
   width: 120px;
 }
 
-.tp-nav__auth {
+.event-page .tp-nav__auth {
   width: 98px;
 }
 
 @media (max-width: 640px) {
-  .tp-nav {
+  .event-page .tp-nav {
     gap: 8px;
   }
 
-  .tp-nav__brand {
+  .event-page .tp-nav__brand {
     gap: 10px;
     font-size: 22px;
   }
 
-  .tp-nav__link,
-  .tp-nav__auth {
+  .event-page .tp-nav__link,
+  .event-page .tp-nav__auth {
     width: auto;
     padding: 0 10px;
   }
 }
 
-.tp-footer {
+.event-page .tp-footer {
   display: flex;
   gap: 24px;
   align-items: center;

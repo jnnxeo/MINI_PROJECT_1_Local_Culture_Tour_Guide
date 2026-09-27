@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import Modal from '../common/Modal.jsx'
+import PlanModal from './PlanModal.jsx'
 import { formatKoreanTime, MINUTE_STEP, toMinutes, toTime } from '../../utils/planTime.js'
 
 const PERIODS = ['오전', '오후']
@@ -90,7 +90,7 @@ export default function TimePickerModal({ title = '방문 시간 변경', startT
   const durations = [...new Set([...DURATIONS, durationMin])].sort((a, b) => a - b)
 
   return (
-    <Modal title={title} onClose={onClose}>
+    <PlanModal title={title} onClose={onClose}>
       <p className="tp-modal__desc">선택한 행사 시간과 겹치지 않도록 조정해 주세요. 분은 5분 단위입니다.</p>
 
       <div className="plan-picker">
@@ -137,6 +137,6 @@ export default function TimePickerModal({ title = '방문 시간 변경', startT
       >
         변경 적용
       </button>
-    </Modal>
+    </PlanModal>
   )
 }
