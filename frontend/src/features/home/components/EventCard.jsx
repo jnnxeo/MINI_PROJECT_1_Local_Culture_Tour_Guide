@@ -19,7 +19,7 @@ export default function EventCard({ event, featured, isFavorite, onFavorite, onD
 
   return (
     <article className={`event-card${featured ? ' event-card--featured' : ''}`}>
-      <div className={`event-card__image event-card__image--${event.imageTone || 'gallery'}`}>
+      <div className={`event-card__image event-card__image--${event.imageTone || 'gallery'}${showPhoto ? ' event-card__image--photo' : ''}`}>
         {showPhoto
           ? <img className="event-card__photo" src={event.imageUrl} alt="" loading="lazy" onError={() => setFailedImageUrl(event.imageUrl)} />
           : <div className="event-card__image-shape" aria-hidden="true" />}
