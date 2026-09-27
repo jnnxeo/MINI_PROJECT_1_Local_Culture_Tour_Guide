@@ -3,6 +3,7 @@ package com.tripai.backend.controller;
 import lombok.RequiredArgsConstructor;
 
 import com.tripai.backend.domain.dto.EventListResponse;
+import com.tripai.backend.domain.dto.favorite.FavoriteStatusResponse;
 import com.tripai.backend.global.response.ApiResponse;
 
 import com.tripai.backend.service.FavoriteEventService;
@@ -22,6 +23,17 @@ public class FavoriteEventController {
 
     private final FavoriteEventService favoriteEventService;
 
+    // FAV-001: 현재 로그인한 사용자의 관심 행사 저장
+    @PostMapping("/{eventContentId}")
+    public ResponseEntity<ApiResponse<FavoriteStatusResponse>> addFavoriteEvent(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable String eventContentId
+    ) {
+        favoriteEventService.addFavoriteEvent(userId, eventContentId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(new FavoriteStatusResponse(eventContentId, true)));
+    }
+
     // 2. 관심 행사 목록 조회
     @GetMapping
     public ResponseEntity<ApiResponse<EventListResponse>> getFavoriteEvents(
@@ -38,8 +50,6 @@ public class FavoriteEventController {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
-        System.out.println("favorite event controller getevnets list");
-
         EventListResponse response = favoriteEventService.getFavoriteEvents(userId, page, size);
         return ResponseEntity.status(HttpStatus.OK)
                             .body(ApiResponse.success(response));
@@ -53,7 +63,6 @@ public class FavoriteEventController {
     ) {
         favoriteEventService.deleteFavoriteEvent(userId, eventContentId);
 
-        return ResponseEntity.status(HttpStatus.NO_CONTENT)
-                            .body(ApiResponse.success(null));
+        return ResponseEntity.noContent().build();
     }
 }

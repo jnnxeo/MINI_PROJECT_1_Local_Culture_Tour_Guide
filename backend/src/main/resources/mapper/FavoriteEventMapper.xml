@@ -3,6 +3,24 @@
 
 <mapper namespace="com.tripai.backend.repository.FavoriteEventMapper">
 
+    <select id="existsEvent" resultType="boolean">
+        SELECT EXISTS (
+            SELECT 1 FROM event WHERE event_content_id = #{eventContentId}
+        )
+    </select>
+
+    <insert id="insertFavorite">
+        INSERT INTO favorite_event (user_id, event_content_id)
+        SELECT #{userId}, #{eventContentId}
+        FROM event e
+        WHERE e.event_content_id = #{eventContentId}
+          AND NOT EXISTS (
+              SELECT 1 FROM favorite_event f
+              WHERE f.user_id = #{userId}
+                AND f.event_content_id = #{eventContentId}
+          )
+    </insert>
+
     <select id="findEventsByUserId"
             resultType="com.tripai.backend.domain.dto.EventSummary">
         SELECT

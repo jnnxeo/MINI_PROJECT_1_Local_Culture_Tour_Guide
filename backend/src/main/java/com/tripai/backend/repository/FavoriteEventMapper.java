@@ -7,10 +7,13 @@ import com.tripai.backend.domain.dto.EventSummary;
 
 import java.util.List;
 
-@Mapper 
+@Mapper
 public interface FavoriteEventMapper {
-    public List<EventSummary> findEventsByUserId(  @Param("userId") Long userId, 
-                                            @Param("offset") Integer offset, 
+    boolean existsEvent(@Param("eventContentId") String eventContentId);
+    int insertFavorite(@Param("userId") Long userId,
+                       @Param("eventContentId") String eventContentId);
+    public List<EventSummary> findEventsByUserId(  @Param("userId") Long userId,
+                                            @Param("offset") Integer offset,
                                             @Param("size") Integer size);
     public long countEventsByUserId(@Param("userId") Long userId);
     public Integer deleteEventByEventId(   @Param("userId") Long userId,
