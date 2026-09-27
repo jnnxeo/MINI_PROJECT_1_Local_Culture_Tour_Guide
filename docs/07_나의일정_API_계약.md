@@ -44,6 +44,26 @@
 | API-PLACE-001 | GET | `/api/places/restaurants` | 행사 주변 맛집 후보 | 장소 변경·추가 팝업 |
 | API-PLAN-010~013 | | `/api/plans`, `/api/plans/{planId}` | 저장 일정 목록·상세·수정·삭제 | 내 여행(2팀) 범위 — 사용 안 함 |
 
+### 메인·행사 상세(2팀)에서 나의 일정으로 들어오는 방법
+`frontend/src/services/planService.js`의 `recommendDraft()`를 부르고 `/trips/draft`로 이동하면 됩니다.
+
+```js
+import { recommendDraft } from '../services/planService.js'
+
+const draft = await recommendDraft({
+  eventId,                  // 선택한 행사 event_content_id (필수)
+  visitDate: '2026-10-03',  // 방문 날짜 YYYY-MM-DD (필수, 오늘 이후·행사 기간 안)
+  foodPreference: 'ALL',    // ALL·KOREAN·CHINESE·JAPANESE·WESTERN (선택)
+  mealType: 'BOTH',         // BOTH·LUNCH·DINNER (선택)
+  transportMode: 'WALK_TRANSIT', // 선택
+})
+navigate('/trips/draft', { state: { draftId: draft.draftId } })
+```
+
+- 오류는 `error.status`로 구분합니다: 지난 날짜·행사일 불일치 400, 없는 행사 404, 추천 후보 부족 422 (`error.message`에 안내 문구)
+- `draftId`는 sessionStorage에도 저장되어 새로고침해도 같은 초안이 열립니다 (UX-005)
+- 실제 API를 쓰려면 DB에 `database/schema/02`(#42)·`03`(#46) 마이그레이션과 음식점 시드(#42)가 적용되어 있어야 합니다
+
 ### 화면 편집 → API 반영 순서 [제안]
 팝업에서 바꾼 내용은 화면에만 두고(UX-004 미저장 이탈 확인), **일정 저장**을 누르면 아래 순서로 보냅니다.
 
