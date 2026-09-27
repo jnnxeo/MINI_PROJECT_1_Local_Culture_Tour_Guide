@@ -1,5 +1,5 @@
 .login-content {
-  min-height: calc(100vh - 90px);
+  min-height: calc(100vh - 90px - 32px);
   display: grid;
   align-items: center;
   padding: 72px 5%;

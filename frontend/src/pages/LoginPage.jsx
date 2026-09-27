@@ -7,6 +7,24 @@ import hanokImage from '../assets/mock/hanok.jpg'
 import '../styles/signup.css'
 import '../styles/login.css'
 
+const loginImages = Object.values(import.meta.glob(
+  '../assets/mock/login/*.{jpg,jpeg,png,webp}',
+  { eager: true, query: '?url', import: 'default' },
+))
+
+function chooseLoginImage() {
+  if (loginImages.length === 0) return hanokImage
+
+  const previousValue = sessionStorage.getItem('tripai-login-image-index')
+  const previous = Number(previousValue)
+  const hasPrevious = previousValue !== null && Number.isInteger(previous) && previous >= 0 && previous < loginImages.length && loginImages.length > 1
+  const offset = Math.floor(Math.random() * (loginImages.length - (hasPrevious ? 1 : 0)))
+  const index = hasPrevious && offset >= previous ? offset + 1 : offset
+
+  sessionStorage.setItem('tripai-login-image-index', String(index))
+  return loginImages[index]
+}
+
 const INITIAL_FORM = {
   email: '',
   password: '',
@@ -35,6 +53,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loginImage] = useState(chooseLoginImage)
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />
@@ -74,13 +93,13 @@ export default function LoginPage() {
   return (
     <div className="signup-page login-page">
       <AuthHeader />
-      <main className="login-content">
+      <main className="login-content auth-page-panel">
         <div className="login-layout">
           <section className="login-intro" aria-label="TripAI 소개">
             <p className="login-intro-brand">TripAI</p>
             <h1>좋아하는 순간들을<br />하나의 여행으로.</h1>
             <p>행사를 저장하고, 내 취향에 맞는<br />하루 일정을 만들어 보세요.</p>
-            <img src={hanokImage} alt="서울의 한옥 골목" />
+            {loginImage && <img src={loginImage} alt="서울 문화 공간 풍경" />}
           </section>
 
           <section className="login-card" aria-labelledby="login-title">

@@ -124,6 +124,7 @@ export default function SignupPage() {
     <div className="signup-page">
       <AuthHeader />
 
+      <div className="auth-page-panel">
       <section className="signup-hero">
         <p className="signup-eyebrow">JOIN TRIPAI</p>
         <h1>나만의 여행을 시작하세요</h1>
@@ -256,6 +257,7 @@ export default function SignupPage() {
           </Link>
         </form>
       </main>
+      </div>
 
       {isSuccessModalOpen && (
         <div
