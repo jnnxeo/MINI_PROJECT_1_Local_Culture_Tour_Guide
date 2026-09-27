@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import MyPage from './pages/MyPage.jsx'
+import SearchResultsPage from './pages/SearchResultsPage.jsx'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -56,7 +57,7 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <HomeNavigation />
-            <FeaturePlaceholderPage title="문화행사 검색 결과" />
+            <SearchResultsPage />
           </ProtectedRoute>
         )}
       />

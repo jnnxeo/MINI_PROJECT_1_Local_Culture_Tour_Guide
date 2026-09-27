@@ -3,8 +3,8 @@ import HomeModal from './HomeModal.jsx'
 
 const suggestions = ['고궁 야간 행사', '전통문화', '종로구']
 
-export default function KeywordModal({ onClose, onSearch }) {
-  const [keyword, setKeyword] = useState('')
+export default function KeywordModal({ initialKeyword = '', onClose, onSearch }) {
+  const [keyword, setKeyword] = useState(initialKeyword)
   const [validationError, setValidationError] = useState('')
 
   const submit = (event) => {
