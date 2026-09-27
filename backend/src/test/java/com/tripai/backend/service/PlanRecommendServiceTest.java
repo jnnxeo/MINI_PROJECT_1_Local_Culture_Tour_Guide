@@ -396,6 +396,28 @@ class PlanRecommendServiceTest {
     }
 
     @Test
+    void 조건_수정에서_BOTH_는_점심_저녁_모두로_바꾼다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        places.restaurants.add(restaurant("PL-2", "KOREAN", 560, "10:30", "20:00", null, null));
+        Long draftId = service.recommend(1L, request(null, "LUNCH", null, null)).draftId();
+
+        DraftConditionsResponse changed = service.updateConditions(1L, draftId, conditions(null, null, "BOTH", null));
+
+        assertThat(changed.conditions().mealType()).isNull();
+        assertThat(mapper.plans.get(draftId).getMealType()).isNull();
+    }
+
+    @Test
+    void 조건_수정에서_지난_날짜로는_바꿀_수_없다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        Long draftId = service.recommend(1L, request(null, "LUNCH", null, null)).draftId();
+
+        assertStatus(() -> service.updateConditions(1L, draftId,
+                conditions(LocalDate.of(2026, 9, 26), null, null, null)), HttpStatus.BAD_REQUEST);
+        assertThat(mapper.plans.get(draftId).getTripDate()).isEqualTo(VISIT_DATE);
+    }
+
+    @Test
     void 보내지_않은_조건은_그대로_둔다() {
         places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
         Long draftId = service.recommend(1L, request("KOREAN", "DINNER", null, null)).draftId();

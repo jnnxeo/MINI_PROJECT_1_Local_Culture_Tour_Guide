@@ -6,7 +6,7 @@ import java.time.LocalDate;
 
 /**
  * API-PLAN-003 요청 — {visitDate, startTime, endTime, companion, foodPreference, transportMode}
- * + 식사 시간대 mealType (docs/07 [제안]). 보내지 않은 값(null)은 지금 조건을 그대로 둔다.
+ * + 식사 시간대 mealType (docs/07 [제안], BOTH 는 점심·저녁 모두). 보내지 않은 값(null)은 지금 조건을 그대로 둔다.
  * companion 은 DDL 에 저장할 컬럼이 없어 받기만 한다.
  */
 public record DraftConditionsRequest(
@@ -24,7 +24,7 @@ public record DraftConditionsRequest(
 				message = "음식 종류는 ALL, KOREAN, CHINESE, JAPANESE, WESTERN 중 하나입니다.")
 		String foodPreference,
 
-		@Pattern(regexp = "LUNCH|DINNER", message = "식사 시간은 LUNCH 또는 DINNER 입니다.")
+		@Pattern(regexp = "BOTH|LUNCH|DINNER", message = "식사 시간은 BOTH, LUNCH, DINNER 중 하나입니다.")
 		String mealType,
 
 		@Size(max = 30, message = "이동 방법은 30자 이하로 입력해 주세요.")
