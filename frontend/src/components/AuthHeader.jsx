@@ -11,7 +11,7 @@ export default function AuthHeader() {
 
       <nav className="signup-navigation" aria-label="주요 메뉴">
         <Link to="/">메인페이지</Link>
-        <Link to="/my-trips">내 여행</Link>
+        <Link to="/mypage">내 여행</Link>
         <Link to="/login" className="signup-login-button">로그인</Link>
       </nav>
     </header>
