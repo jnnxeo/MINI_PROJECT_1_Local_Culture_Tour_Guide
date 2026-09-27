@@ -55,4 +55,22 @@ class OpeningHoursParserTest {
     void 영업시간_원문이_깨져있으면_뒤의_준비시간을_영업시간으로_읽지_않고_전체를_제외한다() {
         assertThat(OpeningHoursParser.parse("- 11:30~22:3 <br>- 준비시간 15:00~17:00")).isEmpty();
     }
+
+    @Test
+    void 준비_시간처럼_띄어쓴_표현도_브레이크타임으로_인식한다() {
+        OpeningHours result = OpeningHoursParser.parse("10:00~21:00 (준비 시간 15:00~16:00)").orElseThrow();
+
+        assertThat(result.openTime()).isEqualTo(LocalTime.of(10, 0));
+        assertThat(result.closeTime()).isEqualTo(LocalTime.of(21, 0));
+        assertThat(result.breakOpenTime()).isEqualTo(LocalTime.of(15, 0));
+        assertThat(result.breakCloseTime()).isEqualTo(LocalTime.of(16, 0));
+    }
+
+    @Test
+    void 휴게_시간_휴식_시간도_띄어쓰면_브레이크타임으로_인식한다() {
+        assertThat(OpeningHoursParser.parse("11:00~21:00 (휴게 시간 15:00~17:00)").orElseThrow().breakOpenTime())
+                .isEqualTo(LocalTime.of(15, 0));
+        assertThat(OpeningHoursParser.parse("11:00~21:00 (휴식 시간 15:00~17:00)").orElseThrow().breakOpenTime())
+                .isEqualTo(LocalTime.of(15, 0));
+    }
 }
