@@ -52,8 +52,8 @@ public class PlanRecommendService {
     static final int MEAL_DURATION = 60;
     static final int[] SEARCH_RADII = {1500, 3000, 5000};
     static final int CANDIDATE_LIMIT = 20;
+    static final int DAY_MINUTES = 24 * 60;
 
-    private static final double METERS_PER_DEGREE_LAT = 111_320d;
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
     private static final Map<String, String> CUISINE_LABELS = Map.of(
             "KOREAN", "한식", "CHINESE", "중식", "JAPANESE", "일식", "WESTERN", "양식");
@@ -121,9 +121,11 @@ public class PlanRecommendService {
     }
 
     /**
-     * API-PLAN-003 추천 조건 수정 (AI-009). 보내지 않은 값은 지금 조건을 그대로 쓴다.
-     * 화면은 이어서 API-PLAN-004 로 다시 추천한다. 새 조건으로 추천이 안 되면(행사일·방문 시간 400,
-     * 후보 부족 422) 조건을 바꾸지 않아 기존 초안이 그대로 유지된다 (AI-009 추천 실패 시 기존 초안 유지).
+     * API-PLAN-003 추천 조건 수정 (AI-009 "조건 수정 후 전체 초안을 다시 생성"). 보내지 않은 값은 지금 조건을 그대로 쓴다.
+     * 새 조건으로 일정을 만든 뒤 조건과 일정 항목을 한 트랜잭션에서 함께 바꾼다 — 화면은 003 → 002 로 끝난다.
+     * 새 조건으로 추천이 안 되면(행사일·방문 시간 400, 후보 부족 422) 아무것도 바꾸지 않아
+     * 기존 초안(조건·항목·추천 이유·itemId)이 그대로 유지된다 (AI-009 추천 실패 시 기존 초안 유지).
+     * 새 조건에서 가장 알맞은 곳(가까운 곳)부터 고르고, 같은 조건으로 다른 조합을 찾는 건 004 가 맡는다.
      */
     @Transactional
     public DraftConditionsResponse updateConditions(Long userId, Long draftId, DraftConditionsRequest request) {
@@ -140,18 +142,18 @@ public class PlanRecommendService {
         String mealType = request.mealType() != null ? normalizeMealType(request.mealType()) : plan.getMealType();
         String transportMode = request.transportMode() != null ? request.transportMode() : plan.getTransportMd();
 
-        // 저장하기 전에 새 조건으로 추천이 되는지 먼저 확인한다 (이어서 부를 다시 추천과 같은 조건)
-        Generated generated = generate(event, visitDate, start, end, foodPreference, mealType,
-                planDraftMapper.findItemsByPlanId(draftId));
+        Generated generated = generate(event, visitDate, start, end, foodPreference, mealType, List.of());
 
         TripPlan updated = copyConditions(plan, visitDate, generated.windowStart(), generated.windowEnd(),
                 transportMode, foodPreference, mealType);
         planDraftMapper.updateConditions(updated);
+        planDraftMapper.deleteItemsByPlanId(draftId);
+        insertItems(draftId, generated.items());
         return new DraftConditionsResponse(draftId, PlanDraftService.toConditions(updated));
     }
 
     /**
-     * API-PLAN-004 저장한 조건으로 일정 다시 추천 (AI-010).
+     * API-PLAN-004 지금 조건 그대로 일정 다시 추천 (AI-010).
      * 기준 행사는 사용자가 고른 행사라 그대로 두고, 맛집은 지금과 다른 곳을 먼저 찾는다.
      * 결과가 지금 초안과 같으면(대체 후보 없음) 바꾸지 않고 422. 제목은 사용자가 바꿨을 수 있어 유지한다.
      */
@@ -419,8 +421,10 @@ public class PlanRecommendService {
         double lat = event.getMapy().doubleValue();
         double lng = event.getMapx().doubleValue();
         for (int radius : SEARCH_RADII) {
-            double latDelta = radius / METERS_PER_DEGREE_LAT;
-            double lngDelta = radius / (METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(lat)));
+            // PlaceService 와 같은 기준 — SQL 하버사인과 같은 구, 사각형이 원을 빠짐없이 덮도록 여유를 둔다
+            double latDelta = radius / PlaceService.METERS_PER_DEGREE_LAT * PlaceService.BOX_MARGIN;
+            double lngDelta = radius / (PlaceService.METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(lat)))
+                    * PlaceService.BOX_MARGIN;
             // 가까운 20곳이 모두 조건에서 빠져도 반경 안의 다음 후보까지 본다 (다시 추천을 여러 번 누른 경우)
             for (int offset = 0; ; offset += CANDIDATE_LIMIT) {
                 List<RestaurantView> page = placeMapper.findRestaurantsNear(lat, lng, radius,
@@ -462,15 +466,32 @@ public class PlanRecommendService {
         if (open == null || close == null) {
             return false;
         }
-        int from = minutes(start);
-        int to = from + MEAL_DURATION;
         int openAt = minutes(open);
-        int closeAt = minutes(close) <= openAt ? minutes(close) + 24 * 60 : minutes(close);
-        if (from < openAt || to > closeAt) {
+        int closeAt = minutes(close) <= openAt ? minutes(close) + DAY_MINUTES : minutes(close);
+        // 식사를 그날 기준과, 전날 밤부터 이어진 영업(예: 17:00~02:00 가게의 00:30 식사) 기준 두 가지로 본다
+        for (int shift : new int[] {0, DAY_MINUTES}) {
+            int from = minutes(start) + shift;
+            int to = from + MEAL_DURATION;
+            if (from >= openAt && to <= closeAt && !overlapsBreak(breakOpen, breakClose, from, to)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** 브레이크타임이 자정을 넘어도(예: 23:00~00:30) 식사 구간과 겹치는지 본다 */
+    private static boolean overlapsBreak(LocalTime breakOpen, LocalTime breakClose, int from, int to) {
+        if (breakOpen == null || breakClose == null) {
             return false;
         }
-        return breakOpen == null || breakClose == null
-                || to <= minutes(breakOpen) || from >= minutes(breakClose);
+        int breakFrom = minutes(breakOpen);
+        int breakTo = minutes(breakClose) <= breakFrom ? minutes(breakClose) + DAY_MINUTES : minutes(breakClose);
+        for (int shift : new int[] {-DAY_MINUTES, 0, DAY_MINUTES}) {
+            if (from < breakTo + shift && breakFrom + shift < to) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
