@@ -36,7 +36,7 @@
 		       COALESCE(e.mapx, p.mapx) AS mapx,
 		       COALESCE(e.mapy, p.mapy) AS mapy,
 		       COALESCE(e.image_url, p.image_url) AS image_url,
-		       p.open_time, p.close_time, p.break_open_time, p.break_close_time
+		       p.open_time, p.close_time, p.break_open_time, p.break_close_time, p.cuisine_type
 		FROM trip_item ti
 		LEFT JOIN event e ON ti.item_type = 'EVENT' AND e.event_content_id = ti.event_content_id
 		LEFT JOIN place p ON ti.item_type = 'PLACE' AND p.content_id = ti.place_content_id
@@ -140,5 +140,22 @@
 		VALUES (#{userId}, #{anchorContentId}, #{title}, #{tripDate}, #{visitStartTime}, #{visitEndTime},
 		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType}, #{headcount})
 	</insert>
+
+	<update id="updateConditions" parameterType="TripPlan">
+		UPDATE trip_plan
+		SET trip_date = #{tripDate},
+		    visit_start_time = #{visitStartTime},
+		    visit_end_time = #{visitEndTime},
+		    transport_md = #{transportMd},
+		    food_preference = #{foodPreference},
+		    meal_type = #{mealType}
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND save_yn = FALSE
+	</update>
+
+	<delete id="deleteItemsByPlanId" parameterType="long">
+		DELETE FROM trip_item
+		WHERE trip_plan_id = #{tripPlanId}
+	</delete>
 
 </mapper>

@@ -348,6 +348,11 @@ public class PlanDraftService {
         return checkOwnedDraft(userId, planDraftMapper.findPlanByIdForUpdate(draftId));
     }
 
+    /** 조건 수정·다시 추천(PlanRecommendService)에서 같은 소유자·초안 확인과 행 잠금을 쓰기 위해 연다 */
+    TripPlan lockOwnedDraft(Long userId, Long draftId) {
+        return findOwnedDraftForUpdate(userId, draftId);
+    }
+
     private TripPlan checkOwnedDraft(Long userId, Optional<TripPlan> found) {
         TripPlan plan = found.orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
 
@@ -374,15 +379,7 @@ public class PlanDraftService {
 
         List<MapPointResponse> mapPoints = toMapPoints(itemResponses);
 
-        DraftResponse.Conditions conditions = new DraftResponse.Conditions(
-                plan.getTripDate(),
-                format(plan.getVisitStartTime()),
-                format(plan.getVisitEndTime()),
-                null,
-                plan.getFoodPreference(),
-                plan.getMealType(),
-                plan.getTransportMd()
-        );
+        DraftResponse.Conditions conditions = toConditions(plan);
 
         return new DraftResponse(
                 plan.getTripPlanId(),
@@ -394,6 +391,19 @@ public class PlanDraftService {
                 itemResponses,
                 reasons,
                 mapPoints
+        );
+    }
+
+    /** 초안 조회(API-PLAN-002)와 조건 수정(API-PLAN-003) 응답의 conditions */
+    static DraftResponse.Conditions toConditions(TripPlan plan) {
+        return new DraftResponse.Conditions(
+                plan.getTripDate(),
+                format(plan.getVisitStartTime()),
+                format(plan.getVisitEndTime()),
+                null,
+                plan.getFoodPreference(),
+                plan.getMealType(),
+                plan.getTransportMd()
         );
     }
 

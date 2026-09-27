@@ -1,5 +1,7 @@
 package com.tripai.backend.controller;
 
+import com.tripai.backend.domain.dto.DraftConditionsRequest;
+import com.tripai.backend.domain.dto.DraftConditionsResponse;
 import com.tripai.backend.domain.dto.DraftItemAddRequest;
 import com.tripai.backend.domain.dto.DraftItemAddResponse;
 import com.tripai.backend.domain.dto.DraftItemsRequest;
@@ -10,6 +12,7 @@ import com.tripai.backend.domain.dto.DraftTitleResponse;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.global.response.ApiResponse;
 import com.tripai.backend.service.PlanDraftService;
+import com.tripai.backend.service.PlanRecommendService;
 import com.tripai.backend.service.PlanRuleException;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,15 +32,18 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 /**
  * 나의 일정 — 저장 전 초안 API (요구사항 정의서 08 API-PLAN-002~008)
+ * 조건 수정(003)·다시 추천(004)은 초안 생성(001)과 같은 추천 규칙이라 PlanRecommendService 에서 처리한다.
  */
 @RestController
 @RequestMapping("/api/plans/drafts")
 public class PlanDraftController {
 
     private final PlanDraftService planDraftService;
+    private final PlanRecommendService planRecommendService;
 
-    public PlanDraftController(PlanDraftService planDraftService) {
+    public PlanDraftController(PlanDraftService planDraftService, PlanRecommendService planRecommendService) {
         this.planDraftService = planDraftService;
+        this.planRecommendService = planRecommendService;
     }
 
     /** API-PLAN-002 저장 전 일정 초안 조회 */
@@ -89,6 +95,25 @@ public class PlanDraftController {
     ) {
         planDraftService.deleteItem(userId, draftId, itemId);
         return ResponseEntity.noContent().build();
+    }
+
+    /** API-PLAN-003 일정 추천 조건 수정 — 명세 오류 코드: 입력값 오류 400, 초안 없음 404 (추천 후보 부족은 422) */
+    @PatchMapping("/{draftId}/conditions")
+    public ResponseEntity<ApiResponse<DraftConditionsResponse>> updateConditions(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId,
+            @Valid @RequestBody DraftConditionsRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(planRecommendService.updateConditions(userId, draftId, request)));
+    }
+
+    /** API-PLAN-004 수정한 조건으로 일정 다시 추천 — 명세 오류 코드: 추천 후보 부족 422 */
+    @PostMapping("/{draftId}/regenerate")
+    public ResponseEntity<ApiResponse<DraftResponse>> regenerate(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(planRecommendService.regenerate(userId, draftId)));
     }
 
     /** 일정 편집 규칙 위반 — 명세의 API별 오류 코드(400·404·409·422)로 응답 */

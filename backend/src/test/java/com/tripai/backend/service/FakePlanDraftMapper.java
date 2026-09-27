@@ -33,6 +33,7 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     final Map<String, ItemTargetView> places = new HashMap<>();
     final Map<String, ItemTargetView> events = new HashMap<>();
     final Map<String, Display> displays = new HashMap<>();
+    final Map<String, String> cuisines = new HashMap<>();
     final Map<Long, String> titles = new HashMap<>();
     final Map<String, RecommendEventView> recommendEvents = new HashMap<>();
 
@@ -205,6 +206,38 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         return 1;
     }
 
+    @Override
+    public int updateConditions(TripPlan plan) {
+        TripPlan before = plans.get(plan.getTripPlanId());
+        if (before == null || Boolean.TRUE.equals(before.getSaveYn())) {
+            return 0;
+        }
+        plans.put(plan.getTripPlanId(), TripPlan.builder()
+                .tripPlanId(before.getTripPlanId())
+                .userId(before.getUserId())
+                .anchorContentId(before.getAnchorContentId())
+                .anchorEventName(before.getAnchorEventName())
+                .title(titles.getOrDefault(before.getTripPlanId(), before.getTitle()))
+                .tripDate(plan.getTripDate())
+                .visitStartTime(plan.getVisitStartTime())
+                .visitEndTime(plan.getVisitEndTime())
+                .saveYn(before.getSaveYn())
+                .aiYn(before.getAiYn())
+                .transportMd(plan.getTransportMd())
+                .foodPreference(plan.getFoodPreference())
+                .mealType(plan.getMealType())
+                .headcount(before.getHeadcount())
+                .build());
+        return 1;
+    }
+
+    @Override
+    public int deleteItemsByPlanId(Long tripPlanId) {
+        int before = rows.size();
+        rows.values().removeIf(row -> row.getTripPlanId().equals(tripPlanId));
+        return before - rows.size();
+    }
+
     private void checkConstraints(Long tripPlanId) {
         List<TripItem> planRows = rows.values().stream().filter(row -> row.getTripPlanId().equals(tripPlanId)).toList();
         if (planRows.stream().anyMatch(row -> row.getSeqOrder() <= 0)) {
@@ -241,6 +274,7 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .closeTime(display.closeTime())
                 .breakOpenTime(display.breakOpenTime())
                 .breakCloseTime(display.breakCloseTime())
+                .cuisineType(cuisines.get(contentId))
                 .build();
     }
 
