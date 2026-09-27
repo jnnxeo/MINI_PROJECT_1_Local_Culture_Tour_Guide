@@ -23,6 +23,8 @@ public enum ErrorCode {
 
     //행사(EVENT-001)
     EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 행사입니다."),        // 상세조회 시 없는 행사
+    EVENT_DATE_UNAVAILABLE(HttpStatus.UNPROCESSABLE_ENTITY,"선택한 날짜에는 이 행사를 방문할 수 없습니다."),
+    EVENT_COORDINATES_MISSING(HttpStatus.UNPROCESSABLE_ENTITY,"행사 위치 정보가 없어 일정을 만들 수 없습니다."),
 
     //공통
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "요청 값을 확인해주세요."),          // 필수값 누락 등

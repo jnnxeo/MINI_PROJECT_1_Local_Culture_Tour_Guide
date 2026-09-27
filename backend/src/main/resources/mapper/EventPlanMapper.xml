@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripai.backend.repository.EventPlanMapper">
+    <sql id="planColumns">
+        trip_plan_id AS planId, user_id AS userId,
+        anchor_content_id AS anchorEventId, title, trip_date AS tripDate,
+        visit_start_time AS visitStartTime, visit_end_time AS visitEndTime,
+        save_yn AS saved, ai_yn AS aiGenerated,
+        transport_md AS transportMode, headcount
+    </sql>
+
+    <select id="findPlan" resultType="com.tripai.backend.domain.dto.plan.EventPlanRow">
+        SELECT <include refid="planColumns" />
+        FROM trip_plan WHERE trip_plan_id = #{planId}
+    </select>
+
+    <select id="findItems" resultType="com.tripai.backend.domain.dto.plan.EventPlanItemRow">
+        SELECT i.trip_item_id AS itemId, i.trip_plan_id AS planId,
+               i.seq_order AS seq, i.item_type AS type,
+               COALESCE(i.event_content_id, i.place_content_id) AS contentId,
+               COALESCE(e.event_name, p.place_name) AS name,
+               CASE WHEN i.item_type = 'EVENT' THEN e.event_type ELSE '음식점' END AS category,
+               COALESCE(e.addr, p.addr) AS address,
+               COALESCE(e.mapy, p.mapy) AS lat,
+               COALESCE(e.mapx, p.mapx) AS lng,
+               COALESCE(e.image_url, p.image_url) AS imageUrl,
+               i.start_time AS startTime, i.duration_min AS durationMin,
+               i.time_fix_yn AS timeFixed, i.ai_reason AS aiReason,
+               p.open_time AS openTime, p.close_time AS closeTime
+        FROM trip_item i
+        LEFT JOIN event e ON e.event_content_id = i.event_content_id
+        LEFT JOIN place p ON p.content_id = i.place_content_id
+        WHERE i.trip_plan_id = #{planId}
+        ORDER BY i.seq_order
+    </select>
+
+    <select id="findInterests" resultType="string">
+        SELECT interest_label FROM trip_plan_interest
+        WHERE trip_plan_id = #{planId} ORDER BY interest_label
+    </select>
+
+    <select id="findNearbyRestaurant" resultType="com.tripai.backend.domain.dto.plan.EventPlaceCandidateRow">
+        SELECT content_id AS contentId, open_time AS openTime, close_time AS closeTime
+        FROM place
+        WHERE display_yn = 1 AND content_type_cd = 39
+          AND ABS(mapy - #{lat}) &lt;= 0.015
+          AND ABS(mapx - #{lng}) &lt;= 0.02
+          AND (open_time IS NULL OR close_time IS NULL
+               OR (open_time &lt;= #{mealStart} AND close_time &gt;= #{mealEnd}))
+        ORDER BY POW((mapy - #{lat}) * 111000, 2)
+               + POW((mapx - #{lng}) * 88000, 2), content_id
+        LIMIT 1
+    </select>
+
+    <delete id="deleteExistingDraft">
+        DELETE FROM trip_plan WHERE user_id = #{userId} AND save_yn = 0
+    </delete>
+
+    <insert id="insertPlan" parameterType="com.tripai.backend.domain.dto.plan.EventPlanRow"
+            useGeneratedKeys="true" keyProperty="planId" keyColumn="trip_plan_id">
+        INSERT INTO trip_plan
+        (user_id, anchor_content_id, title, trip_date, visit_start_time,
+         visit_end_time, save_yn, ai_yn, transport_md, headcount)
+        VALUES
+        (#{userId}, #{anchorEventId}, #{title}, #{tripDate}, #{visitStartTime},
+         #{visitEndTime}, 0, 0, #{transportMode}, #{headcount})
+    </insert>
+
+    <insert id="insertInterest">
+        INSERT INTO trip_plan_interest (trip_plan_id, interest_label)
+        VALUES (#{planId}, #{interest})
+    </insert>
+
+    <insert id="insertItem">
+        INSERT INTO trip_item
+        (trip_plan_id, seq_order, item_type, event_content_id, place_content_id,
+         start_time, duration_min, ai_reason, time_fix_yn)
+        VALUES
+        (#{planId}, #{seq}, #{type},
+         <choose><when test="type == 'EVENT'">#{contentId}</when><otherwise>NULL</otherwise></choose>,
+         <choose><when test="type == 'PLACE'">#{contentId}</when><otherwise>NULL</otherwise></choose>,
+         #{startTime}, #{durationMin}, #{aiReason}, #{timeFixed})
+    </insert>
+
+</mapper>

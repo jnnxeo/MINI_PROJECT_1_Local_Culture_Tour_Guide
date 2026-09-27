@@ -25,8 +25,8 @@ export function buildEventPlanItem(plan, event) {
   const fixedStart = event.startTime?.slice(0, 5)
   const officialEnd = event.endTime?.slice(0, 5)
   const startTime = fixedStart ?? findFreeSlot(items, 60, {
-    visitStartTime: plan.visitStartTime,
-    visitEndTime: plan.visitEndTime,
+    startTime: plan.visitStartTime,
+    endTime: plan.visitEndTime,
   })
   if (!startTime) return { error: '행사를 배치할 빈 시간이 없습니다.' }
   const durationMin = officialEnd && fixedStart
@@ -55,8 +55,8 @@ export function buildEventPlanItem(plan, event) {
   }
 
   const conflict = findTimeConflict([...items, item], {
-    visitStartTime: plan.visitStartTime,
-    visitEndTime: plan.visitEndTime,
+    startTime: plan.visitStartTime,
+    endTime: plan.visitEndTime,
   })
 
   if (conflict) return { error: conflict.message }

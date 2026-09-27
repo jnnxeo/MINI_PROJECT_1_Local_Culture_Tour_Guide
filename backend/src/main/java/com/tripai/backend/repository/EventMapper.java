@@ -10,4 +10,8 @@ public interface EventMapper {
 
     EventDetailResponse selectEventDetail(@Param("eventId") String eventId);
     
+
+    EventDetailResponse selectEventForRecommendation(
+        @Param("eventId") String eventId
+    );
 }

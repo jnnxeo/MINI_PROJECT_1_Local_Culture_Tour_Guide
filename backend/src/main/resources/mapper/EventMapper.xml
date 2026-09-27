@@ -28,4 +28,19 @@
         WHERE event_content_id = #{eventId}
     </select>
 
+    <!-- EVENT-004: 화면에 표시 중인 행사만 일정 생성에 사용 -->
+    <select id="selectEventForRecommendation"
+            resultType="com.tripai.backend.domain.dto.event.EventDetailResponse">
+        SELECT event_content_id AS eventId,
+            event_name AS title,
+            event_start_date AS startDate,
+            event_end_date AS endDate,
+            mapy AS lat,
+            mapx AS lng,
+            event_start_time AS startTime,
+            event_end_time AS endTime
+        FROM event
+        WHERE event_content_id = #{eventId}
+        AND display_yn = 1
+    </select>
 </mapper>
