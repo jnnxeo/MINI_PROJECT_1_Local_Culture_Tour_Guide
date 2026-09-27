@@ -35,7 +35,7 @@
 | API-PLAN-001 | POST | `/api/plans/recommend` | 행사 1개 기준 맛집 조합 초안 생성 | 메인·행사 상세(2팀 화면)에서 호출 → `draftId`를 들고 `/trips/draft`로 이동 |
 | API-PLAN-002 | GET | `/api/plans/drafts/{draftId}` | 저장 전 초안 조회 | 화면 진입·새로고침 복원(UX-005) |
 | API-PLAN-003 | PATCH | `/api/plans/drafts/{draftId}/conditions` | 추천 조건 수정 | 조건 수정 팝업(SCR-010) |
-| API-PLAN-004 | POST | `/api/plans/drafts/{draftId}/regenerate` | 조건으로 다시 추천 | 다시 추천(SCR-011), 조건 수정 후 |
+| API-PLAN-004 | POST | `/api/plans/drafts/{draftId}/regenerate` | 조건으로 다시 추천 | 다시 추천(SCR-011) |
 | API-PLAN-005 | PATCH | `/api/plans/drafts/{draftId}/title` | 초안 제목 변경 | 일정 저장 시 반영 |
 | API-PLAN-006 | PUT | `/api/plans/drafts/{draftId}/items` | 항목·시간·순서 일괄 수정 | 일정 저장 시 반영 |
 | API-PLAN-007 | POST | `/api/plans/drafts/{draftId}/items` | 맛집 추가 | 일정 저장 시 반영 |
@@ -63,16 +63,22 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 - 오류는 `error.status`로 구분합니다: 지난 날짜·행사일 불일치 400, 없는 행사 404, 추천 후보 부족 422 (`error.message`에 안내 문구)
 - `draftId`는 sessionStorage에도 저장되어 새로고침해도 같은 초안이 열립니다 (UX-005)
 - 실제 API를 쓰려면 DB에 `database/schema/02`(#42)·`03`(#46) 마이그레이션과 음식점 시드(#42)가 적용되어 있어야 합니다
+- 프론트 `.env`에 `VITE_USE_PLAN_MOCK_API=false`를 꼭 넣어야 합니다. 이 값과 `VITE_USE_MOCK_API`가 모두 없으면 코드는 목업으로 동작합니다
 
 ### 화면 편집 → API 반영 순서 [제안]
 팝업에서 바꾼 내용은 화면에만 두고(UX-004 미저장 이탈 확인), **일정 저장**을 누르면 아래 순서로 보냅니다.
 
 1. 삭제한 항목 → API-PLAN-008
 2. 남은 항목의 시간·순서 → API-PLAN-006 (새 항목 추가 전에 맞춰야 옛 시간과 겹쳤다는 오류가 안 남)
-3. 새로 추가·교체한 맛집 → API-PLAN-007 (장소 변경 = 기존 항목 삭제 + 새 항목 추가)
+   - 장소를 바꾼 항목도 같은 itemId 로 여기서 함께 바꿉니다 (삭제 + 추가를 하지 않아 요청 수와 중간 실패가 줄어듦)
+3. 새로 추가한 맛집 → API-PLAN-007
 4. 최종 순서가 다르면 → API-PLAN-006
 5. 제목이 바뀌었으면 → API-PLAN-005
 6. 확정 → API-PLAN-009
+
+- 중간에 실패하면 앞 단계는 이미 서버에 반영됐을 수 있습니다. 화면의 편집 내용은 그대로 두고 서버 초안만 다시 받아,
+  다시 저장하면 남은 부분만 이어서 반영됩니다 (이미 추가된 새 항목은 그 itemId 를 이어받아 중복 추가하지 않음)
+- 화면에서 장소나 시간을 바꾼 맛집은 추천 이유를 숨기고, 서버도 저장할 때 해당 이유를 지웁니다 (이유에 식사 시각이 들어가 사실과 달라지기 때문, AI-004·007)
 
 ---
 
@@ -90,7 +96,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
 | 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `BOTH·LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안]. `mealType`은 항상 셋 중 하나를 명시적으로 보낸다 — 화면 기본값도 `BOTH`(점심+저녁 모두)라 조건 창을 열고 그대로 적용해도 기존 식사 범위가 좁아지지 않는다. `GET /api/places/restaurants`(API-PLACE-001, cuisineType/mealTime)는 이와 별개로 한 시점(`HH:mm`) 조회이며, `BOTH`·미지정은 시간 필터 없이 조회한다 |
-| `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK` | 값 목록 미정 |
+| `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK`는 화면에서 쓰는 **예시** 값 | 명세에 값 목록이 없어 서버는 30자 이하 문자열을 받음 (허용 목록을 따로 만들지 않음) |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]
 | API | DB |
@@ -100,6 +106,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | `items[].type`·`placeId`·`sequence` | `trip_item.item_type` · `event_content_id` 또는 `place_content_id` · `seq_order` |
 | `items[].timeFixed` · 추천 이유 | `trip_item.time_fix_yn` · `trip_item.ai_reason` |
 | `lat` / `lng` | `mapy`(위도) / `mapx`(경도) |
+| (알려진 한계) 순번 임시 이동 | 수정·추가 때 `seq_order`를 +1000(추가는 2000+) 뒤로 미뤘다가 다시 매김 — 한 초안 항목이 1000개를 넘으면 충돌할 수 있으나 하루 일정에서는 생기지 않아 두었음 |
 | 조건 `foodPreference`·`mealType` | `trip_plan.food_preference`·`meal_type` — DDL v3.2.1에 없어 `database/schema/03_trip_plan_food_condition_v3.2.3.sql`로 추가 (2팀장 확인 필요) |
 | API-PLAN-001 `headcount` | DDL `trip_plan.headcount`가 NOT NULL이라 선택값으로 받고, 없으면 1 |
 
@@ -110,9 +117,9 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 |---|---|
 | 방문 시간 | 요청 `startTime`·`endTime`, 없으면 10:00~21:00 (행사 시간이 밖이면 행사 시간까지 넓힘) |
 | 행사 시간 | 행사 시작 시간에 고정, 소요시간은 종료 시간까지 (시간 정보가 없으면 방문 시작 시각부터 120분, 고정 안 함) |
-| 여행 날짜 | 오늘(Asia/Seoul) 이후이고 행사 기간 안이어야 함 — 이미 끝난 행사도 여기서 400 |
-| 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. `mealType`이 없거나 `BOTH`면 둘 다 찾음(저장은 null). 행사와 겹치면 행사 직전 → 직후로 옮김 |
-| 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 반경 1.5km → 3km → 5km, 같은 맛집은 한 번만 |
+| 여행 날짜 | 오늘(Asia/Seoul, **오늘 포함**) 이후이고 행사 기간 안이어야 함 — 이미 끝난 행사도 여기서 400 |
+| 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. 기본 시각이 행사와 겹치거나 그 시각에 영업하는 맛집이 없으면 행사 직전 → 직후 시각으로 다시 찾음. `mealType`이 없거나 `BOTH`면 두 끼를 모두 **시도**하고, 한 끼만 찾아도 초안을 만듦 (저장은 null — 003 요청에서 값을 안 보내면 '유지', 저장된 null은 '둘 다') |
+| 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 자정을 넘는 영업·브레이크타임도 판단. 반경 1.5km → 3km → 5km(사각형은 SQL과 같은 구 기준 + 1% 여유), 20곳씩 끝까지 확인, 같은 맛집은 한 번만 |
 | 추천 이유 | 행사: `선택한 행사 · M월 D일 진행 · HH:mm 시작` / 맛집: `점심 12:30 · 행사장에서 약 320m · 한식 · 영업 11:30~21:00` (확인된 값만) |
 | 제목 | `M월 D일 {행사명}` (AI-005 실패 시 기본 제목 규칙) |
 | 오류 | 지난 날짜·기간 밖 날짜·방문 시간 밖 행사 400, 없는 행사 404, 맛집 후보 없음·행사 좌표 없음 422 |
@@ -123,14 +130,15 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 
 | 항목 | 정한 값 |
 |---|---|
-| 화면 흐름 | 조건 수정: 003 → 004 → 002 / 다시 추천: 004 → 002 |
+| 화면 흐름 | 조건 수정: 003 → 002 / 다시 추천: 004 → 002 |
 | 003 보내지 않은 값 | 지금 조건 그대로 (`companion`은 저장할 컬럼이 없어 받기만 함). `mealType: BOTH`는 점심·저녁 모두로 바꿈(저장은 null) |
 | 003 여행 날짜 | 날짜를 바꿀 때도 오늘 이후·행사 기간 안이어야 함 (400) |
-| 003 검증 | 새 조건으로 추천이 되는지 먼저 확인하고, 안 되면 조건을 저장하지 않음 — 기간 밖 날짜·방문 시간 밖 행사 400, 후보 부족 422 (명세 003에 422가 없어 001·004와 같은 코드로 둠) |
+| 003 처리 | 새 조건으로 일정을 만든 뒤 **조건과 일정 항목을 한 트랜잭션에서 함께** 바꿈 (AI-009 "조건 수정 후 전체 초안을 다시 생성"). 새 조건에서 가장 알맞은(가까운) 곳부터 고름. 실패하면 아무것도 바뀌지 않음 — 지난 날짜·기간 밖 날짜·방문 시간 밖 행사 400, 후보 부족 422 (명세 003에 422가 없어 001·004와 같은 코드로 둠, 팀 확인 필요) |
 | 004 기준 행사 | 사용자가 고른 행사라 바꾸지 않음 (AI-010의 "다른 문화행사"는 1팀 흐름에서 제외) |
-| 004 맛집 | 식사마다 지금 맛집보다 한 단계 먼 곳 중 가장 가까운 곳 → 없으면 처음(가장 가까운 곳)부터 다시. 누를 때마다 A → B → C … 순서로 바뀜 |
-| 조건을 바꾼 직후 | 지금 맛집이 새 조건(음식 종류·식사 시간·영업시간)에 맞지 않으면 새 조건에서 가장 가까운 곳부터 고름 |
-| 004 결과가 지금과 같을 때 | 바꾸지 않고 422 (대체 후보 없음, 기존 초안 유지) |
+| 004 맛집 | 지금 조건 그대로, 식사마다 지금 맛집보다 한 단계 먼 곳 중 가장 가까운 곳 → 없으면 처음(가장 가까운 곳)부터 다시. 누를 때마다 A → B → C … 순서로 바뀜 (같은 거리의 다른 맛집은 건너뛸 수 있음 — 모든 조합을 도는 것은 아님) |
+| 지금 맛집이 조건에 안 맞을 때 | 지금 맛집이 현재 조건(음식 종류·식사 시간대·영업시간)에 맞지 않으면 한 단계 먼 곳이 아니라 가장 가까운 곳부터 고름 |
+| 004 결과가 지금과 같을 때 | 바꾸지 않고 422 (대체 후보 없음, 기존 초안 유지). 조건 변경은 003이 따로 처리하므로 이 검사는 같은 조건의 다시 추천에만 해당 |
+| 생성 중 취소 | 이미 보낸 요청은 서버에서 끝까지 처리됨. 성공했다면 화면을 서버 결과로 맞추고 "이미 반영됨"을 알림, 실패했다면 서버 초안은 그대로. 요청이 끝나기 전에는 새 추천 요청을 받지 않음 |
 | 004 제목 | 사용자가 바꿨을 수 있어 유지 |
 | 004 항목 번호 | 항목을 새로 만들기 때문에 `itemId`가 바뀜 |
 
@@ -141,6 +149,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | 규칙 | 근거 | 위반 시 (API 명세 오류 코드) |
 |---|---|---|
 | 제목 1~100자 | TRIP-003, DDL `title VARCHAR(100)` | 400 (API-PLAN-005) |
+| 머무는 시간 1~1440분, 끝나는 시각이 그날 안 | TRIP-004, SEC-005 | 400 (006·007 요청 검증, 규칙 검사에서 한 번 더) |
 | 시간 겹침·일정 범위(조건 startTime~endTime) 초과 차단 | TRIP-004 | 400 (API-PLAN-006), 422 (API-PLAN-007) |
 | 행사 고정 시간 변경 불가 | TRIP-004 | 400 |
 | 중복 장소 차단, 문화행사 일정당 최대 2개 | TRIP-006 | 409 (API-PLAN-007) |
@@ -158,7 +167,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 |---|---|---|
 | 1 | 08 「DB 테이블 정의」 시트는 `member`, `plan_item`, `area_code` 등 **구버전**. 실제 DB는 테이블정의서/DDL v3.2.1(`users`, `trip_item` …) | 08 DB 시트 ↔ DDL v3.2.1 |
 | 2 | 08 「요구사항 정의서」 시트 안에 **같은 ID가 두 번**, 내용이 다름 (예: TRIP-002 = 장소 추가 / 여행 날짜 표시, TRIP-003 = 일정 저장 / 일정명 수정, AI-003·004) | 08 요구사항 시트 앞뒤 |
-| 3 | 조건 수정 항목이 문서마다 다름 — API-PLAN-003: `companion, foodPreference, mealType, transportMode, 시간` / SCR-010: 동행 유형·이동 수단·관심분야·무료 여부 / Figma: 인원·이동 방법·관심사·AI 추천받기. **현재 구현은 Figma 화면을 기준으로 음식 종류·식사 시간대·이동 방법을 전송** | API 명세 ↔ 화면 목록 ↔ Figma |
+| 3 | 조건 수정 항목이 문서마다 다름 — API-PLAN-003: `companion, foodPreference, transportMode, 시간` (+ `mealType`은 [제안] 필드) / SCR-010: 동행 유형·이동 수단·관심분야·무료 여부 / Figma: 인원·이동 방법·관심사·AI 추천받기. **현재 구현은 Figma 화면을 기준으로 음식 종류·식사 시간대·이동 방법을 전송** | API 명세 ↔ 화면 목록 ↔ Figma |
 | 4 | 장소 검색·추가 팝업(SCR-013·014)에 검색어가 있으나 API-PLACE-001에 검색어 파라미터 없음. **현재는 받은 후보 안에서 이름·주소로 거름** | 화면 목록 ↔ API 명세 |
 | 5 | API-PLACE-002 숙박, STAY-001·002, AI-004 당일/숙박 판정이 남아 있으나 DDL v3.2.1은 숙박 제외(`place` 음식점만) | API·요구사항 ↔ DDL |
 | 6 | API-PLAN-002 응답에 `selectedEvent`·조건·추천 이유가 없어 조건 수정 팝업 초기값·추천 이유를 표시할 수 없음 (3장 [제안]) | API-PLAN-002 ↔ SCR-009·010 |
