@@ -32,7 +32,7 @@ export default function EventCard({ event, featured, isFavorite, onFavorite, onD
       </div>
 
       <p className="event-card__category">{event.category || '분야 정보 없음'} · {event.district || '지역 정보 없음'}</p>
-      <h3>{event.title}</h3>
+      <h3 title={event.title}>{event.title}</h3>
       <p className="event-card__meta">{formatPeriod(event.startDate, event.endDate)}</p>
       <p className={`event-card__fee${event.freeYn === true ? ' event-card__fee--free' : ''}`}>
         {event.freeYn === true ? '무료' : event.freeYn === false ? `유료 · ${event.fee || '요금 정보 없음'}` : '요금 정보 없음'}
