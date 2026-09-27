@@ -80,6 +80,22 @@
 | `items[].type`·`placeId`·`sequence` | `trip_item.item_type` · `event_content_id` 또는 `place_content_id` · `seq_order` |
 | `items[].timeFixed` · 추천 이유 | `trip_item.time_fix_yn` · `trip_item.ai_reason` |
 | `lat` / `lng` | `mapy`(위도) / `mapx`(경도) |
+| 조건 `foodPreference`·`mealType` | `trip_plan.food_preference`·`meal_type` — DDL v3.2.1에 없어 `database/schema/03_trip_plan_food_condition_v3.2.3.sql`로 추가 (2팀장 확인 필요) |
+| API-PLAN-001 `headcount` | DDL `trip_plan.headcount`가 NOT NULL이라 선택값으로 받고, 없으면 1 |
+
+### API-PLAN-001 초안 생성 규칙 (규칙 기반, AI 연동 전) [제안]
+명세 근거: AI-002(행사 1개), AI-004(추천 이유), AI-005(기본 제목), FOOD-002(식사 시간대·영업시간·거리), API-PLAN-001 오류 코드(400 행사일 불일치, 422 추천 후보 부족)
+
+| 항목 | 정한 값 |
+|---|---|
+| 방문 시간 | 요청 `startTime`·`endTime`, 없으면 10:00~21:00 (행사 시간이 밖이면 행사 시간까지 넓힘) |
+| 행사 시간 | 행사 시작 시간에 고정, 소요시간은 종료 시간까지 (시간 정보가 없으면 방문 시작 시각부터 120분, 고정 안 함) |
+| 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. `mealType`이 없으면 둘 다 찾음. 행사와 겹치면 행사 직전 → 직후로 옮김 |
+| 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 반경 1.5km → 3km → 5km, 같은 맛집은 한 번만 |
+| 추천 이유 | 행사: `선택한 행사 · M월 D일 진행 · HH:mm 시작` / 맛집: `점심 12:30 · 행사장에서 약 320m · 한식 · 영업 11:30~21:00` (확인된 값만) |
+| 제목 | `M월 D일 {행사명}` (AI-005 실패 시 기본 제목 규칙) |
+| 오류 | 기간 밖 날짜·방문 시간 밖 행사 400, 없는 행사 404, 맛집 후보 없음·행사 좌표 없음 422 |
+| 응답 | API-PLAN-002 초안 조회와 같은 모양 (명세 필드 `draftId, title, tripType, selectedEvent, items, recommendationReasons` 포함) |
 
 ---
 
