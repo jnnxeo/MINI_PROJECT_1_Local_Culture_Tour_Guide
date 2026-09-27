@@ -29,7 +29,8 @@ public class PlaceController {
 
     /**
      * API-PLACE-001 행사 주변 맛집 후보 조회.
-     * category 는 DDL 에 음식 분류 컬럼이 없어 아직 받지 않는다.
+     * cuisineType(KOREAN/WESTERN/JAPANESE/CHINESE)·mealTime("HH:mm")은 이슈 #40 음식점 추천에서
+     * 추가한 선택 파라미터다. 둘 다 안 보내면 기존 장소 변경·추가 팝업과 동일하게 동작한다.
      */
     @GetMapping("/restaurants")
     public ResponseEntity<ApiResponse<RestaurantSearchResponse>> searchRestaurants(
@@ -38,10 +39,12 @@ public class PlaceController {
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) Integer radius,
             @RequestParam(required = false) Integer page,
-            @RequestParam(required = false) Integer size
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String cuisineType,
+            @RequestParam(required = false) String mealTime
     ) {
         return ResponseEntity.ok(ApiResponse.success(
-                placeService.searchRestaurants(eventId, lat, lng, radius, page, size)));
+                placeService.searchRestaurants(eventId, lat, lng, radius, page, size, cuisineType, mealTime)));
     }
 
     @ExceptionHandler(PlaceSearchException.class)

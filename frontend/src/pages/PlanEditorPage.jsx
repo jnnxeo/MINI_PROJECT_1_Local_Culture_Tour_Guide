@@ -399,6 +399,8 @@ export default function PlanEditorPage() {
             usedPlaceIds={items.map((item) => item.placeId)}
             time={target?.startTime}
             durationMin={target?.durationMin}
+            foodPreference={draft?.conditions?.foodPreference}
+            mealType={draft?.conditions?.mealType}
             onConfirm={(place) => replacePlace(modal.key, place)}
             onClose={closeModal}
           />
@@ -410,6 +412,8 @@ export default function PlanEditorPage() {
             mode="add"
             eventId={coreEventPlaceId}
             usedPlaceIds={items.map((item) => item.placeId)}
+            foodPreference={draft?.conditions?.foodPreference}
+            mealType={draft?.conditions?.mealType}
             onConfirm={(place) => setModal({
               type: 'placeChosen',
               place,
@@ -490,7 +494,7 @@ export default function PlanEditorPage() {
             visitDate={draft.visitDate}
             conditions={draft.conditions}
             coreItem={coreItem}
-            onSubmit={({ transportMode }) => startGeneration({ transportMode })}
+            onSubmit={({ foodPreference, mealType, transportMode }) => startGeneration({ foodPreference, mealType, transportMode })}
             onClose={closeModal}
           />
         )
@@ -622,13 +626,19 @@ export default function PlanEditorPage() {
                 isLast={index === items.length - 1}
                 isSelected={item.key === selectedItem?.key}
                 distanceToNext={distanceMeters(item, items[index + 1])}
+                locked={Boolean(savedPlan)}
                 onEditTime={() => setModal({ type: 'time', key: item.key, startTime: item.startTime, durationMin: item.durationMin })}
                 onChangePlace={() => setModal({ type: 'placeChange', key: item.key })}
                 onRemove={() => setModal({ type: 'remove', key: item.key })}
                 onShowOnMap={() => showOnMap(item)}
               />
             ))}
-            <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" onClick={() => setModal({ type: 'placeAdd' })}>
+            <button
+              className="tp-btn tp-btn--secondary tp-btn--block"
+              type="button"
+              disabled={Boolean(savedPlan)}
+              onClick={() => setModal({ type: 'placeAdd' })}
+            >
               + 장소 직접 추가
             </button>
           </div>

@@ -20,6 +20,7 @@ public class RestaurantView {
 	private BigDecimal mapx;
 	private BigDecimal mapy;
 	private String imageUrl;
+	private String cuisineType;
 	private LocalTime openTime;
 	private LocalTime closeTime;
 	private LocalTime breakOpenTime;

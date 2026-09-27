@@ -27,6 +27,8 @@ class PlaceServiceTest {
         double lat, lng, minLat, maxLat, minLng, maxLng;
         int radius, limit, offset;
         int searchCalls;
+        String cuisineType;
+        LocalTime mealTime;
 
         @Override
         public Optional<EventLocationView> findEventLocation(String eventContentId) {
@@ -35,7 +37,8 @@ class PlaceServiceTest {
 
         @Override
         public List<RestaurantView> findRestaurantsNear(double lat, double lng, int radius, double minLat, double maxLat,
-                                                        double minLng, double maxLng, int limit, int offset) {
+                                                        double minLng, double maxLng, String cuisineType, LocalTime mealTime,
+                                                        int limit, int offset) {
             this.lat = lat;
             this.lng = lng;
             this.radius = radius;
@@ -43,6 +46,8 @@ class PlaceServiceTest {
             this.maxLat = maxLat;
             this.minLng = minLng;
             this.maxLng = maxLng;
+            this.cuisineType = cuisineType;
+            this.mealTime = mealTime;
             this.limit = limit;
             this.offset = offset;
             searchCalls++;
@@ -149,6 +154,46 @@ class PlaceServiceTest {
         assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, -1, null), HttpStatus.BAD_REQUEST);
         assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, 51), HttpStatus.BAD_REQUEST);
         assertThat(mapper.searchCalls).isZero();
+    }
+
+    @Test
+    void 음식종류와_식사시간을_그대로_매퍼에_전달한다() {
+        service.searchRestaurants("DEV-EV-001", null, null, null, null, null, "KOREAN", "12:30");
+
+        assertThat(mapper.cuisineType).isEqualTo("KOREAN");
+        assertThat(mapper.mealTime).isEqualTo(LocalTime.of(12, 30));
+    }
+
+    @Test
+    void 음식종류_ALL은_추천용_음식분류_전체로_전달하고_비어있으면_필터를_안_건다() {
+        service.searchRestaurants("DEV-EV-001", null, null, null, null, null, "ALL", null);
+        assertThat(mapper.cuisineType).isEqualTo("ALL");
+
+        service.searchRestaurants("DEV-EV-001", null, null, null, null, null, "", "");
+        assertThat(mapper.cuisineType).isNull();
+        assertThat(mapper.mealTime).isNull();
+
+        service.searchRestaurants("DEV-EV-001", null, null, null, null, null, null, null);
+        assertThat(mapper.cuisineType).isNull();
+        assertThat(mapper.mealTime).isNull();
+    }
+
+    @Test
+    void 알수없는_음식종류는_400() {
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, null, "이탈리안", null),
+                HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, null, "OTHER", null),
+                HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void 식사시간_형식이_HHmm이_아니면_400() {
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, null, null, "12시30분"),
+                HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, null, null, "25:00"),
+                HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, null, null, null, "24:00"),
+                HttpStatus.BAD_REQUEST);
     }
 
     private static void assertStatus(Runnable call, HttpStatus expected) {
