@@ -234,6 +234,10 @@ export async function mockUpdateConditions(draftId, conditions) {
 
   draft.conditions = { ...draft.conditions, ...conditions }
   draft.visitDate = conditions.visitDate
+  // 실제 API-PLAN-003 과 같이 조건과 일정을 한 번에 바꾼다 (화면은 003 → 002)
+  const { items, recommendationReasons } = buildCourse(draft.courseIndex, store, draft.conditions)
+  draft.items = items
+  draft.recommendationReasons = recommendationReasons
   writeStore(store)
   return { draftId: draft.draftId, conditions: structuredClone(draft.conditions) }
 }
@@ -297,7 +301,14 @@ export async function mockReplaceItems(draftId, requestItems) {
       throw mockError(400, `${current.name}은(는) 시작 시간이 정해진 행사라 시간을 바꿀 수 없습니다.`)
     }
 
-    return { ...current, startTime: requestItem.startTime, durationMin: requestItem.durationMin, sequence: requestItem.sequence }
+    // 장소 변경(TRIP-005)도 실제 API-PLAN-006 처럼 같은 항목에서 대상을 바꾼다
+    const target = requestItem.placeId === current.placeId ? current : findCandidate(requestItem.type, requestItem.placeId)
+
+    if (!target) {
+      throw mockError(404, '장소를 찾을 수 없습니다.')
+    }
+
+    return { ...target, itemId: current.itemId, startTime: requestItem.startTime, durationMin: requestItem.durationMin, sequence: requestItem.sequence }
   })
 
   const error = validatePlan({ title: draft.title, items, coreEventPlaceId: coreEventOf(draft), ...draft.conditions })
@@ -306,6 +317,15 @@ export async function mockReplaceItems(draftId, requestItems) {
     throw mockError(error.status, error.message)
   }
 
+  // 장소·시간이 바뀐 맛집의 추천 이유는 사실과 달라지므로 지운다 (실제 API와 같게)
+  const changedIds = new Set(items
+    .filter((item) => {
+      const before = byId.get(item.itemId)
+      return before.placeId !== item.placeId
+        || (item.type === 'PLACE' && (before.startTime !== item.startTime || before.durationMin !== item.durationMin))
+    })
+    .map((item) => item.itemId))
+  draft.recommendationReasons = (draft.recommendationReasons ?? []).filter((reason) => !changedIds.has(reason.itemId))
   draft.items = sortItems(items)
   writeStore(store)
   return structuredClone({ draftId: draft.draftId, items: draft.items, mapPoints: toMapPoints(draft.items) })
