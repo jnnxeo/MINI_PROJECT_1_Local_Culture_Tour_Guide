@@ -2,16 +2,29 @@ import api from './api.js'
 import { getErrorMessage } from './authService.js'
 import { mockGetMonthlyEvents, mockGetHomeEventPreviews, mockHasMatchingEvents } from './mock/eventMock.js'
 
-const USE_MOCK_API = import.meta.env.VITE_USE_EVENT_MOCK_API
-  ? import.meta.env.VITE_USE_EVENT_MOCK_API !== 'false'
-  : import.meta.env.VITE_USE_MOCK_API !== 'false'
+const USE_MOCK_API = import.meta.env.VITE_USE_EVENT_MOCK_API !== undefined
+  ? import.meta.env.VITE_USE_EVENT_MOCK_API === 'true'
+  : import.meta.env.VITE_USE_MOCK_API === 'true'
 
 // API-EVENT-003: GET /api/events/months/{YYYY-MM}
-export async function getMonthlyEvents(month) {
-  if (USE_MOCK_API) return mockGetMonthlyEvents(month)
+export async function getMonthlyEvents(month, { category, page, size } = {}) {
+  if (USE_MOCK_API) {
+    const result = await mockGetMonthlyEvents(month)
+    const matchingItems = category
+      ? result.items.filter((event) => event.category === category)
+      : result.items
+    const offset = (page ?? 0) * (size ?? matchingItems.length)
+    return {
+      ...result,
+      items: matchingItems.slice(offset, size === undefined ? undefined : offset + size),
+      totalCount: matchingItems.length,
+    }
+  }
 
   try {
-    const { data } = await api.get(`/api/events/months/${month}`)
+    const params = { page, size }
+    if (category) params.category = category
+    const { data } = await api.get(`/api/events/months/${month}`, { params })
     if (data?.success === false) {
       throw new Error(data.message ?? '행사 목록을 불러오지 못했습니다.')
     }
@@ -32,17 +45,8 @@ export async function getHomeEventPreviews(month) {
   if (USE_MOCK_API) return mockGetHomeEventPreviews(month)
 
   const load = async (category) => {
-    const params = { month, page: 0, size: 10 }
-    if (category) params.category = category
-    try {
-      const { data } = await api.get('/api/events', { params })
-      if (data?.success === false) throw new Error(data.message ?? '행사 목록을 불러오지 못했습니다.')
-      const result = data?.data ?? data
-      const items = result?.items ?? result?.content ?? []
-      return items.slice(0, 10)
-    } catch (error) {
-      throw new Error(error.response ? getErrorMessage(error) : error.message || '서버에 연결할 수 없습니다.')
-    }
+    const { items } = await getMonthlyEvents(month, { category, page: 0, size: 10 })
+    return items.slice(0, 10)
   }
 
   const [all, exhibition, performance] = await Promise.all([

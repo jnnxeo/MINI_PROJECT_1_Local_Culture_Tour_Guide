@@ -41,7 +41,7 @@
 
 `freeYn`과 `fee`는 DB의 값을 그대로 반환한다. 요금 정보가 없는 경우 `null`을 화면에서 `요금 정보 없음`으로 표시한다. 결과가 없어도 정상 응답이며 `items=[]`, `totalCount=0`이다.
 
-메인페이지는 같은 `month`로 전체, `category=전시`, `category=공연`을 각각 조회하면 된다. 목록의 더 보기는 해당 조건과 `page`를 검색 결과 화면에 전달한다. 현재 프론트의 `getHomeEventPreviews()`는 `/api/events`를 호출하므로 이 월별 조회 경로와의 연결은 별도 연동 단계에서 진행한다.
+메인페이지의 `getHomeEventPreviews()`는 같은 `month`로 전체, `category=전시`, `category=공연`을 각각 `page=0&size=10`으로 조회한다. 목록의 더 보기는 해당 월·분야 조건을 검색 결과 화면에 전달한다. 행사 API 목업을 사용하려면 `VITE_USE_EVENT_MOCK_API=true`로 설정한다. 검색 결과 화면과 `/api/events` 검색 연동은 검색결과 페이지 구현 이후 연동한다.
 
 ## 서울시 문화행사 분류 대응
 

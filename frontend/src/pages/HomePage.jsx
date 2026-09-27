@@ -137,15 +137,11 @@ export default function HomePage() {
           onDetail={(eventId) => navigate(`/events/${eventId}`)}
           onMore={() => showMore('공연')}
         />}
-
-        <p className="home-data-note">
-          현재는 화면 확인을 위한 예시 행사입니다. 실제 행사 목록은 공공데이터 연동 후 제공됩니다.
-        </p>
       </div>
 
       <footer className="home-footer">
         <span>TripAI · 문화행사에서 시작하는 서울 여행</span>
-        <span>사진 영역은 행사 API 이미지로 교체됩니다.</span>
+        <span>서울의 다양한 문화행사를 둘러보세요.</span>
       </footer>
     </main>
   )
