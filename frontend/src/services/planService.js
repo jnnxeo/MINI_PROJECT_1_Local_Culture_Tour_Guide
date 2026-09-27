@@ -106,9 +106,9 @@ export function getDraft(draftId) {
   return request(() => api.get(draftPath(draftId)))
 }
 
-/** API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,transportMode} */
-export function updateConditions(draftId, { visitDate, startTime, endTime, companion, foodPreference, transportMode }) {
-  const body = { visitDate, startTime, endTime, companion, foodPreference, transportMode }
+/** API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,mealType,transportMode} */
+export function updateConditions(draftId, { visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode }) {
+  const body = { visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode }
 
   if (USE_MOCK_API) {
     return withMock(() => mockUpdateConditions(draftId, body))
@@ -184,13 +184,16 @@ export function saveDraftAsPlan(draftId) {
   return request(() => api.post('/api/plans', { draftId }))
 }
 
-/** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, category, page, size */
-export function searchRestaurants({ eventId, radius, category, page, size }) {
+/** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, cuisineType, mealTime, page, size */
+export function searchRestaurants({ eventId, radius, foodPreference, mealType, page, size }) {
   if (USE_MOCK_API) {
     return withMock(() => mockSearchRestaurants({ eventId }))
   }
 
+  const cuisineType = foodPreference || undefined
+  const mealTime = mealType === 'DINNER' ? '17:00' : mealType === 'LUNCH' ? '12:30' : undefined
+
   return request(() => api.get('/api/places/restaurants', {
-    params: { eventId, radius, category, page, size },
+    params: { eventId, radius, cuisineType, mealTime, page, size },
   }))
 }

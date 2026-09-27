@@ -69,6 +69,7 @@
 | `mapPoints[]` | `{ sequence, lat, lng }` | MAP-001·TRIP-008 방문 순서 마커 |
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
+| 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안] |
 | `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK` | 값 목록 미정 |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]
@@ -104,7 +105,7 @@
 |---|---|---|
 | 1 | 08 「DB 테이블 정의」 시트는 `member`, `plan_item`, `area_code` 등 **구버전**. 실제 DB는 테이블정의서/DDL v3.2.1(`users`, `trip_item` …) | 08 DB 시트 ↔ DDL v3.2.1 |
 | 2 | 08 「요구사항 정의서」 시트 안에 **같은 ID가 두 번**, 내용이 다름 (예: TRIP-002 = 장소 추가 / 여행 날짜 표시, TRIP-003 = 일정 저장 / 일정명 수정, AI-003·004) | 08 요구사항 시트 앞뒤 |
-| 3 | 조건 수정 항목이 문서마다 다름 — API-PLAN-003: `companion, foodPreference, transportMode, 시간` / SCR-010: 동행 유형·이동 수단·관심분야·무료 여부 / Figma: 인원·이동 방법·관심사·AI 추천받기. **현재 구현은 Figma 화면 + 명세 필드 중 `transportMode`만 전송** | API 명세 ↔ 화면 목록 ↔ Figma |
+| 3 | 조건 수정 항목이 문서마다 다름 — API-PLAN-003: `companion, foodPreference, mealType, transportMode, 시간` / SCR-010: 동행 유형·이동 수단·관심분야·무료 여부 / Figma: 인원·이동 방법·관심사·AI 추천받기. **현재 구현은 Figma 화면을 기준으로 음식 종류·식사 시간대·이동 방법을 전송** | API 명세 ↔ 화면 목록 ↔ Figma |
 | 4 | 장소 검색·추가 팝업(SCR-013·014)에 검색어가 있으나 API-PLACE-001에 검색어 파라미터 없음. **현재는 받은 후보 안에서 이름·주소로 거름** | 화면 목록 ↔ API 명세 |
 | 5 | API-PLACE-002 숙박, STAY-001·002, AI-004 당일/숙박 판정이 남아 있으나 DDL v3.2.1은 숙박 제외(`place` 음식점만) | API·요구사항 ↔ DDL |
 | 6 | API-PLAN-002 응답에 `selectedEvent`·조건·추천 이유가 없어 조건 수정 팝업 초기값·추천 이유를 표시할 수 없음 (3장 [제안]) | API-PLAN-002 ↔ SCR-009·010 |

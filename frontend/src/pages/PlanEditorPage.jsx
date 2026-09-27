@@ -399,6 +399,8 @@ export default function PlanEditorPage() {
             usedPlaceIds={items.map((item) => item.placeId)}
             time={target?.startTime}
             durationMin={target?.durationMin}
+            foodPreference={draft?.conditions?.foodPreference}
+            mealType={draft?.conditions?.mealType}
             onConfirm={(place) => replacePlace(modal.key, place)}
             onClose={closeModal}
           />
@@ -410,6 +412,8 @@ export default function PlanEditorPage() {
             mode="add"
             eventId={coreEventPlaceId}
             usedPlaceIds={items.map((item) => item.placeId)}
+            foodPreference={draft?.conditions?.foodPreference}
+            mealType={draft?.conditions?.mealType}
             onConfirm={(place) => setModal({
               type: 'placeChosen',
               place,
@@ -490,7 +494,7 @@ export default function PlanEditorPage() {
             visitDate={draft.visitDate}
             conditions={draft.conditions}
             coreItem={coreItem}
-            onSubmit={({ transportMode }) => startGeneration({ transportMode })}
+            onSubmit={({ foodPreference, mealType, transportMode }) => startGeneration({ foodPreference, mealType, transportMode })}
             onClose={closeModal}
           />
         )
