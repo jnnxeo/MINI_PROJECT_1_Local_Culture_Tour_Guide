@@ -1,39 +1,52 @@
-import React from "react";
-import { useState } from "react";
-import { addFavorite, removeFavorite } from "../services/favoriteApi";
+import React, { useEffect, useState } from 'react'
+import { addFavorite, removeFavorite } from '../services/favoriteApi.js'
+import { getErrorMessage } from '../services/authService.js'
 
-function FavoriteButton({eventContentId, initialFavorite = false, onRemoved}) {
-    const [isFavorite,setIsFavorite] = useState(initialFavorite);
+function FavoriteButton({ eventContentId, initialFavorite = false, onRemoved }) {
+  const [isFavorite, setIsFavorite] = useState(initialFavorite)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
-    const favoritehandler = async () => {
-    // ===== 로직 (유지) =====
+  useEffect(() => {
+    setIsFavorite(initialFavorite)
+    setError('')
+  }, [eventContentId, initialFavorite])
+
+  const handleFavorite = async () => {
+    if (!eventContentId || saving) return
+    setSaving(true)
+    setError('')
+
     try {
-        if (isFavorite) {
-            await removeFavorite(eventContentId);   // 해제 성공을 기다림
-            setIsFavorite(false);
-            if(onRemoved) {
-                onRemoved(eventContentId); //<- 부모에게 "이거 해제" 라고 알림
-            }
-        } else {
-            await addFavorite(eventContentId);      // 저장 성공을 기다림
-            setIsFavorite(true);
-        }
-    } catch (error) {
-        // TODO(연동): 실패 처리 (401이면 로그인 유도 등)
-        console.error("즐겨찾기 처리 실패:", error);
+      if (isFavorite) {
+        await removeFavorite(eventContentId)
+        setIsFavorite(false)
+        onRemoved?.(eventContentId)
+      } else {
+        await addFavorite(eventContentId)
+        setIsFavorite(true)
+      }
+    } catch (requestError) {
+      setError(getErrorMessage(requestError))
+    } finally {
+      setSaving(false)
     }
-    // =====================
-};
+  }
 
-
-
-
-    return (
-        // TODO(css): 아래 button 마크업·하트 문자는 CSS 담당이 아이콘/스타일로 교체 예정
-        <button onClick={favoritehandler}>
-            {isFavorite?  "♥" : "♡"} {/* TODO(css): ♥♡ → 실제 하트 아이콘(SVG)로 교체 */}
-        </button>
-    );
+  return (
+    <>
+      <button
+        type="button"
+        onClick={handleFavorite}
+        disabled={!eventContentId || saving}
+        aria-label={isFavorite ? '관심 행사 해제' : '관심 행사 저장'}
+        aria-pressed={isFavorite}
+      >
+        {isFavorite ? '♥' : '♡'}
+      </button>
+      {error && <span role="alert">{error}</span>}
+    </>
+  )
 }
 
-export default FavoriteButton;
+export default FavoriteButton
