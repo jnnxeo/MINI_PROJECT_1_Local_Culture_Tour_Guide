@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.PlanMapper">
+
+    <select id="findPlansByUserId"
+            resultType="com.tripai.backend.domain.dto.PlanSummary">
+
+        SELECT
+            trip_plan_id AS tripPlanId,
+            title,
+            trip_date AS tripDate,
+            DATEDIFF(trip_date, CURDATE()) AS dDay
+        FROM trip_plan
+        WHERE user_id = #{userId}
+        AND save_yn = 1
+        ORDER BY trip_date ASC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countPlansByUserId" resultType = "long">
+        SELECT COUNT(*)
+        FROM trip_plan
+        WHERE user_id = #{userId}
+        AND save_yn = 1
+    </select>
+
+    <delete id="deletePlanByPlanId">
+        DELETE FROM trip_plan
+        WHERE trip_plan_id = #{tripPlanId}
+        AND user_id = #{userId}
+        AND save_yn = 1
+    </delete>
+
+    <update id="updatePlanTitleByPlanId">
+
+        UPDATE trip_plan
+        SET title = #{title}
+        WHERE trip_plan_id = #{tripPlanId}
+        AND user_id = #{userId}
+    </update>
+
+</mapper>

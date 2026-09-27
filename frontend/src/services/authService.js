@@ -2,40 +2,12 @@ import api from './api.js'
 
 const ACCESS_TOKEN_KEY = 'tripai.accessToken'
 const ACCESS_TOKEN_EXPIRES_AT_KEY = 'tripai.accessTokenExpiresAt'
-const USE_MOCK_API = import.meta.env.VITE_USE_MOCK_API !== 'false'
-
-const wait = (milliseconds) => new Promise((resolve) => {
-  setTimeout(resolve, milliseconds)
-})
 
 function notifyAuthExpired() {
   window.dispatchEvent(new Event('tripai:auth-expired'))
 }
 
-async function mockSignup({ email }) {
-  await wait(800)
-
-  if (email.toLowerCase() === 'duplicate@tripai.com') {
-    const error = new Error('이미 사용 중인 이메일입니다.')
-    error.status = 409
-    throw error
-  }
-
-  return {
-    success: true,
-    data: {
-      userId: 1,
-      email,
-    },
-    message: null,
-  }
-}
-
 export async function signup({ email, password }) {
-  if (USE_MOCK_API) {
-    return mockSignup({ email, password })
-  }
-
   try {
     const { data } = await api.post(
       '/api/auth/signup',

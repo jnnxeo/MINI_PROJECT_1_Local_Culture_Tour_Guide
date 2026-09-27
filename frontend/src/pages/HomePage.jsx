@@ -51,7 +51,15 @@ export default function HomePage() {
     if (!/^\d{4}-\d{2}$/.test(period)) return
     const [year, month] = period.split('-').map(Number)
     if (month < 1 || month > 12) return
+    if (period === selectedPeriod) return
+    setEventStatus('loading')
     setSelectedYear(year)
+    setSelectedMonth(month)
+  }
+
+  const handleMonthSelect = (month) => {
+    if (month === selectedMonth) return
+    setEventStatus('loading')
     setSelectedMonth(month)
   }
 
@@ -91,6 +99,11 @@ export default function HomePage() {
     document.querySelector('#monthly-events')?.scrollIntoView({ behavior: 'smooth' })
   }
 
+  const retryEvents = () => {
+    setEventStatus('loading')
+    setReloadCount((count) => count + 1)
+  }
+
   return (
     <main className="home-page">
       <HeroSection onExplore={scrollToEvents} />
@@ -98,54 +111,54 @@ export default function HomePage() {
       <div className="home-content">
         <SearchPanel month={selectedPeriod} onMonthChange={handleMonthChange} onKeywordSearch={handleKeywordSearch} onFilterSearch={handleFilterSearch} />
         {searchError && <p className="home-search__error" role="alert">{searchError}</p>}
-        <MonthSelector selectedMonth={selectedMonth} onSelect={setSelectedMonth} />
+        <MonthSelector selectedMonth={selectedMonth} onSelect={handleMonthSelect} />
 
-        {eventStatus === 'error' && (
-          <div className="event-section__empty" role="alert">
-            <strong>{eventError}</strong>
-            <button type="button" onClick={() => setReloadCount((count) => count + 1)}>다시 시도</button>
-          </div>
-        )}
-        {eventStatus === 'loading' && <p className="home-data-note" role="status">행사 목록을 불러오는 중입니다.</p>}
+        <p className="home-visually-hidden" role="status">
+          {eventStatus === 'loading' ? '행사 목록을 불러오는 중입니다.' : ''}
+        </p>
 
-        {eventStatus === 'success' && <EventSection
+        <EventSection
           id="monthly-events"
           title={`${selectedYear}년 ${selectedMonth}월의 문화행사`}
           events={eventSections.all}
+          loading={eventStatus === 'loading'}
+          error={eventStatus === 'error'}
+          errorMessage={eventError}
+          onRetry={retryEvents}
           favoriteIds={favoriteIds}
           onFavorite={handleFavorite}
           onDetail={(eventId) => navigate(`/events/${eventId}`)}
           featured
           hint="옆으로 넘겨보기 →"
           onMore={() => showMore()}
-        />}
+        />
 
-        {eventStatus === 'success' && <EventSection
-          title={`${selectedMonth}월 전시 · 새로운 시선`}
+        <EventSection
+          title="전시 · 새로운 시선"
           events={eventSections.exhibition}
+          loading={eventStatus === 'loading'}
+          error={eventStatus === 'error'}
           favoriteIds={favoriteIds}
           onFavorite={handleFavorite}
           onDetail={(eventId) => navigate(`/events/${eventId}`)}
           onMore={() => showMore('전시')}
-        />}
+        />
 
-        {eventStatus === 'success' && <EventSection
-          title={`${selectedMonth}월 공연 · 음악이 있는 하루`}
+        <EventSection
+          title="공연 · 음악이 있는 하루"
           events={eventSections.performance}
+          loading={eventStatus === 'loading'}
+          error={eventStatus === 'error'}
           favoriteIds={favoriteIds}
           onFavorite={handleFavorite}
           onDetail={(eventId) => navigate(`/events/${eventId}`)}
           onMore={() => showMore('공연')}
-        />}
-
-        <p className="home-data-note">
-          현재는 화면 확인을 위한 예시 행사입니다. 실제 행사 목록은 공공데이터 연동 후 제공됩니다.
-        </p>
+        />
       </div>
 
       <footer className="home-footer">
         <span>TripAI · 문화행사에서 시작하는 서울 여행</span>
-        <span>사진 영역은 행사 API 이미지로 교체됩니다.</span>
+        <span>서울의 다양한 문화행사를 둘러보세요.</span>
       </footer>
     </main>
   )
