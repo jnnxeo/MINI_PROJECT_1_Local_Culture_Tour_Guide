@@ -124,7 +124,10 @@ public class PlanDraftService {
             if (sameTarget) {
                 name = before.getName();
                 timeFixed = Boolean.TRUE.equals(before.getTimeFixYn());
-                aiReason = before.getAiReason();
+                // 맛집 추천 이유에는 식사 시각이 들어가므로, 시간을 바꾸면 사실과 달라진 이유를 지운다 (AI-004·007)
+                boolean timeChanged = !startTime.equals(before.getStartTime())
+                        || !request.durationMin().equals(before.getDurationMin());
+                aiReason = "PLACE".equals(request.type()) && timeChanged ? null : before.getAiReason();
                 if (timeFixed && !startTime.equals(before.getStartTime())) {
                     throw new PlanRuleException(HttpStatus.BAD_REQUEST,
                             name + "은(는) 시작 시간이 정해진 행사라 시간을 바꿀 수 없습니다.");
