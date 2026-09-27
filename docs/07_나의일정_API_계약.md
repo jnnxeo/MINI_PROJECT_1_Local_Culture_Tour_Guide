@@ -69,7 +69,7 @@
 | `mapPoints[]` | `{ sequence, lat, lng }` | MAP-001·TRIP-008 방문 순서 마커 |
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
-| 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안] |
+| 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `BOTH·LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안]. `mealType`은 항상 셋 중 하나를 명시적으로 보낸다 — 화면 기본값도 `BOTH`(점심+저녁 모두)라 조건 창을 열고 그대로 적용해도 기존 식사 범위가 좁아지지 않는다. `GET /api/places/restaurants`(API-PLACE-001, cuisineType/mealTime)는 이와 별개로 한 시점(`HH:mm`) 조회이며, `BOTH`·미지정은 시간 필터 없이 조회한다 |
 | `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK` | 값 목록 미정 |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]

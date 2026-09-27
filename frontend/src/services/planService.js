@@ -191,6 +191,7 @@ export function searchRestaurants({ eventId, radius, foodPreference, mealType, p
   }
 
   const cuisineType = foodPreference || undefined
+  // BOTH(점심+저녁 모두)·미지정은 특정 시간을 못 박지 않는다 — 필터 없이(전체 시간) 조회한다.
   const mealTime = mealType === 'DINNER' ? '17:00' : mealType === 'LUNCH' ? '12:30' : undefined
 
   return request(() => api.get('/api/places/restaurants', {
