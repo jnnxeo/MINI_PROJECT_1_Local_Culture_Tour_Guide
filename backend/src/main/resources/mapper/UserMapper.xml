@@ -11,4 +11,12 @@
 		WHERE email = #{email}
 	</select>
 
+	<insert id="insert"
+			parameterType="User"
+			useGeneratedKeys="true"
+			keyProperty="userId">
+		INSERT INTO users (email, password)
+		VALUES (#{email}, #{password})
+	</insert>
+
 </mapper>
