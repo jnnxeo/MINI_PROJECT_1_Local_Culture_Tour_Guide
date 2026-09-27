@@ -379,7 +379,8 @@ public class PlanDraftService {
                 format(plan.getVisitStartTime()),
                 format(plan.getVisitEndTime()),
                 null,
-                null,
+                plan.getFoodPreference(),
+                plan.getMealType(),
                 plan.getTransportMd()
         );
 

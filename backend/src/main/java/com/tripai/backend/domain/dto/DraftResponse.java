@@ -27,13 +27,17 @@ public record DraftResponse(
 	) {
 	}
 
-	/** API-PLAN-003 요청과 같은 필드. companion·foodPreference 는 DDL 에 컬럼이 없어 null */
+	/**
+	 * API-PLAN-003 요청과 같은 필드 + 식사 시간대(mealType, docs/07 [제안]).
+	 * companion 은 DDL 에 컬럼이 없어 null. foodPreference·mealType 은 03 마이그레이션 컬럼에서 읽는다.
+	 */
 	public record Conditions(
 			LocalDate visitDate,
 			String startTime,
 			String endTime,
 			String companion,
 			String foodPreference,
+			String mealType,
 			String transportMode
 	) {
 	}

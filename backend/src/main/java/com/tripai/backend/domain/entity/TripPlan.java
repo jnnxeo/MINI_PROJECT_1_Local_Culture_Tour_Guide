@@ -28,6 +28,9 @@ public class TripPlan {
 	private Boolean saveYn;
 	private Boolean aiYn;
 	private String transportMd;
+	// database/schema/03_trip_plan_food_condition_v3.2.3.sql 에서 추가한 추천 조건
+	private String foodPreference;
+	private String mealType;
 	private Integer headcount;
 	private LocalDateTime createdAt;
 	private LocalDateTime updAt;
