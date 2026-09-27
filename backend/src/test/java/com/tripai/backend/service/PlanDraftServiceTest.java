@@ -158,6 +158,35 @@ class PlanDraftServiceTest {
         }
 
         @Test
+        void 맛집_시간을_바꾸면_사실과_달라진_추천_이유를_지운다() {
+            service.updateItems(OWNER_ID, DRAFT_ID, List.of(
+                    request(101L, "PLACE", "DEV-PL-001", "13:30", 60, 1),
+                    request(102L, "EVENT", CORE_EVENT, "18:00", 180, 2)));
+
+            DraftResponse draft = service.getDraft(OWNER_ID, DRAFT_ID);
+            assertThat(draft.recommendationReasons()).extracting(r -> r.itemId()).containsExactly(102L);
+        }
+
+        @Test
+        void 시간을_그대로_두면_추천_이유도_남는다() {
+            service.updateItems(OWNER_ID, DRAFT_ID, List.of(
+                    request(101L, "PLACE", "DEV-PL-001", "12:30", 60, 1),
+                    request(102L, "EVENT", CORE_EVENT, "18:00", 180, 2)));
+
+            DraftResponse draft = service.getDraft(OWNER_ID, DRAFT_ID);
+            assertThat(draft.recommendationReasons()).extracting(r -> r.itemId()).containsExactly(101L, 102L);
+        }
+
+        @Test
+        void 머무는_시간이_int_범위를_넘을_만큼_커도_하루_범위_검사에서_막는다() {
+            assertRule(() -> service.updateItems(OWNER_ID, DRAFT_ID, List.of(
+                    request(101L, "PLACE", "DEV-PL-001", "12:30", 60, 1),
+                    request(102L, "EVENT", CORE_EVENT, "18:00", Integer.MAX_VALUE, 2))), HttpStatus.BAD_REQUEST);
+
+            assertThat(mapper.rows.get(102L).getDurationMin()).isEqualTo(180);
+        }
+
+        @Test
         void 두_항목의_순서를_맞바꿔도_순번_중복_없이_저장한다() {
             mapper.addRow(row(103L, 3, "PLACE", "DEV-PL-002", "14:00", 60, null, false));
             mapper.rows.put(102L, row(102L, 4, "EVENT", CORE_EVENT, "18:00", 180, "검색 조건 일치", true));

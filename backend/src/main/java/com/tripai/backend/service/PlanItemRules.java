@@ -71,7 +71,8 @@ final class PlanItemRules {
             boolean checkSequence
     ) {
         for (Candidate item : items) {
-            if (item.durationMin() <= 0 || item.endMinutes() > MINUTES_PER_DAY) {
+            // 더하기 전에 비교해야 큰 값에서 int 가 넘쳐 음수가 되는 경우도 막힌다
+            if (item.durationMin() <= 0 || item.durationMin() > MINUTES_PER_DAY - item.startMinutes()) {
                 return fail(Violation.INVALID_DURATION, "머무는 시간을 확인해 주세요.");
             }
         }

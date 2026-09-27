@@ -105,4 +105,14 @@ class PlanItemRulesTest {
     private static Candidate event(String id, String start, int duration, int sequence) {
         return new Candidate("EVENT", id, id, LocalTime.parse(start), duration, sequence);
     }
+
+    @Test
+    void 머무는_시간을_더하다_int_가_넘쳐도_하루를_넘는_것으로_막는다() {
+        List<PlanItemRules.Candidate> items = List.of(
+                new PlanItemRules.Candidate("EVENT", "EV", "행사", LocalTime.of(18, 0), Integer.MAX_VALUE, 1));
+
+        assertThat(PlanItemRules.check(items, "EV", null, null, true))
+                .get().extracting(PlanItemRules.Result::violation).isEqualTo(PlanItemRules.Violation.INVALID_DURATION);
+    }
+
 }

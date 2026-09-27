@@ -97,6 +97,29 @@ export function forgetDraftId() {
   }
 }
 
+/**
+ * API-PLAN-001 문화행사 1개 기준 일정 초안 생성 — 메인·행사 상세(2팀 화면)에서 호출한다.
+ * Body: {eventId, visitDate, startTime, endTime, companion, foodPreference, transportMode}
+ *       + mealType(BOTH·LUNCH·DINNER), headcount (docs/07 [제안], 선택값)
+ * 성공하면 draftId를 기억해 두므로 이어서 navigate('/trips/draft', { state: { draftId } })로 이동하면 된다.
+ * 오류: 지난 날짜·행사일 불일치 400, 없는 행사 404, 추천 후보 부족 422 (error.status)
+ */
+export async function recommendDraft({
+  eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
+}) {
+  const body = { eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount }
+
+  const draft = USE_MOCK_API
+    ? await withMock(() => {
+      resetMockPlans()
+      return mockGetDraft(MOCK_DRAFT_ID)
+    })
+    : await request(() => api.post('/api/plans/recommend', body))
+
+  rememberDraftId(draft.draftId)
+  return draft
+}
+
 /** API-PLAN-002 저장 전 일정 초안 조회 */
 export function getDraft(draftId) {
   if (USE_MOCK_API) {

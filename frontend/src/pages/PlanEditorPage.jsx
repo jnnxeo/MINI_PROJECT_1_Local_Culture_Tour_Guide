@@ -51,6 +51,33 @@ function snapshot(title, items) {
   ])
 }
 
+/**
+ * 저장이 중간에 실패한 뒤 서버 상태와 화면 편집본을 맞춘다 (편집 내용은 그대로 둔다).
+ * - 이미 서버에 추가된 새 항목은 그 itemId 를 이어받아 다시 저장할 때 중복 추가(409)가 나지 않게 한다
+ * - 서버에 더 이상 없는 항목은 새 항목으로 다시 추가되게 itemId 를 비운다
+ */
+function reconcileWithServer(localItems, serverItems) {
+  const serverIds = new Set(serverItems.map((item) => item.itemId))
+  const kept = localItems.map((item) => (item.itemId != null && !serverIds.has(item.itemId) ? { ...item, itemId: null } : item))
+  const usedIds = new Set(kept.filter((item) => item.itemId != null).map((item) => item.itemId))
+
+  return kept.map((item) => {
+    if (item.itemId != null) {
+      return item
+    }
+
+    const added = serverItems.find((server) => !usedIds.has(server.itemId)
+      && server.type === item.type && server.placeId === item.placeId)
+
+    if (!added) {
+      return item
+    }
+
+    usedIds.add(added.itemId)
+    return { ...item, itemId: added.itemId }
+  })
+}
+
 // API-PLACE-001 후보 → 화면 일정 항목 (아직 서버에 추가되지 않아 itemId 없음)
 function toNewItem(place, { key, startTime, durationMin }) {
   return {
@@ -84,6 +111,8 @@ export default function PlanEditorPage() {
   const navigate = useNavigate()
   const mapRef = useRef(null)
   const generationTokenRef = useRef(0)
+  // 추천 요청은 서버에서 되돌릴 수 없어, 끝나기 전에는 새 요청을 받지 않는다
+  const generationRunningRef = useRef(false)
   const [draftId] = useState(() => resolveDraftId(location.state?.draftId))
 
   const [status, setStatus] = useState('loading')
@@ -174,6 +203,17 @@ export default function PlanEditorPage() {
     () => new Map((draft?.recommendationReasons ?? []).map(({ itemId, reason }) => [itemId, reason])),
     [draft],
   )
+  const serverItemById = useMemo(
+    () => new Map((draft?.items ?? []).map((item) => [item.itemId, item])),
+    [draft],
+  )
+  // 추천 이유에는 식사 시각이 들어가므로, 화면에서 장소나 시간을 바꾼 항목은 이유를 숨긴다 (AI-004·007)
+  const reasonFor = (item) => {
+    const server = serverItemById.get(item.itemId)
+    const unchanged = server && server.placeId === item.placeId
+      && server.startTime === item.startTime && server.durationMin === item.durationMin
+    return unchanged ? reasonByItemId.get(item.itemId) : undefined
+  }
 
   const closeModal = () => setModal(null)
 
@@ -210,14 +250,16 @@ export default function PlanEditorPage() {
     closeModal()
   }
 
-  // TRIP-005 장소 변경 (저장 시 기존 항목 삭제 + 새 항목 추가로 반영)
+  // TRIP-005 장소 변경 — 같은 항목(itemId)의 장소만 바꿔 저장 때 API-PLAN-006 으로 한 번에 반영한다
   const replacePlace = (key, place) => {
-    const newKey = `new-${place.placeId}-${Date.now()}`
-
     setItems((current) => current.map((item) => (item.key === key
-      ? { ...toNewItem(place, { key: newKey, startTime: item.startTime, durationMin: item.durationMin }), sequence: item.sequence }
+      ? {
+        ...toNewItem(place, { key, startTime: item.startTime, durationMin: item.durationMin }),
+        itemId: item.itemId,
+        sequence: item.sequence,
+      }
       : item)))
-    setSelectedKey(newKey)
+    setSelectedKey(key)
     closeModal()
   }
 
@@ -311,15 +353,38 @@ export default function PlanEditorPage() {
       setSavedPlan(saved)
       setModal({ type: 'saved', plan: saved })
     } catch (saveError) {
-      setModal({ type: 'notice', title: '저장하지 못했어요', message: saveError.message })
-      setReloadCount((count) => count + 1)
+      // 앞 단계(삭제·수정·추가)는 이미 서버에 반영됐을 수 있다. 편집한 내용은 그대로 두고
+      // 서버 상태만 다시 받아, 다시 저장하면 남은 부분만 이어서 반영되게 한다
+      const serverDraft = await getDraft(draftId).catch(() => null)
+
+      if (serverDraft) {
+        setDraft(serverDraft)
+        setItems((current) => reconcileWithServer(current, serverDraft.items))
+      }
+
+      setModal({
+        type: 'notice',
+        title: '저장하지 못했어요',
+        message: `${saveError.message}\n편집한 내용은 그대로 두었어요. 확인 후 다시 저장해 주세요.`,
+      })
     } finally {
       setSaving(false)
     }
   }
 
-  // AI-009 조건 수정(PLAN-003 → PLAN-004) / AI-010 다시 추천(PLAN-004)
+  /**
+   * AI-009 조건 수정: API-PLAN-003 이 조건과 일정을 한 번에 바꾼다 → 002 로 다시 불러온다
+   * AI-010 다시 추천: API-PLAN-004 → 002
+   * 실패하면 서버 초안은 그대로다. 취소해도 이미 보낸 요청은 서버에서 끝까지 처리되므로,
+   * 성공했다면 화면을 서버 결과로 맞추고 알린다 (예전 항목 번호로 저장하다 404 가 나지 않게).
+   */
   const startGeneration = (conditionChanges) => {
+    if (generationRunningRef.current) {
+      setModal({ type: 'notice', title: '아직 추천을 만들고 있어요', message: '앞서 요청한 추천이 끝난 뒤 다시 시도해 주세요.' })
+      return
+    }
+
+    generationRunningRef.current = true
     const token = generationTokenRef.current + 1
     generationTokenRef.current = token
     setGeneration({ status: 'running' })
@@ -328,9 +393,10 @@ export default function PlanEditorPage() {
     const run = async () => {
       if (conditionChanges) {
         await updateConditions(draftId, { ...draft.conditions, visitDate: draft.visitDate, ...conditionChanges })
+      } else {
+        await regenerateDraft(draftId)
       }
 
-      await regenerateDraft(draftId)
       return getDraft(draftId)
     }
 
@@ -338,12 +404,23 @@ export default function PlanEditorPage() {
       .then((result) => {
         if (generationTokenRef.current === token) {
           setGeneration({ status: 'done', result })
+          return
         }
+
+        applyDraft(result)
+        setModal({
+          type: 'notice',
+          title: '새 추천 일정이 반영되었어요',
+          message: '취소하기 전에 요청이 이미 처리되어 새 일정으로 바뀌었어요.',
+        })
       })
       .catch((error) => {
         if (generationTokenRef.current === token) {
           setGeneration({ status: 'error', message: error.message })
         }
+      })
+      .finally(() => {
+        generationRunningRef.current = false
       })
   }
 
@@ -623,7 +700,7 @@ export default function PlanEditorPage() {
                 key={item.key}
                 item={item}
                 isCore={item === coreItem}
-                reason={reasonByItemId.get(item.itemId)}
+                reason={reasonFor(item)}
                 isLast={index === items.length - 1}
                 isSelected={item.key === selectedItem?.key}
                 distanceToNext={distanceMeters(item, items[index + 1])}
@@ -669,7 +746,7 @@ export default function PlanEditorPage() {
                   {warnings.map((warning) => <li key={`${warning.code}-${warning.message}`}>{warning.message}</li>)}
                 </ul>
               ) : (
-                <p className="plan-basis__note">모든 장소가 방문 시간에 영업 중이에요.</p>
+                <p className="plan-basis__note">모든 맛집이 방문 시간에 영업 중이에요.</p>
               )}
             </div>
           </aside>

@@ -50,4 +50,10 @@ public interface PlanDraftMapper {
 
 	/** useGeneratedKeys 로 tripPlanId 가 채워진다 */
 	int insertPlan(TripPlan plan);
+
+	/** 추천 조건(여행 날짜·방문 시간·이동 방법·음식 종류·식사 시간)만 바꾼다 (API-PLAN-003·004) */
+	int updateConditions(TripPlan plan);
+
+	/** 다시 추천할 때 초안의 항목을 모두 지운다 (API-PLAN-004) */
+	int deleteItemsByPlanId(Long tripPlanId);
 }

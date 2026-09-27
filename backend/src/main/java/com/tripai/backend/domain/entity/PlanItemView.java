@@ -36,4 +36,6 @@ public class PlanItemView {
 	private LocalTime closeTime;
 	private LocalTime breakOpenTime;
 	private LocalTime breakCloseTime;
+	// 다시 추천에서 지금 맛집이 지금 조건(음식 종류)에 맞는지 볼 때 쓴다
+	private String cuisineType;
 }

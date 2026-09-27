@@ -1,6 +1,7 @@
 package com.tripai.backend.domain.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
@@ -23,6 +24,7 @@ public record DraftItemAddRequest(
 
 		@NotNull(message = "머무는 시간을 입력해 주세요.")
 		@Positive(message = "머무는 시간은 0분보다 길어야 합니다.")
+		@Max(value = 1440, message = "머무는 시간은 하루(1440분)를 넘을 수 없습니다.")
 		Integer durationMin,
 
 		@Positive(message = "방문 순서는 1부터 시작합니다.")
