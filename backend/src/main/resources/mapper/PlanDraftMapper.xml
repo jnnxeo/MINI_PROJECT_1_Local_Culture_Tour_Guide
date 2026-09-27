@@ -8,7 +8,7 @@
 			resultType="TripPlan">
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
-		       tp.headcount, tp.created_at, tp.upd_at,
+		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at,
 		       e.event_name AS anchor_event_name
 		FROM trip_plan tp
 		JOIN event e ON e.event_content_id = tp.anchor_content_id
@@ -20,7 +20,7 @@
 			resultType="TripPlan">
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
-		       tp.headcount, tp.created_at, tp.upd_at
+		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at
 		FROM trip_plan tp
 		WHERE tp.trip_plan_id = #{tripPlanId}
 		FOR UPDATE
@@ -124,5 +124,21 @@
 		WHERE trip_plan_id = #{tripPlanId}
 		  AND save_yn = FALSE
 	</update>
+
+	<select id="findRecommendEvent"
+			parameterType="string"
+			resultType="RecommendEventView">
+		SELECT event_content_id, event_name, display_yn, event_start_date, event_end_date,
+		       event_start_time, event_end_time, mapx, mapy
+		FROM event
+		WHERE event_content_id = #{eventContentId}
+	</select>
+
+	<insert id="insertPlan" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="tripPlanId">
+		INSERT INTO trip_plan (user_id, anchor_content_id, title, trip_date, visit_start_time, visit_end_time,
+		                       save_yn, ai_yn, transport_md, food_preference, meal_type, headcount)
+		VALUES (#{userId}, #{anchorContentId}, #{title}, #{tripDate}, #{visitStartTime}, #{visitEndTime},
+		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType}, #{headcount})
+	</insert>
 
 </mapper>

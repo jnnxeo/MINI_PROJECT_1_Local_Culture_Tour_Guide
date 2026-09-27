@@ -2,6 +2,7 @@ package com.tripai.backend.service;
 
 import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.PlanItemView;
+import com.tripai.backend.domain.entity.RecommendEventView;
 import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import com.tripai.backend.repository.PlanDraftMapper;
@@ -33,6 +34,7 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     final Map<String, ItemTargetView> events = new HashMap<>();
     final Map<String, Display> displays = new HashMap<>();
     final Map<Long, String> titles = new HashMap<>();
+    final Map<String, RecommendEventView> recommendEvents = new HashMap<>();
 
     void addRow(TripItem item) {
         rows.put(item.getTripItemId(), item);
@@ -158,6 +160,46 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .saveYn(true)
                 .aiYn(plan.getAiYn())
                 .transportMd(plan.getTransportMd())
+                .foodPreference(plan.getFoodPreference())
+                .mealType(plan.getMealType())
+                .headcount(plan.getHeadcount())
+                .build());
+        return 1;
+    }
+
+    @Override
+    public Optional<RecommendEventView> findRecommendEvent(String eventContentId) {
+        return Optional.ofNullable(recommendEvents.get(eventContentId));
+    }
+
+    private long nextPlanId = 900L;
+
+    @Override
+    public int insertPlan(TripPlan plan) {
+        long planId = nextPlanId++;
+        // MyBatis useGeneratedKeys 처럼 넘겨받은 객체에 번호를 채운다
+        try {
+            var field = TripPlan.class.getDeclaredField("tripPlanId");
+            field.setAccessible(true);
+            field.set(plan, planId);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+        RecommendEventView event = recommendEvents.get(plan.getAnchorContentId());
+        plans.put(planId, TripPlan.builder()
+                .tripPlanId(planId)
+                .userId(plan.getUserId())
+                .anchorContentId(plan.getAnchorContentId())
+                .anchorEventName(event == null ? null : event.getEventName())
+                .title(plan.getTitle())
+                .tripDate(plan.getTripDate())
+                .visitStartTime(plan.getVisitStartTime())
+                .visitEndTime(plan.getVisitEndTime())
+                .saveYn(false)
+                .aiYn(plan.getAiYn())
+                .transportMd(plan.getTransportMd())
+                .foodPreference(plan.getFoodPreference())
+                .mealType(plan.getMealType())
                 .headcount(plan.getHeadcount())
                 .build());
         return 1;

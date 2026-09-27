@@ -2,6 +2,7 @@ package com.tripai.backend.repository;
 
 import com.tripai.backend.domain.entity.ItemTargetView;
 import com.tripai.backend.domain.entity.PlanItemView;
+import com.tripai.backend.domain.entity.RecommendEventView;
 import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import java.util.List;
@@ -43,4 +44,10 @@ public interface PlanDraftMapper {
 
 	/** 아직 저장 전인 초안만 저장 상태로 바꾼다. 0 이면 이미 저장된 것 */
 	int markSaved(Long tripPlanId);
+
+	/** 초안을 만들 기준 행사 — 기간·시간·좌표까지 가져온다 (API-PLAN-001) */
+	Optional<RecommendEventView> findRecommendEvent(String eventContentId);
+
+	/** useGeneratedKeys 로 tripPlanId 가 채워진다 */
+	int insertPlan(TripPlan plan);
 }
