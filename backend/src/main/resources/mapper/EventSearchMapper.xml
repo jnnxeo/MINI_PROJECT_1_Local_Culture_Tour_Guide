@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.EventSearchMapper">
+
+    <sql id="searchConditions">
+        display_yn = TRUE
+        <if test="criteria.keywordPattern != null">
+            AND (
+                LOWER(event_name) LIKE #{criteria.keywordPattern} ESCAPE '!'
+                OR LOWER(event_place) LIKE #{criteria.keywordPattern} ESCAPE '!'
+                OR LOWER(district_name) LIKE #{criteria.keywordPattern} ESCAPE '!'
+                OR LOWER(addr) LIKE #{criteria.keywordPattern} ESCAPE '!'
+                OR LOWER(event_type) LIKE #{criteria.keywordPattern} ESCAPE '!'
+                <if test="criteria.keywordEventTypes != null and !criteria.keywordEventTypes.isEmpty()">
+                    OR event_type IN
+                    <foreach collection="criteria.keywordEventTypes" item="eventType" open="(" separator="," close=")">
+                        #{eventType}
+                    </foreach>
+                </if>
+            )
+        </if>
+        <if test="criteria.monthStart != null">
+            AND event_start_date &lt;= #{criteria.monthEnd}
+            AND event_end_date &gt;= #{criteria.monthStart}
+        </if>
+        <if test="criteria.eventTypes != null and !criteria.eventTypes.isEmpty()">
+            AND event_type IN
+            <foreach collection="criteria.eventTypes" item="eventType" open="(" separator="," close=")">
+                #{eventType}
+            </foreach>
+        </if>
+        <if test="criteria.district != null">
+            AND district_name = #{criteria.district}
+        </if>
+        <if test="criteria.freeOnly">
+            AND free_yn = TRUE
+        </if>
+    </sql>
+
+    <select id="findEvents" resultType="com.tripai.backend.domain.entity.MonthlyEvent">
+        SELECT event_content_id AS event_id,
+               event_name AS title,
+               event_type,
+               district_name AS district,
+               event_start_date AS start_date,
+               event_end_date AS end_date,
+               free_yn,
+               use_fee AS fee,
+               image_url
+        FROM event
+        WHERE <include refid="searchConditions" />
+        <choose>
+            <when test="criteria.sort == 'endDateAsc'">
+                ORDER BY CASE WHEN event_end_date &lt; CURRENT_DATE THEN 1 ELSE 0 END ASC,
+                         CASE WHEN event_end_date &gt;= CURRENT_DATE THEN event_end_date END ASC,
+                         CASE WHEN event_end_date &lt; CURRENT_DATE THEN event_end_date END DESC,
+                         event_content_id ASC
+            </when>
+            <when test="criteria.sort == 'titleAsc'">
+                ORDER BY event_name ASC, event_content_id ASC
+            </when>
+            <otherwise>
+                ORDER BY event_start_date ASC, event_content_id ASC
+            </otherwise>
+        </choose>
+        LIMIT #{criteria.size} OFFSET #{criteria.offset}
+    </select>
+
+    <select id="countEvents" resultType="long">
+        SELECT COUNT(*)
+        FROM event
+        WHERE <include refid="searchConditions" />
+    </select>
+
+</mapper>

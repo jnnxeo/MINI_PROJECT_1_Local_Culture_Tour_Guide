@@ -4,6 +4,7 @@ import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 /** 서울시 문화행사 CODENAME과 화면 분야의 대응표. 원본 값은 event_type에 그대로 저장한다. */
 public enum EventCategory {
@@ -39,5 +40,14 @@ public enum EventCategory {
 
     public List<String> queryTypes() {
         return java.util.stream.Stream.concat(java.util.stream.Stream.of(label), sourceTypes.stream()).toList();
+    }
+
+    public static List<String> queryTypesMatchingKeyword(String keyword) {
+        String normalized = keyword.toLowerCase(Locale.ROOT);
+        return Arrays.stream(values())
+                .filter(category -> category.label.toLowerCase(Locale.ROOT).contains(normalized))
+                .flatMap(category -> category.queryTypes().stream())
+                .distinct()
+                .toList();
     }
 }
