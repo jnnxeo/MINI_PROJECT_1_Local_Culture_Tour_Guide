@@ -30,7 +30,9 @@ public class PlaceService {
     static final int DEFAULT_SIZE = 10;
     static final int MAX_SIZE = 50;
 
-    private static final double METERS_PER_DEGREE_LAT = 111_320d;
+    // SQL 하버사인과 같은 구(지구 반지름 6,371km)의 위도 1도 거리. 사각형이 원을 빠짐없이 덮도록 1% 여유를 둔다
+    static final double METERS_PER_DEGREE_LAT = 6_371_000d * Math.PI / 180;
+    static final double BOX_MARGIN = 1.01;
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
     private static final Pattern STRICT_TIME = Pattern.compile("(?:[01]\\d|2[0-3]):[0-5]\\d");
     private static final Set<String> RECOMMENDABLE_CUISINES = Set.of("KOREAN", "WESTERN", "JAPANESE", "CHINESE");
@@ -63,20 +65,25 @@ public class PlaceService {
         if (searchPage < 0 || searchSize <= 0 || searchSize > MAX_SIZE) {
             throw badRequest("page 는 0 이상, size 는 1~" + MAX_SIZE + " 사이로 입력해 주세요.");
         }
+        // page × size 가 int 를 넘으면 음수 OFFSET 이 DB 로 내려가 500 이 나므로 먼저 막는다 (SEC-005)
+        long offset = (long) searchPage * searchSize;
+        if (offset > Integer.MAX_VALUE) {
+            throw badRequest("page 값이 너무 큽니다.");
+        }
 
         String normalizedCuisineType = normalizeCuisineType(cuisineType);
         LocalTime normalizedMealTime = normalizeMealTime(mealTime);
 
         double[] center = resolveCenter(eventId, lat, lng);
-        double latDelta = searchRadius / METERS_PER_DEGREE_LAT;
-        double lngDelta = searchRadius / (METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(center[0])));
+        double latDelta = searchRadius / METERS_PER_DEGREE_LAT * BOX_MARGIN;
+        double lngDelta = searchRadius / (METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(center[0]))) * BOX_MARGIN;
 
         List<RestaurantResponse> items = placeMapper.findRestaurantsNear(
                         center[0], center[1], searchRadius,
                         center[0] - latDelta, center[0] + latDelta,
                         center[1] - lngDelta, center[1] + lngDelta,
                         normalizedCuisineType, normalizedMealTime,
-                        searchSize, searchPage * searchSize)
+                        searchSize, (int) offset)
                 .stream()
                 .map(PlaceService::toResponse)
                 .toList();

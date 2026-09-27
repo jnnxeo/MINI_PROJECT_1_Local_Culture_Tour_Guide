@@ -83,13 +83,35 @@ class PlaceServiceTest {
 
     @Test
     void 검색_사각형은_반경을_모두_덮는다() {
-        service.searchRestaurants(null, 37.5796, 126.977, 1000, null, null);
+        service.searchRestaurants(null, 37.5796, 126.977, 1500, null, null);
 
-        // 위도 1도 ≈ 111.32km, 경도 1도는 위도에 따라 줄어든다
-        assertThat(mapper.maxLat - 37.5796).isCloseTo(1000 / 111_320d, within(1e-9));
-        double lngMeters = (mapper.maxLng - 126.977) * 111_320d * Math.cos(Math.toRadians(37.5796));
-        assertThat(lngMeters).isCloseTo(1000, within(0.001));
-        assertThat(37.5796 - mapper.minLat).isCloseTo(mapper.maxLat - 37.5796, within(1e-12));
+        // GPT 검토 E7: 북쪽 약 1,499m(위도 37.5930808) 지점이 예전 사각형(111,320m/도) 밖이었다
+        assertThat(37.5930808).isBetween(mapper.minLat, mapper.maxLat);
+        // 원 위의 점(8방향)이 모두 사각형 안에 있어야 한다 — SQL 과 같은 반지름 6,371km 구 기준
+        for (int bearing = 0; bearing < 360; bearing += 45) {
+            double[] point = destination(37.5796, 126.977, bearing, 1500);
+            assertThat(PlanRecommendService.distance(37.5796, 126.977, point[0], point[1])).isCloseTo(1500, within(0.01));
+            assertThat(point[0]).isBetween(mapper.minLat, mapper.maxLat);
+            assertThat(point[1]).isBetween(mapper.minLng, mapper.maxLng);
+        }
+    }
+
+    @Test
+    void page_와_size_를_곱한_값이_int_를_넘으면_400() {
+        // GPT 검토 E10: 42,949,673 × 50 이 넘쳐 음수 OFFSET 이 DB 로 가던 문제
+        assertStatus(() -> service.searchRestaurants("DEV-EV-001", null, null, null, 42_949_673, 50), HttpStatus.BAD_REQUEST);
+        assertThat(mapper.searchCalls).isZero();
+    }
+
+    /** 구면에서 시작점으로부터 방위각·거리만큼 떨어진 점 [위도, 경도] */
+    private static double[] destination(double lat, double lng, double bearingDegree, double meters) {
+        double angular = meters / 6_371_000d;
+        double bearing = Math.toRadians(bearingDegree);
+        double lat1 = Math.toRadians(lat);
+        double lat2 = Math.asin(Math.sin(lat1) * Math.cos(angular) + Math.cos(lat1) * Math.sin(angular) * Math.cos(bearing));
+        double lng2 = Math.toRadians(lng) + Math.atan2(Math.sin(bearing) * Math.sin(angular) * Math.cos(lat1),
+                Math.cos(angular) - Math.sin(lat1) * Math.sin(lat2));
+        return new double[] {Math.toDegrees(lat2), Math.toDegrees(lng2)};
     }
 
     @Test
