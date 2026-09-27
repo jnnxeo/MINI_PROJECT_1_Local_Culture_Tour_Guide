@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { signup } from '../services/authService'
+import AuthHeader from '../components/AuthHeader.jsx'
 import '../styles/signup.css'
 
 const initialForm = {
@@ -121,22 +122,7 @@ export default function SignupPage() {
 
   return (
     <div className="signup-page">
-      <header className="signup-header">
-        <Link to="/" className="signup-logo">
-          <span className="signup-logo-mark" aria-hidden="true">
-            ↑
-          </span>
-          <span>TripAI</span>
-        </Link>
-
-        <nav className="signup-navigation" aria-label="주요 메뉴">
-          <Link to="/">메인페이지</Link>
-          <Link to="/my-trips">내 여행</Link>
-          <Link to="/login" className="signup-login-button">
-            로그인
-          </Link>
-        </nav>
-      </header>
+      <AuthHeader />
 
       <section className="signup-hero">
         <p className="signup-eyebrow">JOIN TRIPAI</p>

@@ -35,6 +35,15 @@ export default function App() {
       />
       
       <Route
+        path="/my-trips"
+        element={(
+          <ProtectedRoute>
+            <HomeNavigation />
+            <FeaturePlaceholderPage title="내 여행" />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
         path="/trips/draft"
         element={(
           <ProtectedRoute>
