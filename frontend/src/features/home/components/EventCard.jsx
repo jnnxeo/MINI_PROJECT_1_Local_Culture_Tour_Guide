@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 function formatPeriod(startDate, endDate) {
   if (!startDate || !endDate) return '일시 정보 없음'
@@ -14,11 +14,14 @@ function formatPeriod(startDate, endDate) {
 }
 
 export default function EventCard({ event, featured, isFavorite, onFavorite, onDetail }) {
+  const [failedImageUrl, setFailedImageUrl] = useState(null)
+  const showPhoto = Boolean(event.imageUrl) && failedImageUrl !== event.imageUrl
+
   return (
     <article className={`event-card${featured ? ' event-card--featured' : ''}`}>
       <div className={`event-card__image event-card__image--${event.imageTone || 'gallery'}`}>
-        {event.imageUrl
-          ? <img className="event-card__photo" src={event.imageUrl} alt="" loading="lazy" />
+        {showPhoto
+          ? <img className="event-card__photo" src={event.imageUrl} alt="" loading="lazy" onError={() => setFailedImageUrl(event.imageUrl)} />
           : <div className="event-card__image-shape" aria-hidden="true" />}
         <button
           className={`event-card__favorite${isFavorite ? ' event-card__favorite--active' : ''}`}
