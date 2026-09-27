@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.PlanDraftMapper">
+
+	<select id="findPlanById"
+			parameterType="long"
+			resultType="TripPlan">
+		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
+		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
+		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at,
+		       e.event_name AS anchor_event_name
+		FROM trip_plan tp
+		JOIN event e ON e.event_content_id = tp.anchor_content_id
+		WHERE tp.trip_plan_id = #{tripPlanId}
+	</select>
+
+	<select id="findPlanByIdForUpdate"
+			parameterType="long"
+			resultType="TripPlan">
+		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
+		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
+		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at
+		FROM trip_plan tp
+		WHERE tp.trip_plan_id = #{tripPlanId}
+		FOR UPDATE
+	</select>
+
+	<select id="findItemsByPlanId"
+			parameterType="long"
+			resultType="PlanItemView">
+		SELECT ti.trip_item_id, ti.seq_order, ti.item_type, ti.event_content_id, ti.place_content_id,
+		       ti.start_time, ti.duration_min, ti.ai_reason, ti.time_fix_yn,
+		       COALESCE(e.event_name, p.place_name) AS name,
+		       COALESCE(e.addr, p.addr) AS addr,
+		       COALESCE(e.mapx, p.mapx) AS mapx,
+		       COALESCE(e.mapy, p.mapy) AS mapy,
+		       COALESCE(e.image_url, p.image_url) AS image_url,
+		       p.open_time, p.close_time, p.break_open_time, p.break_close_time, p.cuisine_type
+		FROM trip_item ti
+		LEFT JOIN event e ON ti.item_type = 'EVENT' AND e.event_content_id = ti.event_content_id
+		LEFT JOIN place p ON ti.item_type = 'PLACE' AND p.content_id = ti.place_content_id
+		WHERE ti.trip_plan_id = #{tripPlanId}
+		ORDER BY ti.seq_order
+	</select>
+
+	<update id="updateTitle">
+		UPDATE trip_plan
+		SET title = #{title}
+		WHERE trip_plan_id = #{tripPlanId}
+	</update>
+
+	<select id="findPlaceTarget"
+			parameterType="string"
+			resultType="ItemTargetView">
+		SELECT content_id, place_name AS name, display_yn
+		FROM place
+		WHERE content_id = #{contentId}
+		  AND content_type_cd = 39
+	</select>
+
+	<select id="findEventTarget"
+			parameterType="string"
+			resultType="ItemTargetView">
+		SELECT event_content_id AS content_id, event_name AS name, display_yn,
+		       event_start_date, event_end_date, event_start_time
+		FROM event
+		WHERE event_content_id = #{eventContentId}
+	</select>
+
+	<update id="shiftSeqOrders" parameterType="long">
+		UPDATE trip_item
+		SET seq_order = seq_order + 1000
+		WHERE trip_plan_id = #{tripPlanId}
+	</update>
+
+	<update id="clearContentIds">
+		UPDATE trip_item
+		SET event_content_id = NULL, place_content_id = NULL
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND trip_item_id IN
+		<foreach collection="itemIds" item="itemId" open="(" separator="," close=")">
+			#{itemId}
+		</foreach>
+	</update>
+
+	<update id="updateItem" parameterType="TripItem">
+		UPDATE trip_item
+		SET seq_order = #{seqOrder},
+		    item_type = #{itemType},
+		    event_content_id = #{eventContentId},
+		    place_content_id = #{placeContentId},
+		    start_time = #{startTime},
+		    duration_min = #{durationMin},
+		    ai_reason = #{aiReason},
+		    time_fix_yn = #{timeFixYn}
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</update>
+
+	<insert id="insertItem" parameterType="TripItem" useGeneratedKeys="true" keyProperty="tripItemId">
+		INSERT INTO trip_item (trip_plan_id, seq_order, item_type, event_content_id, place_content_id,
+		                       start_time, duration_min, ai_reason, time_fix_yn)
+		VALUES (#{tripPlanId}, #{seqOrder}, #{itemType}, #{eventContentId}, #{placeContentId},
+		        #{startTime}, #{durationMin}, #{aiReason}, #{timeFixYn})
+	</insert>
+
+	<update id="updateSeqOrder">
+		UPDATE trip_item
+		SET seq_order = #{seqOrder}
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</update>
+
+	<delete id="deleteItem">
+		DELETE FROM trip_item
+		WHERE trip_item_id = #{tripItemId}
+		  AND trip_plan_id = #{tripPlanId}
+	</delete>
+
+	<update id="markSaved" parameterType="long">
+		UPDATE trip_plan
+		SET save_yn = TRUE
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND save_yn = FALSE
+	</update>
+
+	<select id="findRecommendEvent"
+			parameterType="string"
+			resultType="RecommendEventView">
+		SELECT event_content_id, event_name, display_yn, event_start_date, event_end_date,
+		       event_start_time, event_end_time, mapx, mapy
+		FROM event
+		WHERE event_content_id = #{eventContentId}
+	</select>
+
+	<insert id="insertPlan" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="tripPlanId">
+		INSERT INTO trip_plan (user_id, anchor_content_id, title, trip_date, visit_start_time, visit_end_time,
+		                       save_yn, ai_yn, transport_md, food_preference, meal_type, headcount)
+		VALUES (#{userId}, #{anchorContentId}, #{title}, #{tripDate}, #{visitStartTime}, #{visitEndTime},
+		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType}, #{headcount})
+	</insert>
+
+	<update id="updateConditions" parameterType="TripPlan">
+		UPDATE trip_plan
+		SET trip_date = #{tripDate},
+		    visit_start_time = #{visitStartTime},
+		    visit_end_time = #{visitEndTime},
+		    transport_md = #{transportMd},
+		    food_preference = #{foodPreference},
+		    meal_type = #{mealType}
+		WHERE trip_plan_id = #{tripPlanId}
+		  AND save_yn = FALSE
+	</update>
+
+	<delete id="deleteItemsByPlanId" parameterType="long">
+		DELETE FROM trip_item
+		WHERE trip_plan_id = #{tripPlanId}
+	</delete>
+
+</mapper>

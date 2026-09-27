@@ -97,6 +97,29 @@ export function forgetDraftId() {
   }
 }
 
+/**
+ * API-PLAN-001 문화행사 1개 기준 일정 초안 생성 — 메인·행사 상세(2팀 화면)에서 호출한다.
+ * Body: {eventId, visitDate, startTime, endTime, companion, foodPreference, transportMode}
+ *       + mealType(BOTH·LUNCH·DINNER), headcount (docs/07 [제안], 선택값)
+ * 성공하면 draftId를 기억해 두므로 이어서 navigate('/trips/draft', { state: { draftId } })로 이동하면 된다.
+ * 오류: 지난 날짜·행사일 불일치 400, 없는 행사 404, 추천 후보 부족 422 (error.status)
+ */
+export async function recommendDraft({
+  eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
+}) {
+  const body = { eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount }
+
+  const draft = USE_MOCK_API
+    ? await withMock(() => {
+      resetMockPlans()
+      return mockGetDraft(MOCK_DRAFT_ID)
+    })
+    : await request(() => api.post('/api/plans/recommend', body))
+
+  rememberDraftId(draft.draftId)
+  return draft
+}
+
 /** API-PLAN-002 저장 전 일정 초안 조회 */
 export function getDraft(draftId) {
   if (USE_MOCK_API) {
@@ -106,9 +129,9 @@ export function getDraft(draftId) {
   return request(() => api.get(draftPath(draftId)))
 }
 
-/** API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,transportMode} */
-export function updateConditions(draftId, { visitDate, startTime, endTime, companion, foodPreference, transportMode }) {
-  const body = { visitDate, startTime, endTime, companion, foodPreference, transportMode }
+/** API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,mealType,transportMode} */
+export function updateConditions(draftId, { visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode }) {
+  const body = { visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode }
 
   if (USE_MOCK_API) {
     return withMock(() => mockUpdateConditions(draftId, body))
@@ -184,13 +207,17 @@ export function saveDraftAsPlan(draftId) {
   return request(() => api.post('/api/plans', { draftId }))
 }
 
-/** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, category, page, size */
-export function searchRestaurants({ eventId, radius, category, page, size }) {
+/** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, cuisineType, mealTime, page, size */
+export function searchRestaurants({ eventId, radius, foodPreference, mealType, page, size }) {
   if (USE_MOCK_API) {
     return withMock(() => mockSearchRestaurants({ eventId }))
   }
 
+  const cuisineType = foodPreference || undefined
+  // BOTH(점심+저녁 모두)·미지정은 특정 시간을 못 박지 않는다 — 필터 없이(전체 시간) 조회한다.
+  const mealTime = mealType === 'DINNER' ? '17:00' : mealType === 'LUNCH' ? '12:30' : undefined
+
   return request(() => api.get('/api/places/restaurants', {
-    params: { eventId, radius, category, page, size },
+    params: { eventId, radius, cuisineType, mealTime, page, size },
   }))
 }
