@@ -11,10 +11,10 @@ import com.tripai.backend.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
 
-@Service 
-@RequiredArgsConstructor 
+@Service
+@RequiredArgsConstructor
 public class EventService {
-    
+
 
     private final EventMapper eventMapper;
 
@@ -25,7 +25,7 @@ public class EventService {
         EventDetailResponse event = eventMapper.selectEventDetail(eventId);
 
         if(event == null) {
-            throw new CustomException(ErrorCode.EVENT_NOT_FOUND); 
+            throw new CustomException(ErrorCode.EVENT_NOT_FOUND);
         }
         return event;
     }
