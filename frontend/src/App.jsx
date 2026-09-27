@@ -1,6 +1,7 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Header from './components/Header.jsx'
+import PlanHeader from './components/plan/PlanHeader.jsx'
+import FeaturePlaceholderPage from './pages/FeaturePlaceholderPage.jsx'
 import { useAuth } from './contexts/AuthContext.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -12,6 +13,10 @@ function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
 
   return isAuthenticated ? children : <Navigate to="/login" replace />
+}
+
+function HomeNavigation() {
+  return <div className="home-plan-header"><PlanHeader /></div>
 }
 
 export default function App() {
@@ -39,8 +44,17 @@ export default function App() {
         path="/"
         element={(
           <ProtectedRoute>
-            <Header />
+            <HomeNavigation />
             <HomePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/events"
+        element={(
+          <ProtectedRoute>
+            <HomeNavigation />
+            <FeaturePlaceholderPage title="문화행사 검색 결과" />
           </ProtectedRoute>
         )}
       />
