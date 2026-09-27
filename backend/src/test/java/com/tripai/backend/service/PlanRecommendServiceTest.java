@@ -3,12 +3,17 @@ package com.tripai.backend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.tripai.backend.domain.dto.DraftConditionsRequest;
+import com.tripai.backend.domain.dto.DraftConditionsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
 import com.tripai.backend.domain.dto.PlanItemResponse;
 import com.tripai.backend.domain.dto.PlanRecommendRequest;
 import com.tripai.backend.domain.entity.EventLocationView;
 import com.tripai.backend.domain.entity.RecommendEventView;
 import com.tripai.backend.domain.entity.RestaurantView;
+import com.tripai.backend.domain.entity.TripPlan;
+import com.tripai.backend.global.exception.CustomException;
+import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.repository.PlaceMapper;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -54,6 +59,7 @@ class PlanRecommendServiceTest {
                     .filter(r -> r.getOpenTime() != null && r.getCloseTime() != null
                             && !mealTime.isBefore(r.getOpenTime()) && mealTime.isBefore(r.getCloseTime()))
                     .sorted(Comparator.comparing(RestaurantView::getDistance))
+                    .skip(offset)
                     .limit(limit)
                     .toList();
         }
@@ -118,6 +124,19 @@ class PlanRecommendServiceTest {
         places.restaurants.add(restaurant("CLOSE", "KOREAN", 300, "11:00", "13:00", null, null));
         places.restaurants.add(restaurant("BREAK", "KOREAN", 400, "11:00", "21:00", "13:00", "14:00"));
         places.restaurants.add(restaurant("OK", "KOREAN", 600, "11:00", "21:00", null, null));
+
+        DraftResponse draft = service.recommend(1L, request(null, "LUNCH", null, null));
+
+        assertThat(draft.items().get(0).placeId()).isEqualTo("OK");
+    }
+
+    @Test
+    void 가까운_20곳이_모두_안_맞아도_다음_후보까지_찾는다() {
+        for (int index = 1; index <= 21; index++) {
+            // 12:30 에는 열려 있지만 13:00 에 닫아 60분 식사가 안 되는 곳
+            places.restaurants.add(restaurant("SHORT-" + index, "KOREAN", index * 50, "11:00", "13:00", null, null));
+        }
+        places.restaurants.add(restaurant("OK", "KOREAN", 1200, "11:00", "21:00", null, null));
 
         DraftResponse draft = service.recommend(1L, request(null, "LUNCH", null, null));
 
@@ -209,6 +228,206 @@ class PlanRecommendServiceTest {
 
         assertThat(PlanRecommendService.openDuringMeal(night, LocalTime.of(17, 0))).isTrue();
         assertThat(PlanRecommendService.openDuringMeal(night, LocalTime.of(12, 30))).isFalse();
+    }
+
+    // ---- API-PLAN-004 다시 추천 ----
+
+    @Test
+    void 다시_추천하면_지금과_다른_맛집으로_바꾸고_제목은_유지한다() {
+        addRestaurant(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", "15:00", "17:00"));
+        addRestaurant(restaurant("PL-2", "KOREAN", 560, "10:30", "20:00", null, null));
+        addRestaurant(restaurant("PL-3", "KOREAN", 700, "11:00", "22:00", null, null));
+        addRestaurant(restaurant("PL-4", "WESTERN", 800, "11:00", "22:00", null, null));
+        Long draftId = service.recommend(1L, request(null, null, null, null)).draftId();
+        mapper.titles.put(draftId, "내가 바꾼 제목");
+
+        DraftResponse again = service.regenerate(1L, draftId);
+
+        assertThat(again.items()).extracting(PlanItemResponse::placeId).containsExactly("PL-3", "PL-4", "EV-1");
+        assertThat(again.items()).extracting(PlanItemResponse::sequence).containsExactly(1, 2, 3);
+        assertThat(again.title()).isEqualTo("내가 바꾼 제목");
+        assertThat(again.recommendationReasons()).hasSize(3);
+        assertThat(mapper.rows.values()).allMatch(row -> row.getTripPlanId().equals(draftId));
+        assertThat(mapper.rows).hasSize(3);
+    }
+
+    @Test
+    void 다시_추천을_누를_때마다_한_단계씩_먼_맛집으로_바뀌고_끝나면_처음으로_돌아온다() {
+        for (int index = 1; index <= 6; index++) {
+            addNearby("PL-" + index, 200 + index * 100);
+        }
+        Long draftId = service.recommend(1L, request(null, null, null, null)).draftId();
+        assertThat(placeIds(draftId)).containsExactly("PL-1", "PL-2");
+
+        service.regenerate(1L, draftId);
+        assertThat(placeIds(draftId)).containsExactly("PL-3", "PL-4");
+
+        service.regenerate(1L, draftId);
+        assertThat(placeIds(draftId)).containsExactly("PL-5", "PL-6");
+
+        service.regenerate(1L, draftId);
+        assertThat(placeIds(draftId)).containsExactly("PL-1", "PL-2");
+    }
+
+    @Test
+    void 대체할_맛집이_일부만_있으면_그만큼만_바꾼다() {
+        addRestaurant(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", "15:00", "17:00"));
+        addRestaurant(restaurant("PL-2", "KOREAN", 560, "10:30", "20:00", null, null));
+        addRestaurant(restaurant("PL-3", "KOREAN", 700, "11:00", "22:00", null, null));
+        Long draftId = service.recommend(1L, request(null, null, null, null)).draftId();
+
+        DraftResponse again = service.regenerate(1L, draftId);
+
+        assertThat(again.items()).extracting(PlanItemResponse::placeId).containsExactly("PL-3", "PL-1", "EV-1");
+    }
+
+    @Test
+    void 다른_후보가_없으면_422_기존_초안을_유지한다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", "15:00", "17:00"));
+        places.restaurants.add(restaurant("PL-2", "KOREAN", 560, "10:30", "20:00", null, null));
+        Long draftId = service.recommend(1L, request(null, null, null, null)).draftId();
+        List<Long> before = List.copyOf(mapper.rows.keySet());
+
+        assertStatus(() -> service.regenerate(1L, draftId), HttpStatus.UNPROCESSABLE_ENTITY);
+        assertThat(mapper.rows.keySet()).containsExactlyElementsOf(before);
+    }
+
+    @Test
+    void 다른_사람_초안은_403_저장된_초안은_404() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        Long draftId = service.recommend(1L, request(null, "LUNCH", null, null)).draftId();
+
+        assertErrorCode(() -> service.regenerate(2L, draftId), ErrorCode.FORBIDDEN);
+        assertErrorCode(() -> service.updateConditions(2L, draftId, conditions(null, null, null, "WALK")), ErrorCode.FORBIDDEN);
+        mapper.markSaved(draftId);
+        assertErrorCode(() -> service.regenerate(1L, draftId), ErrorCode.PLAN_NOT_FOUND);
+    }
+
+    // ---- API-PLAN-003 조건 수정 ----
+
+    @Test
+    void 조건을_바꾸면_저장하고_다시_추천에_그대로_쓴다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        places.restaurants.add(restaurant("CN", "CHINESE", 900, "11:00", "21:00", null, null));
+        Long draftId = service.recommend(1L, request(null, null, null, null)).draftId();
+
+        DraftConditionsResponse changed = service.updateConditions(1L, draftId, conditions(null, "CHINESE", "LUNCH", null));
+
+        assertThat(changed.draftId()).isEqualTo(draftId);
+        assertThat(changed.conditions().foodPreference()).isEqualTo("CHINESE");
+        assertThat(changed.conditions().mealType()).isEqualTo("LUNCH");
+        assertThat(changed.conditions().transportMode()).isEqualTo("WALK_TRANSIT");
+        assertThat(changed.conditions().startTime()).isEqualTo("10:00");
+
+        DraftResponse again = service.regenerate(1L, draftId);
+        assertThat(again.items()).extracting(PlanItemResponse::placeId).containsExactly("CN", "EV-1");
+        assertThat(again.conditions().foodPreference()).isEqualTo("CHINESE");
+    }
+
+    @Test
+    void 조건을_바꾼_직후_다시_추천은_새_조건에서_가장_가까운_곳부터_고른다() {
+        addNearby("KO-1", "KOREAN", 300);
+        addNearby("KO-2", "KOREAN", 400);
+        addNearby("CN-1", "CHINESE", 350);
+        addNearby("CN-2", "CHINESE", 900);
+        Long draftId = service.recommend(1L, request("KOREAN", "LUNCH", null, null)).draftId();
+        service.regenerate(1L, draftId);
+        assertThat(placeIds(draftId)).containsExactly("KO-2");
+
+        service.updateConditions(1L, draftId, conditions(null, "CHINESE", null, null));
+        service.regenerate(1L, draftId);
+
+        // 지금 맛집(한식 400m)이 새 조건(중식)에 맞지 않으니 400m 보다 먼 곳이 아니라 가장 가까운 중식
+        assertThat(placeIds(draftId)).containsExactly("CN-1");
+    }
+
+    @Test
+    void 식사_시간을_바꾼_직후에도_가장_가까운_곳부터_고른다() {
+        addNearby("PL-1", 300);
+        addNearby("PL-2", 400);
+        Long draftId = service.recommend(1L, request(null, "LUNCH", null, null)).draftId();
+        assertThat(placeIds(draftId)).containsExactly("PL-1");
+
+        service.updateConditions(1L, draftId, conditions(null, null, "DINNER", null));
+        DraftResponse again = service.regenerate(1L, draftId);
+
+        // 12:30 점심 맛집은 저녁 조건에 해당하지 않으니 피하지 않고, 17:00 에 영업하는 가장 가까운 곳을 다시 고른다
+        assertThat(placeIds(draftId)).containsExactly("PL-1");
+        assertThat(again.items().get(0).startTime()).isEqualTo("17:00");
+    }
+
+    @Test
+    void 보내지_않은_조건은_그대로_둔다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        Long draftId = service.recommend(1L, request("KOREAN", "DINNER", null, null)).draftId();
+
+        DraftConditionsResponse changed = service.updateConditions(1L, draftId, conditions(null, null, null, "WALK"));
+
+        assertThat(changed.conditions().visitDate()).isEqualTo(VISIT_DATE);
+        assertThat(changed.conditions().foodPreference()).isEqualTo("KOREAN");
+        assertThat(changed.conditions().mealType()).isEqualTo("DINNER");
+        assertThat(changed.conditions().transportMode()).isEqualTo("WALK");
+        assertThat(changed.conditions().endTime()).isEqualTo("21:00");
+    }
+
+    @Test
+    void 새_조건으로_추천이_안_되면_조건을_바꾸지_않는다() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        Long draftId = service.recommend(1L, request(null, "LUNCH", null, null)).draftId();
+        TripPlan before = mapper.plans.get(draftId);
+
+        assertStatus(() -> service.updateConditions(1L, draftId, conditions(null, "JAPANESE", null, null)),
+                HttpStatus.UNPROCESSABLE_ENTITY);
+        assertStatus(() -> service.updateConditions(1L, draftId,
+                new DraftConditionsRequest(LocalDate.of(2026, 11, 1), null, null, null, null, null, null)),
+                HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.updateConditions(1L, draftId,
+                new DraftConditionsRequest(null, "10:00", "17:00", null, null, null, null)),
+                HttpStatus.BAD_REQUEST);
+
+        TripPlan after = mapper.plans.get(draftId);
+        assertThat(after.getFoodPreference()).isEqualTo(before.getFoodPreference());
+        assertThat(after.getTripDate()).isEqualTo(before.getTripDate());
+        assertThat(after.getVisitEndTime()).isEqualTo(before.getVisitEndTime());
+    }
+
+    private static DraftConditionsRequest conditions(LocalDate date, String food, String meal, String transport) {
+        return new DraftConditionsRequest(date, null, null, null, food, meal, transport);
+    }
+
+    private static void assertErrorCode(Runnable call, ErrorCode expected) {
+        assertThatThrownBy(call::run)
+                .isInstanceOf(CustomException.class)
+                .satisfies(e -> assertThat(((CustomException) e).getErrorCode()).isEqualTo(expected));
+    }
+
+    /** 행사장 북쪽으로 distance(m) 떨어진 하루 종일 영업하는 식당 — 좌표와 거리가 맞도록 위도만 옮긴다 */
+    private void addNearby(String id, double distance) {
+        addNearby(id, "KOREAN", distance);
+    }
+
+    private void addNearby(String id, String cuisine, double distance) {
+        places.restaurants.add(restaurant(id, cuisine, distance, "09:00", "23:00", null, null));
+        String lat = String.valueOf(37.5796 + Math.toDegrees(distance / 6371000));
+        mapper.displays.put(id, new FakePlanDraftMapper.Display(id, null, "126.9770000", lat,
+                LocalTime.of(9, 0), LocalTime.of(23, 0), null, null));
+        mapper.cuisines.put(id, cuisine);
+    }
+
+    private List<String> placeIds(Long draftId) {
+        return mapper.findItemsByPlanId(draftId).stream()
+                .map(item -> item.getPlaceContentId())
+                .filter(id -> id != null)
+                .toList();
+    }
+
+    /** 후보로 넣고, 초안 조회(findItemsByPlanId)에도 음식 종류·영업시간이 나오도록 등록한다 (실제 DB 조회와 같게) */
+    private void addRestaurant(RestaurantView restaurant) {
+        places.restaurants.add(restaurant);
+        mapper.displays.put(restaurant.getContentId(), new FakePlanDraftMapper.Display(restaurant.getContentId(), null,
+                null, null, restaurant.getOpenTime(), restaurant.getCloseTime(),
+                restaurant.getBreakOpenTime(), restaurant.getBreakCloseTime()));
+        mapper.cuisines.put(restaurant.getContentId(), restaurant.getCuisineType());
     }
 
     private static PlanRecommendRequest request(String food, String meal, String start, String end) {
