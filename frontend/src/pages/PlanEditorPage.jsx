@@ -574,7 +574,7 @@ export default function PlanEditorPage() {
       <PlanHeader onNavigate={requestNavigate} />
 
       <section className="plan-heading">
-        <p className="plan-heading__eyebrow">{`나의 일정 · 저장 전 초안 · ${formatDate(draft.visitDate)}`}</p>
+        <p className="plan-heading__eyebrow">{`나의 일정 · ${savedPlan ? '저장 완료' : '저장 전 초안'} · ${formatDate(draft.visitDate)}`}</p>
         <h1 className="plan-heading__title">{title}</h1>
         <p className="plan-heading__desc">
           {coreItem?.timeFixed
@@ -583,6 +583,7 @@ export default function PlanEditorPage() {
         </p>
         <button
           className="plan-heading__rename"
+          disabled={Boolean(savedPlan)}
           type="button"
           aria-label="일정 이름 변경"
           onClick={() => setModal({ type: 'rename' })}
@@ -622,13 +623,14 @@ export default function PlanEditorPage() {
                 isLast={index === items.length - 1}
                 isSelected={item.key === selectedItem?.key}
                 distanceToNext={distanceMeters(item, items[index + 1])}
+                locked={Boolean(savedPlan)}
                 onEditTime={() => setModal({ type: 'time', key: item.key, startTime: item.startTime, durationMin: item.durationMin })}
                 onChangePlace={() => setModal({ type: 'placeChange', key: item.key })}
                 onRemove={() => setModal({ type: 'remove', key: item.key })}
                 onShowOnMap={() => showOnMap(item)}
               />
             ))}
-            <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" onClick={() => setModal({ type: 'placeAdd' })}>
+            <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'placeAdd' })}>
               + 장소 직접 추가
             </button>
           </div>

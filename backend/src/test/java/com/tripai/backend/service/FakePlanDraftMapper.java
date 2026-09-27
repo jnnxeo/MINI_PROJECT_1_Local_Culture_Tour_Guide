@@ -45,6 +45,11 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     }
 
     @Override
+    public Optional<TripPlan> findPlanByIdForUpdate(Long tripPlanId) {
+        return findPlanById(tripPlanId);
+    }
+
+    @Override
     public List<PlanItemView> findItemsByPlanId(Long tripPlanId) {
         return rows.values().stream()
                 .filter(row -> row.getTripPlanId().equals(tripPlanId))
@@ -132,6 +137,29 @@ class FakePlanDraftMapper implements PlanDraftMapper {
             return 0;
         }
         rows.remove(tripItemId);
+        return 1;
+    }
+
+    @Override
+    public int markSaved(Long tripPlanId) {
+        TripPlan plan = plans.get(tripPlanId);
+        if (plan == null || Boolean.TRUE.equals(plan.getSaveYn())) {
+            return 0;
+        }
+        plans.put(tripPlanId, TripPlan.builder()
+                .tripPlanId(plan.getTripPlanId())
+                .userId(plan.getUserId())
+                .anchorContentId(plan.getAnchorContentId())
+                .anchorEventName(plan.getAnchorEventName())
+                .title(plan.getTitle())
+                .tripDate(plan.getTripDate())
+                .visitStartTime(plan.getVisitStartTime())
+                .visitEndTime(plan.getVisitEndTime())
+                .saveYn(true)
+                .aiYn(plan.getAiYn())
+                .transportMd(plan.getTransportMd())
+                .headcount(plan.getHeadcount())
+                .build());
         return 1;
     }
 

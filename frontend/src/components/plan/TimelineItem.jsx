@@ -17,6 +17,7 @@ export default function TimelineItem({
   distanceToNext,
   isLast,
   isSelected,
+  locked = false,
   onEditTime,
   onChangePlace,
   onRemove,
@@ -48,13 +49,13 @@ export default function TimelineItem({
         <p className="plan-item__event-note">행사 시간을 기준으로 주변 일정을 조정합니다.</p>
       ) : (
         <div className="plan-item__actions">
-          <button className="tp-btn tp-btn--secondary plan-item__action" type="button" onClick={onEditTime}>
+          <button className="tp-btn tp-btn--secondary plan-item__action" type="button" disabled={locked} onClick={onEditTime}>
             시간 변경
           </button>
-          <button className="tp-btn tp-btn--secondary plan-item__action" type="button" onClick={onChangePlace}>
+          <button className="tp-btn tp-btn--secondary plan-item__action" type="button" disabled={locked} onClick={onChangePlace}>
             장소 변경
           </button>
-          <button className="tp-btn tp-btn--danger plan-item__remove" type="button" onClick={onRemove}>
+          <button className="tp-btn tp-btn--danger plan-item__remove" type="button" disabled={locked} onClick={onRemove}>
             삭제
           </button>
         </div>
