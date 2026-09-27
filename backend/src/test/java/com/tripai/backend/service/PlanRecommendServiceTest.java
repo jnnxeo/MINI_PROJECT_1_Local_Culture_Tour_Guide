@@ -75,7 +75,7 @@ class PlanRecommendServiceTest {
         places = new FakePlaceMapper();
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 9, 27, 9, 0, 0, 0, ZoneId.of("Asia/Seoul")).toInstant(),
                 ZoneId.of("Asia/Seoul"));
-        service = new PlanRecommendService(mapper, places, new PlanDraftService(mapper, clock));
+        service = new PlanRecommendService(mapper, places, new PlanDraftService(mapper, clock), clock);
         mapper.recommendEvents.put("EV-1", event("EV-1", LocalTime.of(18, 0), LocalTime.of(21, 0), true));
     }
 
@@ -203,6 +203,45 @@ class PlanRecommendServiceTest {
     void 여행_날짜에_진행하지_않는_행사면_400() {
         assertStatus(() -> service.recommend(1L, new PlanRecommendRequest(
                 "EV-1", LocalDate.of(2026, 11, 1), null, null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
+    }
+
+    @Test
+    void 지난_날짜나_이미_끝난_행사면_400() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 300, "10:00", "22:00", null, null));
+        RecommendEventView ended = RecommendEventView.builder()
+                .eventContentId("EV-OLD").eventName("작년 축제").displayYn(true)
+                .eventStartDate(LocalDate.of(2025, 10, 1)).eventEndDate(LocalDate.of(2025, 10, 10))
+                .eventStartTime(LocalTime.of(18, 0)).eventEndTime(LocalTime.of(21, 0))
+                .mapx(new BigDecimal("126.9770000")).mapy(new BigDecimal("37.5796000"))
+                .build();
+        mapper.recommendEvents.put("EV-OLD", ended);
+
+        // 오늘(테스트 기준 2026-09-27) 이전 날짜 — 행사 기간 안이어도 막는다
+        mapper.recommendEvents.put("EV-LONG", RecommendEventView.builder()
+                .eventContentId("EV-LONG").eventName("상설 전시").displayYn(true)
+                .eventStartDate(LocalDate.of(2026, 9, 1)).eventEndDate(LocalDate.of(2026, 12, 31))
+                .eventStartTime(LocalTime.of(18, 0)).eventEndTime(LocalTime.of(21, 0))
+                .mapx(new BigDecimal("126.9770000")).mapy(new BigDecimal("37.5796000"))
+                .build());
+
+        assertStatus(() -> service.recommend(1L, new PlanRecommendRequest(
+                "EV-OLD", LocalDate.of(2025, 10, 3), null, null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
+        assertStatus(() -> service.recommend(1L, new PlanRecommendRequest(
+                "EV-LONG", LocalDate.of(2026, 9, 26), null, null, null, null, null, null, null)), HttpStatus.BAD_REQUEST);
+        assertThat(service.recommend(1L, new PlanRecommendRequest(
+                "EV-LONG", LocalDate.of(2026, 9, 27), null, null, null, null, "LUNCH", null, null)).draftId()).isNotNull();
+        assertThat(mapper.plans).hasSize(1);
+    }
+
+    @Test
+    void 식사_시간_BOTH_는_점심_저녁_모두로_보고_저장은_null() {
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 550, "11:00", "21:00", null, null));
+        places.restaurants.add(restaurant("PL-2", "KOREAN", 560, "10:30", "20:00", null, null));
+
+        DraftResponse draft = service.recommend(1L, request(null, "BOTH", null, null));
+
+        assertThat(draft.items()).extracting(PlanItemResponse::startTime).containsExactly("12:30", "17:00", "18:00");
+        assertThat(draft.conditions().mealType()).isNull();
     }
 
     @Test

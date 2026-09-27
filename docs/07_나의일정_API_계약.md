@@ -69,7 +69,7 @@
 | `mapPoints[]` | `{ sequence, lat, lng }` | MAP-001·TRIP-008 방문 순서 마커 |
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
-| 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안] |
+| 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `BOTH·LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안]. `mealType`은 항상 셋 중 하나를 명시적으로 보낸다 — 화면 기본값도 `BOTH`(점심+저녁 모두)라 조건 창을 열고 그대로 적용해도 기존 식사 범위가 좁아지지 않는다. `GET /api/places/restaurants`(API-PLACE-001, cuisineType/mealTime)는 이와 별개로 한 시점(`HH:mm`) 조회이며, `BOTH`·미지정은 시간 필터 없이 조회한다 |
 | `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK` | 값 목록 미정 |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]
@@ -90,11 +90,12 @@
 |---|---|
 | 방문 시간 | 요청 `startTime`·`endTime`, 없으면 10:00~21:00 (행사 시간이 밖이면 행사 시간까지 넓힘) |
 | 행사 시간 | 행사 시작 시간에 고정, 소요시간은 종료 시간까지 (시간 정보가 없으면 방문 시작 시각부터 120분, 고정 안 함) |
-| 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. `mealType`이 없으면 둘 다 찾음. 행사와 겹치면 행사 직전 → 직후로 옮김 |
+| 여행 날짜 | 오늘(Asia/Seoul) 이후이고 행사 기간 안이어야 함 — 이미 끝난 행사도 여기서 400 |
+| 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. `mealType`이 없거나 `BOTH`면 둘 다 찾음(저장은 null). 행사와 겹치면 행사 직전 → 직후로 옮김 |
 | 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 반경 1.5km → 3km → 5km, 같은 맛집은 한 번만 |
 | 추천 이유 | 행사: `선택한 행사 · M월 D일 진행 · HH:mm 시작` / 맛집: `점심 12:30 · 행사장에서 약 320m · 한식 · 영업 11:30~21:00` (확인된 값만) |
 | 제목 | `M월 D일 {행사명}` (AI-005 실패 시 기본 제목 규칙) |
-| 오류 | 기간 밖 날짜·방문 시간 밖 행사 400, 없는 행사 404, 맛집 후보 없음·행사 좌표 없음 422 |
+| 오류 | 지난 날짜·기간 밖 날짜·방문 시간 밖 행사 400, 없는 행사 404, 맛집 후보 없음·행사 좌표 없음 422 |
 | 응답 | API-PLAN-002 초안 조회와 같은 모양 (명세 필드 `draftId, title, tripType, selectedEvent, items, recommendationReasons` 포함) |
 
 ### API-PLAN-003 조건 수정 · API-PLAN-004 다시 추천 규칙 [제안]

@@ -11,9 +11,11 @@ import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import com.tripai.backend.repository.PlaceMapper;
 import com.tripai.backend.repository.PlanDraftMapper;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -24,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,7 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
  * AI 연동 전이라 규칙 기반으로 만든다 (ai_yn = FALSE).
  *
  * 규칙 — 명세에 값이 없어 정한 부분은 docs/07 [제안]
- * 1. 행사는 여행 날짜에 진행 중이어야 한다 (아니면 400 행사일 불일치).
+ * 1. 여행 날짜는 오늘 이후이고 행사가 그날 진행 중이어야 한다 (아니면 400 행사일 불일치).
  * 2. 행사 시작 시간이 있으면 그 시간에 고정, 소요시간은 종료 시간까지(없으면 120분).
  * 3. 식사는 점심 12:30 / 저녁 17:00 에 60분. 행사와 겹치면 행사 직전·직후로 옮긴다.
  * 4. 맛집은 선택한 음식 종류 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을
@@ -71,21 +74,32 @@ public class PlanRecommendService {
     private final PlanDraftMapper planDraftMapper;
     private final PlaceMapper placeMapper;
     private final PlanDraftService planDraftService;
+    private final Clock clock;
 
+    @Autowired
     public PlanRecommendService(PlanDraftMapper planDraftMapper, PlaceMapper placeMapper,
                                 PlanDraftService planDraftService) {
+        this(planDraftMapper, placeMapper, planDraftService, Clock.system(ZoneId.of("Asia/Seoul")));
+    }
+
+    // 오늘 날짜를 테스트에서 고정하려고 둔 생성자
+    PlanRecommendService(PlanDraftMapper planDraftMapper, PlaceMapper placeMapper,
+                         PlanDraftService planDraftService, Clock clock) {
         this.planDraftMapper = planDraftMapper;
         this.placeMapper = placeMapper;
         this.planDraftService = planDraftService;
+        this.clock = clock;
     }
 
     /** API-PLAN-001 문화행사 1개 기준 맛집 조합 초안 생성 */
     @Transactional
     public DraftResponse recommend(Long userId, PlanRecommendRequest request) {
+        checkNotPast(request.visitDate());
         RecommendEventView event = findEvent(request.eventId());
         String foodPreference = request.foodPreference() == null ? "ALL" : request.foodPreference();
+        String mealType = normalizeMealType(request.mealType());
         Generated generated = generate(event, request.visitDate(), parse(request.startTime()), parse(request.endTime()),
-                foodPreference, request.mealType(), List.of());
+                foodPreference, mealType, List.of());
 
         TripPlan plan = TripPlan.builder()
                 .userId(userId)
@@ -97,7 +111,7 @@ public class PlanRecommendService {
                 .aiYn(false)
                 .transportMd(request.transportMode())
                 .foodPreference(foodPreference)
-                .mealType(request.mealType())
+                .mealType(mealType)
                 .headcount(request.headcount() == null ? 1 : request.headcount())
                 .build();
         planDraftMapper.insertPlan(plan);
@@ -117,10 +131,13 @@ public class PlanRecommendService {
         RecommendEventView event = findEvent(plan.getAnchorContentId());
 
         LocalDate visitDate = request.visitDate() != null ? request.visitDate() : plan.getTripDate();
+        if (request.visitDate() != null) {
+            checkNotPast(visitDate);
+        }
         LocalTime start = request.startTime() != null ? parse(request.startTime()) : plan.getVisitStartTime();
         LocalTime end = request.endTime() != null ? parse(request.endTime()) : plan.getVisitEndTime();
         String foodPreference = firstNonNull(request.foodPreference(), plan.getFoodPreference(), "ALL");
-        String mealType = request.mealType() != null ? request.mealType() : plan.getMealType();
+        String mealType = request.mealType() != null ? normalizeMealType(request.mealType()) : plan.getMealType();
         String transportMode = request.transportMode() != null ? request.transportMode() : plan.getTransportMd();
 
         // 저장하기 전에 새 조건으로 추천이 되는지 먼저 확인한다 (이어서 부를 다시 추천과 같은 조건)
@@ -454,6 +471,23 @@ public class PlanRecommendService {
         }
         return breakOpen == null || breakClose == null
                 || to <= minutes(breakOpen) || from >= minutes(breakClose);
+    }
+
+    /**
+     * 지난 날짜로는 일정을 만들지 않는다 — 이미 끝난 행사도 여기서 걸러진다 (행사일 불일치 400).
+     * 오늘은 Asia/Seoul 기준.
+     */
+    private void checkNotPast(LocalDate visitDate) {
+        LocalDate today = LocalDate.now(clock);
+        if (visitDate.isBefore(today)) {
+            throw new PlanRuleException(HttpStatus.BAD_REQUEST,
+                    "지난 날짜(" + visitDate + ")로는 일정을 만들 수 없습니다. 오늘(" + today + ") 이후 날짜를 선택해 주세요.");
+        }
+    }
+
+    /** 화면은 점심·저녁 모두를 BOTH 로 보낸다 — 값 없음과 같은 뜻이라 저장할 때는 null (docs/07 [제안]) */
+    static String normalizeMealType(String mealType) {
+        return mealType == null || "BOTH".equals(mealType) ? null : mealType;
     }
 
     /** AI-004 — 행사는 조건 일치를 근거로 짧게 설명 */
