@@ -1,7 +1,7 @@
 package com.tripai.backend.domain.dto;
 
 public record SignupResponse(
-        Long userId,
+        Long memberId,
         String email
 ) {
 }
