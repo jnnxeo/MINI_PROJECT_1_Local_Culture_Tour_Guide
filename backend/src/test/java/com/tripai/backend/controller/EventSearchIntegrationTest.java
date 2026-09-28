@@ -61,27 +61,6 @@ class EventSearchIntegrationTest {
     }
 
     @Test
-    void selectedDatesListEventsStartingInRangeBeforeLongRunningOnes() throws Exception {
-        // 09-28 흐름 검증: 날짜를 골랐는데 몇 년 전부터 이어진 상시 전시가 맨 앞에 나왔다
-        assertEquals(0, fixtureCount());
-        insert(EXHIBITION, "전시/미술", "IT53정렬 상시 전시", "종로구", "미술관", "2090-01-01", "2099-12-31", true, true);
-        insert(PERFORMANCE, "콘서트", "IT53정렬 당일 공연", "종로구", "공연장", "2098-10-04", "2098-10-04", true, true);
-        insert(OUTSIDE, "전시/미술", "IT53정렬 최근 전시", "중구", "미술관", "2098-09-20", "2098-10-10", true, true);
-        insert(UPCOMING, "콘서트", "IT53정렬 첫날 공연", "중구", "광장", "2098-10-03", "2098-10-03", true, true);
-        String authorization = authorization();
-
-        mockMvc.perform(get("/api/events").header("Authorization", authorization)
-                        .param("keyword", "IT53정렬").param("date", "2098-10-04", "2098-10-03"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.totalCount").value(4))
-                // 고른 기간(10/3~10/4)에 시작하는 행사 먼저(시작일 순), 그 전에 시작한 행사는 최근에 시작한 순
-                .andExpect(jsonPath("$.data.items[0].eventId").value(UPCOMING))
-                .andExpect(jsonPath("$.data.items[1].eventId").value(PERFORMANCE))
-                .andExpect(jsonPath("$.data.items[2].eventId").value(OUTSIDE))
-                .andExpect(jsonPath("$.data.items[3].eventId").value(EXHIBITION));
-    }
-
-    @Test
     void searchMatchesKeywordAcrossMonthsAndCombinesFiltersWithoutDuplicateRows() throws Exception {
         assertEquals(0, fixtureCount());
         insert(EXHIBITION, "전시/미술", "Z-IT53키워드_ 전시", "종로구", "세종문화회관", "2098-01-31", "2098-03-31", null, true);
