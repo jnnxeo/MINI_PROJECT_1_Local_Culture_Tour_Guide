@@ -35,6 +35,11 @@ public class TripPlan {
 	private String lunchFoodPreference;
 	private String dinnerFoodPreference;
 	private Boolean cafeYn;
+	// database/schema/05_trip_plan_event_condition_v3.2.5.sql — 행사를 조건으로 고른 초안의 검색 조건 (행사를 직접 고른 초안은 null)
+	private String searchDates;       // YYYY-MM-DD 쉼표 구분
+	private String searchCategories;  // 화면 분야명 쉼표 구분
+	private String searchDistrict;
+	private Boolean searchFreeYn;
 	private Integer headcount;
 	private LocalDateTime createdAt;
 	private LocalDateTime updAt;

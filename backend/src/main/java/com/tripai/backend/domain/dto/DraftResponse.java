@@ -32,6 +32,7 @@ public record DraftResponse(
 	 * companion 은 DDL 에 컬럼이 없어 null. foodPreference·mealType 은 03 마이그레이션 컬럼에서 읽는다.
 	 * lunchFoodPreference·dinnerFoodPreference·includeCafe 는 04 마이그레이션 컬럼 — 끼니별 값이 없던 초안은
 	 * foodPreference 를 두 끼 모두에 채워 준다. 점심·저녁 음식 종류가 다르면 foodPreference 는 null.
+	 * availableDates·categories·district·freeYn 은 05 마이그레이션 — 행사를 조건으로 고른 초안만 값이 있다(직접 고른 초안은 null).
 	 */
 	public record Conditions(
 			LocalDate visitDate,
@@ -43,7 +44,11 @@ public record DraftResponse(
 			String transportMode,
 			String lunchFoodPreference,
 			String dinnerFoodPreference,
-			boolean includeCafe
+			boolean includeCafe,
+			List<LocalDate> availableDates,
+			List<String> categories,
+			String district,
+			Boolean freeYn
 	) {
 	}
 }

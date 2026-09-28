@@ -399,6 +399,7 @@ public class PlanDraftService {
 
     /** 초안 조회(API-PLAN-002)와 조건 수정(API-PLAN-003) 응답의 conditions */
     static DraftResponse.Conditions toConditions(TripPlan plan) {
+        EventConditions eventConditions = EventConditions.of(plan);
         return new DraftResponse.Conditions(
                 plan.getTripDate(),
                 format(plan.getVisitStartTime()),
@@ -409,7 +410,11 @@ public class PlanDraftService {
                 plan.getTransportMd(),
                 firstNonNull(plan.getLunchFoodPreference(), plan.getFoodPreference(), "ALL"),
                 firstNonNull(plan.getDinnerFoodPreference(), plan.getFoodPreference(), "ALL"),
-                Boolean.TRUE.equals(plan.getCafeYn())
+                Boolean.TRUE.equals(plan.getCafeYn()),
+                eventConditions == null ? null : eventConditions.dates(),
+                eventConditions == null ? null : eventConditions.categories(),
+                eventConditions == null ? null : eventConditions.district(),
+                eventConditions == null ? null : eventConditions.freeYn()
         );
     }
 

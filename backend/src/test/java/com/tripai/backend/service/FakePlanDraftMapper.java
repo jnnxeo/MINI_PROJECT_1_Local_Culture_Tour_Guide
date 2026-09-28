@@ -7,6 +7,7 @@ import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
 import com.tripai.backend.repository.PlanDraftMapper;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -166,6 +167,10 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .lunchFoodPreference(plan.getLunchFoodPreference())
                 .dinnerFoodPreference(plan.getDinnerFoodPreference())
                 .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
+                .searchDates(plan.getSearchDates())
+                .searchCategories(plan.getSearchCategories())
+                .searchDistrict(plan.getSearchDistrict())
+                .searchFreeYn(plan.getSearchFreeYn())
                 .headcount(plan.getHeadcount())
                 .build());
         return 1;
@@ -174,6 +179,23 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     @Override
     public Optional<RecommendEventView> findRecommendEvent(String eventContentId) {
         return Optional.ofNullable(recommendEvents.get(eventContentId));
+    }
+
+    /** SQL 과 같은 조건: 표시·좌표 있음·그날 진행 중·분야·자치구·무료, 종료일 가까운 순 */
+    @Override
+    public List<RecommendEventView> findRecommendEventCandidates(LocalDate visitDate, List<String> eventTypes,
+                                                                 String district, boolean freeOnly, int limit) {
+        return recommendEvents.values().stream()
+                .filter(event -> Boolean.TRUE.equals(event.getDisplayYn()))
+                .filter(event -> event.getMapx() != null && event.getMapy() != null)
+                .filter(event -> !visitDate.isBefore(event.getEventStartDate()) && !visitDate.isAfter(event.getEventEndDate()))
+                .filter(event -> eventTypes == null || eventTypes.isEmpty() || eventTypes.contains(event.getEventType()))
+                .filter(event -> district == null || district.equals(event.getDistrictName()))
+                .filter(event -> !freeOnly || Boolean.TRUE.equals(event.getFreeYn()))
+                .sorted(Comparator.comparing(RecommendEventView::getEventEndDate)
+                        .thenComparing(RecommendEventView::getEventContentId))
+                .limit(limit)
+                .toList();
     }
 
     private long nextPlanId = 900L;
@@ -207,6 +229,10 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .lunchFoodPreference(plan.getLunchFoodPreference())
                 .dinnerFoodPreference(plan.getDinnerFoodPreference())
                 .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
+                .searchDates(plan.getSearchDates())
+                .searchCategories(plan.getSearchCategories())
+                .searchDistrict(plan.getSearchDistrict())
+                .searchFreeYn(plan.getSearchFreeYn())
                 .headcount(plan.getHeadcount())
                 .build());
         return 1;
@@ -218,12 +244,17 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         if (before == null || Boolean.TRUE.equals(before.getSaveYn())) {
             return 0;
         }
+        // 실제 SQL 처럼 기준 행사·제목도 바꾼다. 행사가 그대로면 제목 수정(updateTitle)을 지킨다
+        boolean eventChanged = !Objects.equals(plan.getAnchorContentId(), before.getAnchorContentId());
+        RecommendEventView anchor = recommendEvents.get(plan.getAnchorContentId());
+        String title = eventChanged ? plan.getTitle() : titles.getOrDefault(before.getTripPlanId(), before.getTitle());
+        titles.put(before.getTripPlanId(), title);
         plans.put(plan.getTripPlanId(), TripPlan.builder()
                 .tripPlanId(before.getTripPlanId())
                 .userId(before.getUserId())
-                .anchorContentId(before.getAnchorContentId())
-                .anchorEventName(before.getAnchorEventName())
-                .title(titles.getOrDefault(before.getTripPlanId(), before.getTitle()))
+                .anchorContentId(plan.getAnchorContentId())
+                .anchorEventName(anchor == null ? before.getAnchorEventName() : anchor.getEventName())
+                .title(title)
                 .tripDate(plan.getTripDate())
                 .visitStartTime(plan.getVisitStartTime())
                 .visitEndTime(plan.getVisitEndTime())
@@ -235,6 +266,10 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .lunchFoodPreference(plan.getLunchFoodPreference())
                 .dinnerFoodPreference(plan.getDinnerFoodPreference())
                 .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
+                .searchDates(plan.getSearchDates())
+                .searchCategories(plan.getSearchCategories())
+                .searchDistrict(plan.getSearchDistrict())
+                .searchFreeYn(plan.getSearchFreeYn())
                 .headcount(before.getHeadcount())
                 .build());
         return 1;

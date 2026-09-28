@@ -3,6 +3,7 @@ package com.tripai.backend.domain.dto;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * API-PLAN-003 요청 — {visitDate, startTime, endTime, companion, foodPreference, transportMode}
@@ -40,12 +41,37 @@ public record DraftConditionsRequest(
 				message = "저녁 음식 종류는 ALL, KOREAN, CHINESE, JAPANESE, WESTERN 중 하나입니다.")
 		String dinnerFoodPreference,
 
-		Boolean includeCafe
+		Boolean includeCafe,
+
+		// 행사 조건 (docs/07 [제안]) — 보내면 조건에 맞는 행사를 다시 고른다
+		@Size(max = 31, message = "방문 가능한 날짜는 31개까지 고를 수 있습니다.")
+		List<LocalDate> availableDates,
+
+		@Size(max = 6, message = "행사 분야는 6개까지 고를 수 있습니다.")
+		List<String> categories,
+
+		@Size(max = 20, message = "지역 이름이 너무 깁니다.")
+		String district,
+
+		Boolean freeYn
 ) {
 
 	/** 끼니별 음식 종류·카페 없이 부르는 기존 호출 */
 	public DraftConditionsRequest(LocalDate visitDate, String startTime, String endTime, String companion,
 								  String foodPreference, String mealType, String transportMode) {
 		this(visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, null, null, null);
+	}
+
+	/** 행사 조건 없이 부르는 호출 (끼니별 음식 종류·카페까지) */
+	public DraftConditionsRequest(LocalDate visitDate, String startTime, String endTime, String companion,
+								  String foodPreference, String mealType, String transportMode,
+								  String lunchFoodPreference, String dinnerFoodPreference, Boolean includeCafe) {
+		this(visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode,
+				lunchFoodPreference, dinnerFoodPreference, includeCafe, null, null, null, null);
+	}
+
+	/** 행사 조건을 하나라도 보냈는지 */
+	public boolean hasEventConditions() {
+		return availableDates != null || categories != null || district != null || freeYn != null;
 	}
 }
