@@ -28,4 +28,5 @@ public class EventUpsertRow {
     private String overview;
     private String imageUrl;
     private String homepage;
+    private Boolean displayYn;   // false 면 홈·검색·추천에서 숨김 (온라인 행사)
 }
