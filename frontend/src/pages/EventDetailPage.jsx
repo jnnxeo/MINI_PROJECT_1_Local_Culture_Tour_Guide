@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { getEventDetail } from '../services/eventService.js'
 import EventCreateModal from '../components/layout/event/EventCreateModal.jsx'
+import FavoriteButton from '../components/FavoriteButton.jsx'
 import SiteHeader from '../components/layout/SiteHeader.jsx'
 import SiteFooter from '../components/layout/SiteFooter.jsx'
 import '../styles/event-base.css'
@@ -154,15 +155,11 @@ export default function EventDetailPage() {
           <aside className="event-detail-info" aria-label="행사 정보">
             <div className="event-detail-info__top">
               <h2>행사 정보</h2>
-              <button
-                type="button"
+              <FavoriteButton
                 className="event-favorite"
-                aria-label="관심 행사 저장"
-                title="관심 행사 저장"
-                disabled
-              >
-                ♡
-              </button>
+                eventContentId={event.eventId}
+                initialFavorite={event.favorited === true}
+              />
             </div>
             <p>날짜: {displayDate(event)}</p>
             <p>시간: {displayTime(event)}</p>
