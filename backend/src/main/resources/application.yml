@@ -25,3 +25,11 @@ tour-api:
   service-key: ${TOUR_API_SERVICE_KEY:}
   mobile-os: ${TOUR_API_MOBILE_OS:ETC}
   mobile-app: ${TOUR_API_MOBILE_APP:TripAI}
+
+seoul:
+  api:
+    key: ${SEOUL_CULTURE_API_KEY:}
+
+batch:
+  event:
+    initial-load: ${BATCH_EVENT_INITIAL_LOAD:false}
