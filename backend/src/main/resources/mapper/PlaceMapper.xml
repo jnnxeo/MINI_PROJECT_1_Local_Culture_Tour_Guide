@@ -16,7 +16,8 @@
 		cuisineType/mealTime 은 선택 파라미터라, 안 보내면 기존 동작(장소 변경·추가 팝업)과 완전히 동일하다.
 		mealTime 이 있을 때만 영업시간 조건을 본다 — 자정을 넘기는 영업시간(예: 17:00~01:00)은
 		close_time < open_time 인 경우로 보고 "시작 이후 또는 종료 이전"으로 판정한다.
-		브레이크타임은 자정을 넘기지 않는다고 가정한다.
+		open_time = close_time(예: TourAPI 00:00~24:00 이 00:00~00:00 으로 저장)은 24시간 영업으로 보고 브레이크타임만 뺀다.
+		브레이크타임도 자정을 넘길 수 있다(예: 23:00~00:30) — 같은 방식으로 판정한다.
 	-->
 	<select id="findRestaurantsNear" resultType="RestaurantView">
 		SELECT *
@@ -44,10 +45,16 @@
 			      (p.close_time &gt; p.open_time AND #{mealTime} &gt;= p.open_time AND #{mealTime} &lt; p.close_time)
 			      OR
 			      (p.close_time &lt; p.open_time AND (#{mealTime} &gt;= p.open_time OR #{mealTime} &lt; p.close_time))
+			      OR
+			      p.close_time = p.open_time
 			  )
 			  AND (
 			      p.break_open_time IS NULL OR p.break_close_time IS NULL
-			      OR NOT (#{mealTime} &gt;= p.break_open_time AND #{mealTime} &lt; p.break_close_time)
+			      OR NOT (
+			          (p.break_close_time &gt; p.break_open_time AND #{mealTime} &gt;= p.break_open_time AND #{mealTime} &lt; p.break_close_time)
+			          OR
+			          (p.break_close_time &lt; p.break_open_time AND (#{mealTime} &gt;= p.break_open_time OR #{mealTime} &lt; p.break_close_time))
+			      )
 			  )
 			  </if>
 		) near

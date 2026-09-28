@@ -128,8 +128,8 @@
 	<select id="findRecommendEvent"
 			parameterType="string"
 			resultType="RecommendEventView">
-		SELECT event_content_id, event_name, display_yn, event_start_date, event_end_date,
-		       event_start_time, event_end_time, mapx, mapy
+		SELECT event_content_id, event_name, event_type, district_name, event_place, date_text, free_yn,
+		       display_yn, event_start_date, event_end_date, event_start_time, event_end_time, mapx, mapy
 		FROM event
 		WHERE event_content_id = #{eventContentId}
 	</select>
@@ -148,7 +148,8 @@
 		    visit_end_time = #{visitEndTime},
 		    transport_md = #{transportMd},
 		    food_preference = #{foodPreference},
-		    meal_type = #{mealType}
+		    meal_type = #{mealType},
+		    ai_yn = #{aiYn}
 		WHERE trip_plan_id = #{tripPlanId}
 		  AND save_yn = FALSE
 	</update>
