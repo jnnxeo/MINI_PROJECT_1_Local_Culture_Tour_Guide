@@ -9,6 +9,7 @@ import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import EventDetailPage from './pages/EventDetailPage.jsx'
 import MyPage from './pages/MyPage.jsx'
+import SearchResultsPage from './pages/SearchResultsPage.jsx'
 import EventSavedPlanPage from './pages/EventSavedPlanPage.jsx'
 
 function ProtectedRoute({ children }) {
@@ -61,14 +62,6 @@ export default function App() {
         )}
       />
       <Route
-        path="/events/:eventId"
-        element={(
-          <ProtectedRoute>
-            <EventDetailPage />
-          </ProtectedRoute>
-        )}
-      />
-      <Route
         path="/"
         element={(
           <ProtectedRoute>
@@ -82,7 +75,15 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <HomeNavigation />
-            <FeaturePlaceholderPage title="문화행사 검색 결과" />
+            <SearchResultsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/events/:eventId"
+        element={(
+          <ProtectedRoute>
+            <EventDetailPage />
           </ProtectedRoute>
         )}
       />
