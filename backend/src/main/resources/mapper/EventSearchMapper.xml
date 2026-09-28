@@ -68,6 +68,16 @@
             <when test="criteria.sort == 'titleAsc'">
                 ORDER BY event_name ASC, event_content_id ASC
             </when>
+            <when test="criteria.dates != null and !criteria.dates.isEmpty()">
+                <!-- 날짜를 고르면: 고른 기간 안에 시작하는 행사 먼저(시작일 순), 그 전에 시작한 장기 행사는
+                     최근에 시작한 순으로 뒤에 둔다 (2021년부터 이어진 상시 전시가 맨 앞에 오지 않게, #77 월별 기준과 같음) -->
+                <bind name="rangeStart" value="criteria.dates[0]" />
+                <bind name="rangeEnd" value="criteria.dates[criteria.dates.size() - 1]" />
+                ORDER BY CASE WHEN event_start_date BETWEEN #{rangeStart} AND #{rangeEnd} THEN 0 ELSE 1 END ASC,
+                         CASE WHEN event_start_date BETWEEN #{rangeStart} AND #{rangeEnd} THEN event_start_date END ASC,
+                         CASE WHEN event_start_date &lt; #{rangeStart} THEN event_start_date END DESC,
+                         event_content_id ASC
+            </when>
             <otherwise>
                 ORDER BY event_start_date ASC, event_content_id ASC
             </otherwise>
