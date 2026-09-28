@@ -97,6 +97,14 @@ export function forgetDraftId() {
   }
 }
 
+/** 저장한 일정은 유지하고 모든 편집 기능을 쓸 수 있는 새 초안을 만든다. */
+export async function copySavedPlanToDraft(planId) {
+  const draft = await request(() => api.post(`/api/plans/drafts/from-saved/${encodeURIComponent(planId)}`))
+  if (draft?.draftId == null) throw new Error('복사한 일정 초안 ID를 받지 못했습니다.')
+  rememberDraftId(draft.draftId)
+  return draft
+}
+
 /**
  * API-PLAN-001 문화행사 1개 기준 일정 초안 생성 — 메인·행사 상세(2팀 화면)에서 호출한다.
  * Body: {eventId, visitDate, startTime, endTime, companion, foodPreference, transportMode}

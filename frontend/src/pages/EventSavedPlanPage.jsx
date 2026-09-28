@@ -5,7 +5,7 @@ import PlanFooter from '../components/plan/PlanFooter.jsx'
 import PlanModal from '../components/plan/PlanModal.jsx'
 import RouteMap from '../components/plan/RouteMap.jsx'
 import TimelineItem, { getItemHeading } from '../components/plan/TimelineItem.jsx'
-import { getPlan, updateSavedEventTime, updateSavedPlanTitle } from '../services/planService.js'
+import { copySavedPlanToDraft, getPlan, updateSavedEventTime, updateSavedPlanTitle } from '../services/planService.js'
 import { TITLE_MAX_LENGTH, distanceMeters, toMinutes, toTime } from '../utils/planTime.js'
 import '../styles/plan-base.css'
 import '../styles/plan.css'
@@ -42,6 +42,7 @@ export default function EventSavedPlanPage() {
   const [modal, setModal] = useState(null)
   const [modalError, setModalError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [copying, setCopying] = useState(false)
   const [selectedKey, setSelectedKey] = useState(null)
 
   useEffect(() => {
@@ -92,6 +93,19 @@ export default function EventSavedPlanPage() {
     routeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }
 
+  const openEditableCopy = async (regenerate = false) => {
+    if (copying) return
+    setCopying(true)
+    setError('')
+    try {
+      const draft = await copySavedPlanToDraft(planId)
+      navigate('/trips/draft', { state: { draftId: draft.draftId, autoRegenerate: regenerate } })
+    } catch (requestError) {
+      setError(requestError.message || '편집할 일정을 만들지 못했습니다.')
+      setCopying(false)
+    }
+  }
+
   return (
     <div className="plan-page">
       <PlanHeader onNavigate={(path, action) => {
@@ -101,7 +115,7 @@ export default function EventSavedPlanPage() {
       <section className="plan-heading">
         <p className="plan-heading__eyebrow">저장한 일정 · {plan?.tripDate ?? ''}{plan && ` · ${dDayLabel(plan.dDay) ?? '날짜 정보 없음'}`}</p>
         <h1 className="plan-heading__title">{plan?.title ?? '저장한 일정'}</h1>
-        {plan && <p className="plan-heading__desc">저장한 장소와 방문 순서를 확인하세요.</p>}
+        {plan && <p className="plan-heading__desc">원본은 유지됩니다. 편집 후 저장하면 새 일정으로 추가돼요.</p>}
         {plan && <button className="plan-heading__rename" type="button" aria-label="일정 이름 변경"
           onClick={() => setModal({ type: 'rename', value: plan.title })}>✎</button>}
       </section>
@@ -111,6 +125,10 @@ export default function EventSavedPlanPage() {
         {!loading && plan && <>
           <div className="plan-toolbar">
             <p className="plan-toolbar__desc">당일 여행 · 저장한 장소와 방문 순서</p>
+            <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={copying} onClick={() => openEditableCopy(false)}>
+              {copying ? '초안 만드는 중…' : '복사해서 편집'}
+            </button>
+            <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={copying} onClick={() => setModal({ type: 'regenerate' })}>다시 추천</button>
             <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" onClick={() => navigate('/mypage')}>내 여행으로</button>
           </div>
           {state?.addedEventId && <p className="plan-saved-notice" role="status">선택한 행사를 일정에 추가했습니다.</p>}
@@ -142,14 +160,27 @@ export default function EventSavedPlanPage() {
               </div>}
               <p className="plan-route__summary">{routeSummary}</p>
               <p className="plan-route__note">방문 순서 개념도 · 실제 지도/경로가 아닙니다. 거리는 직선거리 기준입니다.</p>
-              {plan.warnings?.map((warning) => <p className="plan-route__note" key={warning}>{warning}</p>)}
+              <div className="plan-basis">
+                <h3 className="plan-basis__title">코스 구성 기준</h3>
+                <p className="plan-basis__text">행사: 선택한 날짜와 조건 · 맛집: 행사장 거리와 식사 시간대</p>
+                {(plan.warnings?.length ?? 0) > 0
+                  ? <ul className="plan-basis__warnings">{plan.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+                  : <p className="plan-basis__note">일정에서 확인된 주의사항이 없어요.</p>}
+              </div>
               {coreItem && <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" onClick={() => navigate(`/events/${coreItem.contentId}`)}>선택한 행사 다시 보기</button>}
             </aside>
           </div>
         </>}
       </main>
       <PlanFooter />
-      {modal && <PlanModal title={modal.type === 'rename' ? '일정 이름 변경' : '행사 방문 시간 변경'} onClose={closeModal}>
+      {modal?.type === 'regenerate' && <PlanModal title="새로운 일정으로 추천받을까요?" onClose={closeModal}>
+        <p>저장한 일정은 그대로 두고, 새 초안에서 조건에 맞는 코스를 다시 추천합니다.</p>
+        {error && <p className="tp-modal__error" role="alert">{error}</p>}
+        <button className="tp-btn tp-btn--primary tp-btn--block" type="button" disabled={copying} onClick={() => openEditableCopy(true)}>
+          {copying ? '준비 중…' : '다시 추천받기'}
+        </button>
+      </PlanModal>}
+      {modal && modal.type !== 'regenerate' && <PlanModal title={modal.type === 'rename' ? '일정 이름 변경' : '행사 방문 시간 변경'} onClose={closeModal}>
         <form className="plan-form" onSubmit={saveModal}>
           <label className="tp-field">
             <span className="tp-field__label">{modal.type === 'rename' ? '일정 이름' : '방문 시간'}</span>

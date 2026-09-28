@@ -128,6 +128,7 @@ export default function PlanEditorPage() {
   const generationTokenRef = useRef(0)
   // 추천 요청은 서버에서 되돌릴 수 없어, 끝나기 전에는 새 요청을 받지 않는다
   const generationRunningRef = useRef(false)
+  const autoRegenerateRef = useRef(Boolean(location.state?.autoRegenerate))
   const [draftId] = useState(() => resolveDraftId(location.state?.draftId))
 
   const [status, setStatus] = useState('loading')
@@ -445,6 +446,13 @@ export default function PlanEditorPage() {
     setGeneration(null)
     closeModal()
   }
+
+  useEffect(() => {
+    if (status === 'ready' && autoRegenerateRef.current) {
+      autoRegenerateRef.current = false
+      startGeneration(null)
+    }
+  }, [status])
 
   // TRIP-009 목록·지도 선택 연동
   const showOnMap = (item) => {

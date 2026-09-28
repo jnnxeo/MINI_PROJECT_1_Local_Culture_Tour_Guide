@@ -46,6 +46,14 @@ public class PlanDraftController {
         this.planRecommendService = planRecommendService;
     }
 
+    /** 저장한 일정을 원본을 유지한 채 편집 가능한 초안으로 복사한다. */
+    @PostMapping("/from-saved/{planId}")
+    public ResponseEntity<ApiResponse<DraftResponse>> copySavedPlan(
+            @AuthenticationPrincipal Long userId, @PathVariable Long planId) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(planDraftService.copySavedPlan(userId, planId)));
+    }
+
     /** API-PLAN-002 저장 전 일정 초안 조회 */
     @GetMapping("/{draftId}")
     public ResponseEntity<ApiResponse<DraftResponse>> getDraft(

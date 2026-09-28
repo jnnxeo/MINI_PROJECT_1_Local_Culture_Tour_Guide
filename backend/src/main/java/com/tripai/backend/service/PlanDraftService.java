@@ -73,6 +73,56 @@ public class PlanDraftService {
         return toDraftResponse(plan, items);
     }
 
+    /** 저장본을 그대로 보존하고 제목·조건·추천 이유·항목을 새 초안에 복사한다. */
+    @Transactional
+    public DraftResponse copySavedPlan(Long userId, Long planId) {
+        TripPlan source = planDraftMapper.findPlanById(planId)
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        if (!Objects.equals(source.getUserId(), userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (!Boolean.TRUE.equals(source.getSaveYn())) {
+            throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
+        }
+
+        TripPlan copy = TripPlan.builder()
+                .userId(userId)
+                .anchorContentId(source.getAnchorContentId())
+                .title(source.getTitle())
+                .tripDate(source.getTripDate())
+                .visitStartTime(source.getVisitStartTime())
+                .visitEndTime(source.getVisitEndTime())
+                .aiYn(source.getAiYn())
+                .transportMd(source.getTransportMd())
+                .foodPreference(source.getFoodPreference())
+                .mealType(source.getMealType())
+                .lunchFoodPreference(source.getLunchFoodPreference())
+                .dinnerFoodPreference(source.getDinnerFoodPreference())
+                .cafeYn(source.getCafeYn())
+                .searchDates(source.getSearchDates())
+                .searchCategories(source.getSearchCategories())
+                .searchDistrict(source.getSearchDistrict())
+                .searchFreeYn(source.getSearchFreeYn())
+                .headcount(source.getHeadcount())
+                .build();
+        planDraftMapper.insertPlan(copy);
+
+        for (PlanItemView item : planDraftMapper.findItemsByPlanId(planId)) {
+            planDraftMapper.insertItem(TripItem.builder()
+                    .tripPlanId(copy.getTripPlanId())
+                    .seqOrder(item.getSeqOrder())
+                    .itemType(item.getItemType())
+                    .eventContentId(item.getEventContentId())
+                    .placeContentId(item.getPlaceContentId())
+                    .startTime(item.getStartTime())
+                    .durationMin(item.getDurationMin())
+                    .aiReason(item.getAiReason())
+                    .timeFixYn(item.getTimeFixYn())
+                    .build());
+        }
+        return getDraft(userId, copy.getTripPlanId());
+    }
+
     /** API-PLAN-005 저장 전 일정 제목 변경 (TRIP-003) — 앞뒤 공백은 빼고 저장 */
     @Transactional
     public DraftTitleResponse updateTitle(Long userId, Long draftId, String title) {
