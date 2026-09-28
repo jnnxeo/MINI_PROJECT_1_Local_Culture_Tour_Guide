@@ -442,7 +442,8 @@ public class PlanDraftService {
                 format(item.getOpenTime()),
                 breakTime,
                 format(item.getCloseTime()),
-                Boolean.TRUE.equals(item.getTimeFixYn())
+                Boolean.TRUE.equals(item.getTimeFixYn()),
+                "EVENT".equals(item.getItemType()) ? null : item.getCuisineType()
         );
     }
 

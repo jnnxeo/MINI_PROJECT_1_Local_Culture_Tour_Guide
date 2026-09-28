@@ -42,7 +42,7 @@ export default function TimelineItem({
       <p className="plan-item__meta">
         {isEvent
           ? `${isCore ? '선택한 행사' : '추가한 행사'} · ${item.timeFixed ? '시작 시간 고정' : '운영시간 정보 없음'} · ${item.durationMin}분`
-          : `${item.durationMin}분 · 맛집`}
+          : `${item.durationMin}분 · ${item.cuisineType === 'CAFE' ? '카페' : '맛집'}`}
       </p>
 
       {isEvent ? (

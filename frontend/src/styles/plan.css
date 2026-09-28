@@ -556,6 +556,16 @@
   gap: 12px;
 }
 
+.plan-conditions__meal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-conditions__meal select:disabled {
+  opacity: 0.5;
+}
+
 .plan-conditions__label {
   margin: 0;
   color: var(--tripai-navy);
