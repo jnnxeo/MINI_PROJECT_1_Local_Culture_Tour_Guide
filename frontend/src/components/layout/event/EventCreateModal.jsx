@@ -1,47 +1,35 @@
 import React, { useState } from 'react'
 import Modal from '../../common/Modal.jsx'
-import { createEventDraft } from '../../../services/planService.js'
+import { recommendDraft } from '../../../services/planService.js'
 import EventSelect from './EventSelect.jsx'
-
-const INTERESTS = ['문화·역사', '음악·공연', '미술·전시']
 
 export default function EventCreateModal({ event, onClose, onCreated }) {
   const today = new Date().toLocaleDateString('sv-SE', {
     timeZone: 'Asia/Seoul',
   })
-  const firstDate = [today, event.startDate].filter(Boolean).sort().at(-1)
+  const firstDate = event.startDate && event.startDate > today ? event.startDate : today
 
   const [tripDate, setTripDate] = useState(firstDate)
   const [headcount, setHeadcount] = useState(2)
   const [transportMode, setTransportMode] = useState('WALK_TRANSIT')
-  const [interests, setInterests] = useState([])
-  const [useAi, setUseAi] = useState(true)
+  const [foodPreference, setFoodPreference] = useState('ALL')
+  const [mealType, setMealType] = useState('BOTH')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const unavailableReason = event.endDate < today
-    ? '종료된 행사는 일정으로 만들 수 없습니다.'
-    : event.lat == null || event.lng == null
-      ? '행사 위치 정보가 없어 일정을 만들 수 없습니다.'
-      : null
-
-  function toggleInterest(interest) {
-    setInterests((current) =>
-      current.includes(interest)
-        ? current.filter((item) => item !== interest)
-        : [...current, interest]
-    )
-  }
+  const unavailableReason = !event.startDate || !event.endDate
+    || event.startDate > event.endDate
+    ? '행사 날짜 정보가 없어 여행 날짜를 선택할 수 없습니다.'
+    : event.endDate < today
+      ? '종료된 행사는 일정으로 만들 수 없습니다.'
+      : event.lat == null || event.lng == null
+        ? '행사 위치 정보가 없어 일정을 만들 수 없습니다.'
+        : null
 
   async function handleSubmit() {
     if (unavailableReason) {
       setError(unavailableReason)
       return
     }
-    if (interests.length === 0) {
-      setError('관심사를 1개 이상 선택해 주세요.')
-      return
-    }
-
     if (!tripDate || tripDate < event.startDate || tripDate > event.endDate) {
       setError('행사 기간 안의 여행 날짜를 선택해 주세요.')
       return
@@ -51,13 +39,13 @@ export default function EventCreateModal({ event, onClose, onCreated }) {
     setError('')
 
     try {
-      const draft = await createEventDraft({
+      const draft = await recommendDraft({
         eventId: event.eventId,
-        tripDate,
+        visitDate: tripDate,
         headcount,
         transportMode,
-        interests,
-        useAi,
+        foodPreference,
+        mealType,
       })
       onCreated(draft)
     } catch (requestError) {
@@ -84,7 +72,7 @@ export default function EventCreateModal({ event, onClose, onCreated }) {
         />
       </label>
 
-     <div className="event-modal__row">
+      <div className="event-modal__row">
         <EventSelect
             label="인원"
             value={headcount}
@@ -105,38 +93,34 @@ export default function EventCreateModal({ event, onClose, onCreated }) {
             { value: 'WALK', label: '도보 위주' },
             ]}
         />
-        </div>
-      <strong>관심사</strong>
-      <div className="event-modal__interests">
-        {INTERESTS.map((interest) => {
-          const selected = interests.includes(interest)
-
-          return (
-            <button
-              key={interest}
-              type="button"
-              className={`tp-btn tp-btn--secondary${selected ? ' is-selected' : ''}`}
-              aria-pressed={selected}
-              onClick={() => toggleInterest(interest)}
-            >
-              {selected ? '☑' : '☐'} {interest}
-            </button>
-          )
-        })}
       </div>
 
-      <p className="event-modal__hint">
-        행사 시간과 관심사를 기준으로 주변 동선을 추천합니다.
-      </p>
+      <div className="event-modal__row">
+        <EventSelect
+          label="음식 종류"
+          value={foodPreference}
+          onChange={setFoodPreference}
+          options={[
+            { value: 'ALL', label: '전체' },
+            { value: 'KOREAN', label: '한식' },
+            { value: 'CHINESE', label: '중식' },
+            { value: 'JAPANESE', label: '일식' },
+            { value: 'WESTERN', label: '양식' },
+          ]}
+        />
+        <EventSelect
+          label="식사 시간"
+          value={mealType}
+          onChange={setMealType}
+          options={[
+            { value: 'BOTH', label: '점심 + 저녁' },
+            { value: 'LUNCH', label: '점심' },
+            { value: 'DINNER', label: '저녁' },
+          ]}
+        />
+      </div>
 
-      <button
-        type="button"
-        className={`tp-btn tp-btn--secondary${useAi ? ' is-selected' : ''}`}
-        aria-pressed={useAi}
-        onClick={() => setUseAi((current) => !current)}
-      >
-        AI 추천받기
-      </button>
+      <p className="event-modal__hint">행사 시간과 선택한 음식 종류에 맞는 주변 맛집을 추천합니다.</p>
 
       {error && <p className="tp-modal__error" role="alert">{error}</p>}
       {unavailableReason && !error && (
@@ -149,15 +133,11 @@ export default function EventCreateModal({ event, onClose, onCreated }) {
         disabled={saving || Boolean(unavailableReason)}
         onClick={handleSubmit}
       >
-        {saving
-            ? '일정을 만드는 중입니다…'
-            : useAi
-                ? 'AI로 하루 일정 만들기'
-                : '하루 일정 만들기'}
+        {saving ? '일정을 만드는 중입니다…' : '하루 일정 만들기'}
       </button>
 
       <p className="event-modal__hint">
-        AI 해제 시 규칙에 따른 기본 코스를 구성합니다.
+        주변에 조건에 맞는 음식점이 없으면 일정이 생성되지 않으며 사유를 안내합니다.
       </p>
     </Modal>
   )

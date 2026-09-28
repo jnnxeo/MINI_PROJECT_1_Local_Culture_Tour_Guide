@@ -97,6 +97,24 @@ export function forgetDraftId() {
   }
 }
 
+/** API-PLAN-001: 행사 상세에서도 나의 일정 팀의 추천 API 계약을 사용한다. */
+export async function recommendDraft({
+  eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
+}) {
+  const body = { eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount }
+
+  const draft = USE_MOCK_API
+    ? await withMock(() => {
+      resetMockPlans()
+      return mockGetDraft(MOCK_DRAFT_ID)
+    })
+    : await request(() => api.post('/api/plans/recommend', body))
+
+  if (draft?.draftId == null) throw new Error('일정 초안 ID를 받지 못했습니다.')
+  rememberDraftId(draft.draftId)
+  return draft
+}
+
 /** API-PLAN-002 저장 전 일정 초안 조회 */
 export function getDraft(draftId) {
   if (USE_MOCK_API) {
@@ -193,23 +211,6 @@ export function searchRestaurants({ eventId, radius, category, page, size }) {
   return request(() => api.get('/api/places/restaurants', {
     params: { eventId, radius, category, page, size },
   }))
-}
-
-/** EVENT-004: 선택 행사로 당일 일정 초안을 만든다. */
-export async function createEventDraft({ eventId, tripDate, headcount, transportMode, interests, useAi }) {
-  const draft = await request(() => api.post('/api/plans/recommend', {
-    eventId,
-    visitDate: tripDate,
-    headcount,
-    transportMode,
-    interests,
-    useAi,
-  }))
-  if (draft?.draftId == null) {
-    throw new Error('일정 초안 ID를 받지 못했습니다.')
-  }
-  rememberDraftId(draft.draftId)
-  return draft
 }
 
 /** EVENT-003: 저장 일정 선택 팝업용 목록. 목록 API는 내 여행 담당 구현과 연동한다. */

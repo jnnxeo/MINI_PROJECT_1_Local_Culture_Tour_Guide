@@ -175,8 +175,8 @@ export default function EventDetailPage() {
             <section aria-labelledby="event-plan-heading">
               <h2 id="event-plan-heading">이 행사에 맞춘 하루 여행</h2>
               <p>
-                관심사와 이동 방식을 선택하면<br />
-                행사 전후에 들를 곳을 추천해 드려요.
+                음식 종류와 이동 방식을 선택하면<br />
+                행사 전후에 들를 맛집을 추천해 드려요.
               </p>
 
               <button

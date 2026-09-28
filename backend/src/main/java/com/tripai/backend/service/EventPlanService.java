@@ -6,16 +6,12 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tripai.backend.domain.dto.event.EventDetailResponse;
-import com.tripai.backend.domain.dto.plan.CreateEventDraftRequest;
-import com.tripai.backend.domain.dto.plan.EventPlaceCandidateRow;
 import com.tripai.backend.domain.dto.plan.EventPlanDetailResponse;
 import com.tripai.backend.domain.dto.plan.EventPlanItemResponse;
 import com.tripai.backend.domain.dto.plan.EventPlanItemRow;
@@ -27,7 +23,7 @@ import com.tripai.backend.repository.EventPlanMapper;
 
 import lombok.RequiredArgsConstructor;
 
-/** EVENT-004 전용 생성 서비스. 저장 일정 읽기·편집·확정은 Plan 담당 서비스에 맡긴다. */
+/** EVENT-003 저장 일정에 문화행사를 추가하고 방문 시간을 수정한다. */
 @Service
 @RequiredArgsConstructor
 public class EventPlanService {
@@ -36,86 +32,6 @@ public class EventPlanService {
 
     private final EventPlanMapper plans;
     private final EventMapper events;
-
-    @Transactional
-    public EventPlanDetailResponse createDraft(long userId, CreateEventDraftRequest request) {
-        if (!Set.of("WALK", "WALK_TRANSIT").contains(request.transportMode())
-                || request.headcount() > 4
-                || request.interests().stream().anyMatch(value -> value == null || value.isBlank())) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
-
-        EventDetailResponse event = requireEvent(request.anchorEventId(), request.tripDate());
-        if (event.getLat() == null || event.getLng() == null) {
-            throw new CustomException(ErrorCode.EVENT_COORDINATES_MISSING);
-        }
-
-        LocalTime eventStart = event.getStartTime() == null ? LocalTime.of(15, 0) : event.getStartTime();
-        LocalTime eventEnd = event.getEndTime() == null ? eventStart.plusHours(1) : event.getEndTime();
-        if (!eventEnd.isAfter(eventStart)) throw new CustomException(ErrorCode.INVALID_INPUT);
-        LocalTime visitStart = eventStart.isBefore(LocalTime.of(10, 0))
-                ? eventStart : LocalTime.of(10, 0);
-        LocalTime visitEnd = eventEnd.isAfter(LocalTime.of(21, 0))
-                ? eventEnd : LocalTime.of(21, 0);
-
-        LocalTime mealStart = LocalTime.of(12, 30);
-        if (overlaps(mealStart, mealStart.plusHours(1), eventStart, eventEnd)) {
-            mealStart = eventEnd.plusMinutes(30);
-            if (mealStart.plusHours(1).isAfter(LocalTime.of(21, 0))) {
-                mealStart = eventStart.minusMinutes(90);
-            }
-        }
-        if (mealStart.isBefore(LocalTime.of(10, 0))
-                || mealStart.plusHours(1).isAfter(LocalTime.of(21, 0))
-                || overlaps(mealStart, mealStart.plusHours(1), eventStart, eventEnd)) {
-            mealStart = null;
-        }
-
-        // 지역 음식점 데이터가 비었거나 식사 시간이 맞지 않아도 행사만으로 당일 초안을 만든다.
-        EventPlaceCandidateRow place = mealStart == null ? null : plans.findNearbyRestaurant(
-                event.getLat(), event.getLng(), mealStart, mealStart.plusHours(1));
-
-        // 한 사용자의 미저장 초안은 하나만 유지한다. 일정·항목·관심사를 한 트랜잭션에서 교체한다.
-        plans.deleteExistingDraft(userId);
-        EventPlanRow plan = new EventPlanRow();
-        plan.setUserId(userId);
-        plan.setAnchorEventId(event.getEventId());
-        String title = request.tripDate().format(DateTimeFormatter.ofPattern("MM.dd"))
-                + " " + event.getTitle();
-        plan.setTitle(title.length() > 100 ? title.substring(0, 100) : title);
-        plan.setTripDate(request.tripDate());
-        plan.setVisitStartTime(visitStart);
-        plan.setVisitEndTime(visitEnd);
-        plan.setTransportMode(request.transportMode());
-        plan.setHeadcount(request.headcount());
-        plans.insertPlan(plan);
-
-        for (String interest : new HashSet<>(request.interests())) {
-            plans.insertInterest(plan.getPlanId(), interest);
-        }
-
-        if (place == null) {
-            plans.insertItem(plan.getPlanId(), 1, "EVENT", event.getEventId(), eventStart,
-                    (int) ChronoUnit.MINUTES.between(eventStart, eventEnd), null,
-                    event.getStartTime() != null);
-        } else if (mealStart.isBefore(eventStart)) {
-            plans.insertItem(plan.getPlanId(), 1, "PLACE", place.getContentId(), mealStart, 60,
-                    "행사장 근처에서 식사할 수 있는 장소", false);
-            plans.insertItem(plan.getPlanId(), 2, "EVENT", event.getEventId(), eventStart,
-                    (int) ChronoUnit.MINUTES.between(eventStart, eventEnd), null,
-                    event.getStartTime() != null);
-        } else {
-            plans.insertItem(plan.getPlanId(), 1, "EVENT", event.getEventId(), eventStart,
-                    (int) ChronoUnit.MINUTES.between(eventStart, eventEnd), null,
-                    event.getStartTime() != null);
-            plans.insertItem(plan.getPlanId(), 2, "PLACE", place.getContentId(), mealStart, 60,
-                    "행사장 근처에서 식사할 수 있는 장소", false);
-        }
-
-        // AI 미연결: useAi=true여도 규칙 기반 결과(ai_yn=false)를 반환한다.
-        EventPlanRow inserted = plans.findPlan(plan.getPlanId());
-        return toDetail(inserted);
-    }
 
     /** EVENT-003: 저장 일정의 소유자와 상태를 확인한 뒤 행사 한 건을 원자적으로 추가한다. */
     @Transactional
@@ -219,17 +135,6 @@ public class EventPlanService {
         for (int index = 0; index < sorted.size(); index++) {
             plans.updateItemSeq(planId, sorted.get(index).getItemId(), index + 1);
         }
-    }
-
-    private EventDetailResponse requireEvent(String eventId, LocalDate tripDate) {
-        EventDetailResponse event = events.selectEventForRecommendation(eventId);
-        if (event == null) throw new CustomException(ErrorCode.EVENT_NOT_FOUND);
-        if (tripDate.isBefore(LocalDate.now(SEOUL))
-                || tripDate.isBefore(event.getStartDate())
-                || tripDate.isAfter(event.getEndDate())) {
-            throw new CustomException(ErrorCode.EVENT_DATE_UNAVAILABLE);
-        }
-        return event;
     }
 
     private EventPlanDetailResponse toDetail(EventPlanRow row) {

@@ -46,38 +46,6 @@
         WHERE trip_plan_id = #{planId} ORDER BY interest_label
     </select>
 
-    <select id="findNearbyRestaurant" resultType="com.tripai.backend.domain.dto.plan.EventPlaceCandidateRow">
-        SELECT content_id AS contentId, open_time AS openTime, close_time AS closeTime
-        FROM place
-        WHERE display_yn = 1 AND content_type_cd = 39
-          AND ABS(mapy - #{lat}) &lt;= 0.015
-          AND ABS(mapx - #{lng}) &lt;= 0.02
-          AND (open_time IS NULL OR close_time IS NULL
-               OR (open_time &lt;= #{mealStart} AND close_time &gt;= #{mealEnd}))
-        ORDER BY POW((mapy - #{lat}) * 111000, 2)
-               + POW((mapx - #{lng}) * 88000, 2), content_id
-        LIMIT 1
-    </select>
-
-    <delete id="deleteExistingDraft">
-        DELETE FROM trip_plan WHERE user_id = #{userId} AND save_yn = 0
-    </delete>
-
-    <insert id="insertPlan" parameterType="com.tripai.backend.domain.dto.plan.EventPlanRow"
-            useGeneratedKeys="true" keyProperty="planId" keyColumn="trip_plan_id">
-        INSERT INTO trip_plan
-        (user_id, anchor_content_id, title, trip_date, visit_start_time,
-         visit_end_time, save_yn, ai_yn, transport_md, headcount)
-        VALUES
-        (#{userId}, #{anchorEventId}, #{title}, #{tripDate}, #{visitStartTime},
-         #{visitEndTime}, 0, 0, #{transportMode}, #{headcount})
-    </insert>
-
-    <insert id="insertInterest">
-        INSERT INTO trip_plan_interest (trip_plan_id, interest_label)
-        VALUES (#{planId}, #{interest})
-    </insert>
-
     <insert id="insertItem">
         INSERT INTO trip_item
         (trip_plan_id, seq_order, item_type, event_content_id, place_content_id,
