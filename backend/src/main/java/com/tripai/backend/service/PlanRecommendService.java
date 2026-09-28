@@ -855,7 +855,9 @@ public class PlanRecommendService {
             return false;
         }
         int openAt = minutes(open);
-        int closeAt = minutes(close) <= openAt ? minutes(close) + DAY_MINUTES : minutes(close);
+        // 시작 = 종료는 24시간 영업 — 자정을 넘는 식사(예: 23:30~00:30)도 영업 중으로 본다
+        int closeAt = minutes(close) == openAt ? openAt + 2 * DAY_MINUTES
+                : (minutes(close) < openAt ? minutes(close) + DAY_MINUTES : minutes(close));
         // 식사를 그날 기준과, 전날 밤부터 이어진 영업(예: 17:00~02:00 가게의 00:30 식사) 기준 두 가지로 본다
         for (int shift : new int[] {0, DAY_MINUTES}) {
             int from = minutes(start) + shift;
