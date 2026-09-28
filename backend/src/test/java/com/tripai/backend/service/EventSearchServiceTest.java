@@ -114,4 +114,19 @@ class EventSearchServiceTest {
         assertThrows(CustomException.class, () -> service.searchEvents("  ", null, null, null, null, "startDateAsc", "0", "10"));
         verifyNoInteractions(mapper);
     }
+
+    @Test
+    void selectedDatesAreSortedWithoutDuplicatesAndInvalidDateIsRejected() {
+        // 메인 날짜 선택(09-28 추가): date 를 여러 개 보내면 그중 하루라도 진행 중인 행사
+        when(mapper.findEvents(any())).thenReturn(List.of());
+        service.searchEvents(null, null, null, null, null, "startDateAsc", "0", "10",
+                List.of("2026-10-04", "2026-10-03", "2026-10-04"));
+
+        ArgumentCaptor<EventSearchCriteria> criteria = ArgumentCaptor.forClass(EventSearchCriteria.class);
+        verify(mapper).findEvents(criteria.capture());
+        assertEquals(List.of(java.time.LocalDate.of(2026, 10, 3), java.time.LocalDate.of(2026, 10, 4)), criteria.getValue().dates());
+
+        assertThrows(CustomException.class, () -> service.searchEvents(null, null, null, null, null, "startDateAsc", "0", "10",
+                List.of("2026/10/03")));
+    }
 }

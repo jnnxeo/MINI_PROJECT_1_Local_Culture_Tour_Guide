@@ -7,6 +7,7 @@ import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.repository.EventSearchCriteria;
 import com.tripai.backend.repository.EventSearchMapper;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -19,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EventSearchService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_DATES = 31;
     private static final Set<String> SORT_VALUES = Set.of("startDateAsc", "endDateAsc", "titleAsc");
 
     private final EventSearchMapper eventSearchMapper;
@@ -31,6 +33,17 @@ public class EventSearchService {
     public EventSearchResponse searchEvents(String keyword, String month, List<String> categories,
                                             String district, String freeYn, String sort,
                                             String pageValue, String sizeValue) {
+        return searchEvents(keyword, month, categories, district, freeYn, sort, pageValue, sizeValue, null);
+    }
+
+    /**
+     * dates(YYYY-MM-DD, 여러 개): 메인 날짜 선택 — 고른 날짜 중 하루라도 진행 중인 행사만 (09-28 추가, 최대 31개).
+     * 다른 조건과는 AND, 날짜끼리는 OR.
+     */
+    @Transactional(readOnly = true)
+    public EventSearchResponse searchEvents(String keyword, String month, List<String> categories,
+                                            String district, String freeYn, String sort,
+                                            String pageValue, String sizeValue, List<String> dates) {
         int page = parseNumber(pageValue);
         int size = parseNumber(sizeValue);
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE || !SORT_VALUES.contains(sort)) {
@@ -58,7 +71,8 @@ public class EventSearchService {
                 freeOnly,
                 sort,
                 size,
-                (long) page * size
+                (long) page * size,
+                parseDates(dates)
         );
 
         List<MonthlyEventItemResponse> items = eventSearchMapper.findEvents(criteria).stream()
@@ -66,6 +80,20 @@ public class EventSearchService {
                 .toList();
         long totalCount = eventSearchMapper.countEvents(criteria);
         return new EventSearchResponse(items, page, totalCount);
+    }
+
+    private static List<LocalDate> parseDates(List<String> dates) {
+        if (dates == null || dates.isEmpty()) {
+            return List.of();
+        }
+        if (dates.size() > MAX_DATES) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+        try {
+            return dates.stream().map(String::trim).map(LocalDate::parse).distinct().sorted().toList();
+        } catch (DateTimeParseException e) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
     }
 
     private static YearMonth parseMonth(String month) {
