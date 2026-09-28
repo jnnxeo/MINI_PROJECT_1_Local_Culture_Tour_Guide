@@ -49,6 +49,10 @@ public class EventBatchService {
     private static final Pattern CULTCODE = Pattern.compile("cultcode=(\\d+)");
     private static final Pattern TIME = Pattern.compile("(\\d{1,2}):(\\d{2})");
 
+    // 온라인 행사 판별 (서울시 API에는 온라인 여부 필드가 없어 제목·장소 문자열로 판단한다)
+    private static final List<String> ONLINE_KEYWORDS = List.of("온라인", "비대면", "유튜브", "youtube", "zoom");
+    private static final List<String> HYBRID_KEYWORDS = List.of("오프라인", "현장", "병행", "하이브리드");
+
     private final SeoulEventApiClient apiClient;
     private final EventBatchMapper eventBatchMapper;
     private final TransactionTemplate transactionTemplate;
@@ -65,8 +69,8 @@ public class EventBatchService {
             }
         });
 
-        log.info("배치 완료: 저장 {}건, 건너뜀 {}건 (좌표 이상 {}건, 해시 ID 대체 {}건)",
-                stats.saved, stats.skipped, stats.badCoordinate, stats.hashIdFallback);
+        log.info("배치 완료: 저장 {}건, 건너뜀 {}건 (좌표 이상 {}건, 해시 ID 대체 {}건, 온라인 숨김 {}건)",
+                stats.saved, stats.skipped, stats.badCoordinate, stats.hashIdFallback, stats.hiddenOnline);
     }
 
     private void saveOne(SeoulEventApiItem item, Stats stats) {
@@ -80,6 +84,9 @@ public class EventBatchService {
             }
             eventBatchMapper.upsertEvent(row);
             stats.saved++;
+            if (Boolean.FALSE.equals(row.getDisplayYn())) {
+                stats.hiddenOnline++;
+            }
         } catch (Exception e) {
             // 한 건이 실패해도 배치 전체는 계속한다.
             stats.skipped++;
@@ -101,6 +108,9 @@ public class EventBatchService {
         row.setOverview(firstNonBlank(item.getProgram(), item.getEtcDesc()));
         row.setImageUrl(urlOrNull(item.getImageUrl(), LEN_IMAGE_URL));
         row.setHomepage(resolveHomepage(item));
+
+        boolean online = isOnline(item);
+        row.setDisplayYn(!online);
 
         LocalDate start = parseDate(item.getStartDate());
         LocalDate end = parseDate(item.getEndDate());
@@ -135,6 +145,18 @@ public class EventBatchService {
         stats.hashIdFallback++;
         String raw = String.join("|", safe(item.getTitle()), safe(item.getStartDate()), safe(item.getPlace()));
         return "SEOUL-H-" + sha256Short(raw);
+    }
+
+    /**
+     * 온라인 행사면 true. 제목이나 장소에 온라인 관련 단어가 있고, 현장·병행 표시가 없을 때만 온라인으로 본다.
+     * 온라인과 오프라인을 병행하는 행사는 현장 참여가 가능하므로 숨기지 않는다.
+     * 규칙을 바꿀 때는 이 메서드와 위의 키워드 목록만 고치면 된다.
+     */
+    private boolean isOnline(SeoulEventApiItem item) {
+        String text = (safe(item.getTitle()) + " " + safe(item.getPlace())).toLowerCase();
+        boolean online = ONLINE_KEYWORDS.stream().anyMatch(text::contains);
+        boolean hybrid = HYBRID_KEYWORDS.stream().anyMatch(text::contains);
+        return online && !hybrid;
     }
 
     /** 원본 주최 페이지(ORG_LINK)를 우선, 없으면 서울문화포털 상세(HMPG_ADDR). */
@@ -254,6 +276,7 @@ public class EventBatchService {
         int skipped;
         int badCoordinate;
         int hashIdFallback;
+        int hiddenOnline;
         final Set<String> unknownFree = new HashSet<>();
     }
 }
