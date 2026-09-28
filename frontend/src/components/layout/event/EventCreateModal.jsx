@@ -7,7 +7,11 @@ export default function EventCreateModal({ event, onClose, onCreated }) {
   const today = new Date().toLocaleDateString('sv-SE', {
     timeZone: 'Asia/Seoul',
   })
-  const firstDate = event.startDate && event.startDate > today ? event.startDate : today
+  // 저녁 8시가 지나면 오늘 일정은 만들 수 없으므로(서버 규칙) 기본 날짜를 내일로 둔다
+  const seoulHour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }))
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+  const earliest = seoulHour >= 20 ? tomorrow : today
+  const firstDate = event.startDate && event.startDate > earliest ? event.startDate : earliest
 
   const [tripDate, setTripDate] = useState(firstDate)
   const [headcount, setHeadcount] = useState(2)

@@ -72,6 +72,8 @@ public class PlanRecommendService {
     static final int[] SEARCH_RADII = {1500, 3000, 5000};
     static final int CANDIDATE_LIMIT = 20;
     static final int DAY_MINUTES = 24 * 60;
+    /** 오늘 일정은 이 시각 전에 시작할 수 있을 때만 만든다 */
+    static final LocalTime LATEST_START_TODAY = LocalTime.of(20, 0);
     static final int AI_CANDIDATE_LIMIT = 15;
     static final int MIN_EVENT_DURATION = 30;
     static final int MAX_EVENT_DURATION = 360;
@@ -325,6 +327,23 @@ public class PlanRecommendService {
             throw new PlanRuleException(HttpStatus.BAD_REQUEST,
                     event.getEventName() + "은(는) " + visitDate + "에 진행하지 않는 행사입니다. ("
                             + event.getEventStartDate() + " ~ " + event.getEventEndDate() + ")");
+        }
+
+        // 오늘 일정은 지금 이후로만 만든다 (지금 시각을 30분 단위로 올린 시각부터, 20:00 이후면 오늘은 만들지 않음)
+        if (visitDate.equals(LocalDate.now(clock))) {
+            LocalTime earliest = roundUpToHalfHour(LocalTime.now(clock));
+            if (earliest == null || !earliest.isBefore(LATEST_START_TODAY)) {
+                throw new PlanRuleException(HttpStatus.BAD_REQUEST,
+                        "오늘은 일정을 만들 시간이 부족합니다. 내일 이후 날짜를 골라 주세요.");
+            }
+            if (event.getEventStartTime() != null && event.getEventStartTime().isBefore(earliest)) {
+                throw new PlanRuleException(HttpStatus.BAD_REQUEST,
+                        event.getEventName() + "은(는) 오늘 " + format(event.getEventStartTime())
+                                + "에 이미 시작한 행사입니다. 다른 날짜를 골라 주세요.");
+            }
+            if (requestStart == null || requestStart.isBefore(earliest)) {
+                requestStart = earliest;
+            }
         }
 
         LocalTime eventStart = event.getEventStartTime() != null
@@ -762,15 +781,12 @@ public class PlanRecommendService {
     private Selection selectEvent(EventConditions conditions, String preferEventId, Set<String> excludeIds,
                                   LocalTime start, LocalTime end, FoodChoice food, String mealType) {
         LocalDate today = LocalDate.now(clock);
-        List<LocalDate> dates = conditions.dates().stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .sorted()
-                .filter(date -> !date.isBefore(today))
-                .toList();
+        List<LocalDate> dates = usableDates(conditions.dates());
         if (dates.isEmpty()) {
-            throw new PlanRuleException(HttpStatus.BAD_REQUEST,
-                    "지난 날짜로는 일정을 만들 수 없습니다. 오늘(" + today + ") 이후 날짜를 골라 주세요.");
+            boolean onlyToday = conditions.dates().stream().anyMatch(today::equals);
+            throw new PlanRuleException(HttpStatus.BAD_REQUEST, onlyToday
+                    ? "오늘은 일정을 만들 시간이 부족합니다. 내일 이후 날짜를 골라 주세요."
+                    : "지난 날짜로는 일정을 만들 수 없습니다. 오늘(" + today + ") 이후 날짜를 골라 주세요.");
         }
         List<String> eventTypes = conditions.eventTypes();
         int tried = 0;
@@ -805,8 +821,7 @@ public class PlanRecommendService {
         // 날짜별 후보를 행사 단위로 모아 현재 행사 다음부터 순환한다.
         // 같은 행사가 여러 날짜에 걸쳐도 두 행사만 반복하지 않으며, 뒤 날짜의 행사도 탐색한다.
         Map<String, List<DatedEvent>> byEvent = new LinkedHashMap<>();
-        for (LocalDate date : conditions.dates().stream().filter(Objects::nonNull).distinct().sorted()
-                .filter(day -> !day.isBefore(LocalDate.now(clock))).toList()) {
+        for (LocalDate date : usableDates(conditions.dates())) {
             for (RecommendEventView event : planDraftMapper.findRecommendEventCandidates(date,
                     conditions.eventTypes(), conditions.district(), conditions.freeOnly(), EVENT_CANDIDATE_LIMIT)) {
                 if (Boolean.TRUE.equals(event.getDisplayYn())) {
@@ -841,6 +856,19 @@ public class PlanRecommendService {
     }
 
     private record DatedEvent(RecommendEventView event, LocalDate date) {}
+
+    /** 행사를 고를 날짜 — 지난 날짜는 빼고, 20:00 이 지났으면 오늘도 뺀다 (generate 의 오늘 규칙과 같다) */
+    private List<LocalDate> usableDates(List<LocalDate> dates) {
+        LocalDate today = LocalDate.now(clock);
+        LocalTime earliestToday = roundUpToHalfHour(LocalTime.now(clock));
+        boolean todayUsable = earliestToday != null && earliestToday.isBefore(LATEST_START_TODAY);
+        return dates.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .filter(date -> date.isAfter(today) || date.equals(today) && todayUsable)
+                .toList();
+    }
 
     /** "전체 지역"·빈 값은 조건 없음 */
     private static String normalizeDistrict(String district) {
@@ -1129,6 +1157,13 @@ public class PlanRecommendService {
 
     private static String firstNonNull(String first, String second, String fallback) {
         return first != null ? first : (second != null ? second : fallback);
+    }
+
+    /** 30분 단위로 올림 (예: 13:10 → 13:30). 자정을 넘기면 null */
+    private static LocalTime roundUpToHalfHour(LocalTime time) {
+        int minutes = time.getHour() * 60 + time.getMinute() + (time.getSecond() > 0 ? 1 : 0);
+        int rounded = (minutes + 29) / 30 * 30;
+        return rounded >= DAY_MINUTES ? null : LocalTime.of(rounded / 60, rounded % 60);
     }
 
     private static LocalTime parse(String time) {

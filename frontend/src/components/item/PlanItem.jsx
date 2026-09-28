@@ -13,6 +13,8 @@ const PlanItem = ({ plan, onUpdate }) => {
     const dDayText = dDay === 0 ? 'D-Day' : dDay > 0 ? `D-${dDay}` : `D+${Math.abs(dDay)}`
 
     const deletePlan = async () => {
+        // 삭제하면 되돌릴 수 없어 한 번 더 확인한다
+        if (!window.confirm(`'${plan.title}' 일정을 삭제할까요? 삭제한 일정은 되돌릴 수 없습니다.`)) return
 
         await api.delete(`/api/plans/${plan.tripPlanId}`)
             .then(response => {
@@ -113,7 +115,8 @@ const PlanItem = ({ plan, onUpdate }) => {
                 <div className="saved-card-actions">
                 <button
                     onClick={() =>
-                        moveUrl(`/plans/drafts/${plan.tripPlanId}/conditions`)
+                        // 저장한 일정 상세 화면 (API-PLAN-011 GET /api/plans/{planId})
+                        moveUrl(`/my-trips/${plan.tripPlanId}`)
                     }
                 >
                     일정 보기

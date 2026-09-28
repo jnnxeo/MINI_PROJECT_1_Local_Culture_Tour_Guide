@@ -8,6 +8,7 @@ import { buildSubmittedSearchParams, readSearchConditions, SEARCH_PAGE_SIZE } fr
 import { getDefaultSort, getSortOptions } from '../features/search/eventSort.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
+import useFavoriteEvents from '../hooks/useFavoriteEvents.js'
 
 function SortDropdown({ selected, dates, onSelect }) {
   const options = getSortOptions(dates)
@@ -59,6 +60,7 @@ function SortDropdown({ selected, dates, onSelect }) {
 }
 
 export default function SearchResultsPage() {
+  const { favoriteIds, pendingIds, toggleFavorite, favoriteError } = useFavoriteEvents()
   const location = useLocation()
   const navigate = useNavigate()
   const applied = useMemo(() => readSearchConditions(new URLSearchParams(location.search)), [location.search])
@@ -198,8 +200,18 @@ export default function SearchResultsPage() {
         )}
         {status === 'success' && result.items.length > 0 && (
           <>
+            {favoriteError && <p className="search-results-favorite-error" role="alert">{favoriteError}</p>}
             <div className="search-results-list">
-              {result.items.map((event) => <SearchResultCard key={event.eventId} event={event} onDetail={() => navigate(`/events/${event.eventId}`)} />)}
+              {result.items.map((event) => (
+                <SearchResultCard
+                  key={event.eventId}
+                  event={event}
+                  isFavorite={favoriteIds.has(event.eventId)}
+                  favoritePending={pendingIds.has(event.eventId)}
+                  onFavorite={() => toggleFavorite(event.eventId)}
+                  onDetail={() => navigate(`/events/${event.eventId}`)}
+                />
+              ))}
             </div>
             {totalPages > 1 && (
               <nav className="search-results-pagination" aria-label="검색 결과 페이지">
