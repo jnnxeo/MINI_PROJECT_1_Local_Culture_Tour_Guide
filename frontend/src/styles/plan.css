@@ -1164,3 +1164,6 @@
   min-width: 0;
 }
 .plan-conditions__fields p { margin: 0; }
+
+.plan-item__address { margin: 0; color: var(--tripai-muted); font-size: 13px; }
+.plan-saved-notice { margin: 0 0 20px; color: var(--tripai-blue); font-weight: 600; }

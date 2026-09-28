@@ -288,3 +288,8 @@ export function updateSavedEventTime(planId, itemId, startTime) {
     { startTime },
   ))
 }
+
+/** 저장 일정 제목 변경 후 상세를 다시 조회해 목록과 같은 서버 값을 보여 준다. */
+export function updateSavedPlanTitle(planId, title) {
+  return request(() => api.patch(`/api/plans/${encodeURIComponent(planId)}`, { title }))
+}
