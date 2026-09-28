@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tripai.backend.repository.EventPlanMapper">
+    <sql id="planColumns">
+        trip_plan_id AS planId, user_id AS userId,
+        anchor_content_id AS anchorEventId, title, trip_date AS tripDate,
+        visit_start_time AS visitStartTime, visit_end_time AS visitEndTime,
+        save_yn AS saved, ai_yn AS aiGenerated,
+        transport_md AS transportMode, headcount
+    </sql>
+
+    <select id="findPlan" resultType="com.tripai.backend.domain.dto.plan.EventPlanRow">
+        SELECT <include refid="planColumns" />
+        FROM trip_plan WHERE trip_plan_id = #{planId}
+    </select>
+
+    <select id="findSavedPlanForUpdate" resultType="com.tripai.backend.domain.dto.plan.EventPlanRow">
+        SELECT <include refid="planColumns" />
+        FROM trip_plan
+        WHERE trip_plan_id = #{planId} AND user_id = #{userId} AND save_yn = 1
+        FOR UPDATE
+    </select>
+
+    <select id="findItems" resultType="com.tripai.backend.domain.dto.plan.EventPlanItemRow">
+        SELECT i.trip_item_id AS itemId, i.trip_plan_id AS planId,
+               i.seq_order AS seq, i.item_type AS type,
+               COALESCE(i.event_content_id, i.place_content_id) AS contentId,
+               COALESCE(e.event_name, p.place_name) AS name,
+               CASE WHEN i.item_type = 'EVENT' THEN e.event_type ELSE '음식점' END AS category,
+               COALESCE(e.addr, p.addr) AS address,
+               COALESCE(e.mapy, p.mapy) AS lat,
+               COALESCE(e.mapx, p.mapx) AS lng,
+               COALESCE(e.image_url, p.image_url) AS imageUrl,
+               i.start_time AS startTime, i.duration_min AS durationMin,
+               i.time_fix_yn AS timeFixed, i.ai_reason AS aiReason,
+               p.open_time AS openTime, p.close_time AS closeTime
+        FROM trip_item i
+        LEFT JOIN event e ON e.event_content_id = i.event_content_id
+        LEFT JOIN place p ON p.content_id = i.place_content_id
+        WHERE i.trip_plan_id = #{planId}
+        ORDER BY i.seq_order
+    </select>
+
+    <select id="findInterests" resultType="string">
+        SELECT interest_label FROM trip_plan_interest
+        WHERE trip_plan_id = #{planId} ORDER BY interest_label
+    </select>
+
+    <insert id="insertItem">
+        INSERT INTO trip_item
+        (trip_plan_id, seq_order, item_type, event_content_id, place_content_id,
+         start_time, duration_min, ai_reason, time_fix_yn)
+        VALUES
+        (#{planId}, #{seq}, #{type},
+         <choose><when test="type == 'EVENT'">#{contentId}</when><otherwise>NULL</otherwise></choose>,
+         <choose><when test="type == 'PLACE'">#{contentId}</when><otherwise>NULL</otherwise></choose>,
+         #{startTime}, #{durationMin}, #{aiReason}, #{timeFixed})
+    </insert>
+
+    <update id="updateItemStartTime">
+        UPDATE trip_item SET start_time = #{startTime}
+        WHERE trip_plan_id = #{planId} AND trip_item_id = #{itemId}
+          AND item_type = 'EVENT' AND time_fix_yn = 0
+    </update>
+
+    <update id="offsetItemSeq">
+        UPDATE trip_item SET seq_order = seq_order + #{offset}
+        WHERE trip_plan_id = #{planId}
+        ORDER BY seq_order DESC
+    </update>
+
+    <update id="updateItemSeq">
+        UPDATE trip_item SET seq_order = #{seq}
+        WHERE trip_plan_id = #{planId} AND trip_item_id = #{itemId}
+    </update>
+
+</mapper>
