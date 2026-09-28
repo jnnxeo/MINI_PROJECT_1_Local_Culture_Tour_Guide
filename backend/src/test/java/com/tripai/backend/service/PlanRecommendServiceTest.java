@@ -186,6 +186,35 @@ class PlanRecommendServiceTest {
     }
 
     @Test
+    void 행사_직전_시각이_점심_시간대가_아니면_점심으로_추천하지_않는다() {
+        // 승진님 리뷰(#46): 방문 시작 15:00, 행사 18:00 이면 행사 직전 17:00 이 '점심'으로 잡히던 문제
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 300, "10:00", "22:00", null, null));
+
+        assertStatus(() -> service.recommend(1L, request(null, "LUNCH", "15:00", null)), HttpStatus.UNPROCESSABLE_ENTITY);
+
+        DraftResponse both = service.recommend(1L, request(null, null, "15:00", null));
+        assertThat(both.items()).extracting(PlanItemResponse::startTime).containsExactly("17:00", "18:00");
+        assertThat(both.recommendationReasons().get(0).reason()).startsWith("저녁 17:00");
+    }
+
+    @Test
+    void 저녁도_저녁_시간대_안의_시각만_쓴다() {
+        mapper.recommendEvents.put("EV-2", event("EV-2", LocalTime.of(12, 0), LocalTime.of(14, 0), true));
+        // 16:00 에 닫아 17:00 저녁이 안 되는 곳 — 예전에는 행사 직전 11:00 이 '저녁'으로 잡혔다
+        places.restaurants.add(restaurant("PL-1", "KOREAN", 300, "10:00", "16:00", null, null));
+        assertStatus(() -> service.recommend(1L, new PlanRecommendRequest(
+                "EV-2", VISIT_DATE, null, null, null, null, "DINNER", null, null)), HttpStatus.UNPROCESSABLE_ENTITY);
+
+        // 행사 17:00~20:00 이면 17:00 은 겹치고 16:00 은 저녁 시간대 밖이라 행사 직후 20:00 에 저녁
+        mapper.recommendEvents.put("EV-3", event("EV-3", LocalTime.of(17, 0), LocalTime.of(20, 0), true));
+        places.restaurants.add(restaurant("PL-2", "KOREAN", 400, "10:00", "22:00", null, null));
+        DraftResponse draft = service.recommend(1L, new PlanRecommendRequest(
+                "EV-3", VISIT_DATE, null, null, null, null, "DINNER", null, null));
+        assertThat(draft.items()).extracting(PlanItemResponse::startTime).containsExactly("17:00", "20:00");
+        assertThat(draft.items().get(1).placeId()).isEqualTo("PL-2");
+    }
+
+    @Test
     void 같은_맛집을_두_번_넣지_않는다() {
         places.restaurants.add(restaurant("PL-1", "KOREAN", 300, "10:00", "22:00", null, null));
 

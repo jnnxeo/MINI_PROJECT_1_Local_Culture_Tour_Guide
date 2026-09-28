@@ -48,7 +48,8 @@ import org.springframework.transaction.annotation.Transactional;
  * 규칙 — 명세에 값이 없어 정한 부분은 docs/07 [제안]
  * 1. 여행 날짜는 오늘 이후이고 행사가 그날 진행 중이어야 한다 (아니면 400 행사일 불일치).
  * 2. 행사 시작 시간이 있으면 그 시간에 고정, 소요시간은 종료 시간까지(없으면 120분).
- * 3. 식사는 점심 12:30 / 저녁 17:00 에 60분. 행사와 겹치면 행사 직전·직후로 옮긴다.
+ * 3. 식사는 점심 12:30 / 저녁 17:00 에 60분. 행사와 겹치면 행사 직전·직후로 옮기되,
+ *    옮긴 시각도 그 끼니 시간대(점심 11:00~14:30, 저녁 17:00~20:30) 안이어야 한다.
  * 4. 맛집은 선택한 음식 종류 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을
  *    행사장에서 가까운 순으로 고른다 (반경 1.5km → 3km → 5km).
  * 5. 맛집을 하나도 못 찾으면 초안을 만들거나 바꾸지 않고 422 (추천 후보 부족).
@@ -471,7 +472,7 @@ public class PlanRecommendService {
         return items;
     }
 
-    /** AI 가 정한 식사 시작 시각이 점심(11:00~14:30)·저녁(17:00~20:30) 중 어디인지 */
+    /** 식사 시작 시각이 점심(11:00~14:30)·저녁(17:00~20:30) 중 어디인지 — 규칙 기반 후보 시각과 AI 결과 검사에 함께 쓴다 */
     private static MealType mealOf(LocalTime start) {
         if (!start.isBefore(LocalTime.of(11, 0)) && !start.isAfter(LocalTime.of(14, 30))) {
             return MealType.LUNCH;
@@ -520,11 +521,13 @@ public class PlanRecommendService {
     private static List<LocalTime> mealTimes(List<MealType> meals, LocalTime eventStart, LocalTime eventEnd) {
         List<LocalTime> times = new ArrayList<>();
         for (MealType meal : meals) {
-            times.add(meal.time);
+            List<LocalTime> candidates = new ArrayList<>(List.of(meal.time));
             if (!eventStart.isBefore(LocalTime.of(1, 0))) {
-                times.add(eventStart.minusMinutes(MEAL_DURATION));
+                candidates.add(eventStart.minusMinutes(MEAL_DURATION));
             }
-            times.add(eventEnd);
+            candidates.add(eventEnd);
+            // 행사 직전·직후 시각도 그 끼니 시간대(점심 11:00~14:30, 저녁 17:00~20:30) 안일 때만 쓴다 — AI 결과 검사와 같은 기준
+            candidates.stream().filter(time -> mealOf(time) == meal).forEach(times::add);
         }
         return times;
     }
