@@ -11,7 +11,7 @@ const EventsList = ({ ary, onUpdate}) => {
             <div className="empty-state">
                 <p className="empty-state-title">아직 관심 있는 행사가 없어요.</p>
                 <p>마음에 드는 행사를 저장해보세요.</p>
-                <button className="primary-button" onClick={() => moveUrl(`/`)}>메인 페이지로 이동</button>
+                <button className="primary-button" onClick={() => moveUrl(`/events/${event.eventId}`)}>행사 둘러보기</button>
             </div>
         )
     }
