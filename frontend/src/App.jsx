@@ -7,8 +7,10 @@ import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import EventDetailPage from './pages/EventDetailPage.jsx'
 import MyPage from './pages/MyPage.jsx'
 import SearchResultsPage from './pages/SearchResultsPage.jsx'
+import EventSavedPlanPage from './pages/EventSavedPlanPage.jsx'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -34,12 +36,28 @@ export default function App() {
           </ProtectedRoute>
         )}
       />
-      
+
+      <Route
+        path="/my-trips"
+        element={(
+          <ProtectedRoute>
+            <Navigate to="/mypage" replace />
+          </ProtectedRoute>
+        )}
+      />
       <Route
         path="/trips/draft"
         element={(
           <ProtectedRoute>
             <PlanEditorPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/my-trips/:planId"
+        element={(
+          <ProtectedRoute>
+            <EventSavedPlanPage />
           </ProtectedRoute>
         )}
       />
@@ -65,8 +83,7 @@ export default function App() {
         path="/events/:eventId"
         element={(
           <ProtectedRoute>
-            <HomeNavigation />
-            <FeaturePlaceholderPage title="문화행사 상세" />
+            <EventDetailPage />
           </ProtectedRoute>
         )}
       />

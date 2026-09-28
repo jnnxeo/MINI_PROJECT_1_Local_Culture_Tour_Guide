@@ -1,0 +1,137 @@
+.login-content {
+  min-height: calc(100vh - 90px - 32px);
+  display: grid;
+  align-items: center;
+  padding: 72px 5%;
+}
+
+.login-layout {
+  width: min(100%, 1160px);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(40px, 8vw, 150px);
+}
+
+.login-intro-brand {
+  margin: 0 0 24px;
+  color: #2d66ee;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.login-intro h1 {
+  margin: 0;
+  color: #14203d;
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.35;
+}
+
+.login-intro > p:not(.login-intro-brand) {
+  margin: 22px 0 24px;
+  color: #70809d;
+  line-height: 1.6;
+}
+
+.login-intro img {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: 260px;
+  object-fit: cover;
+  object-position: center 59%;
+  border-radius: 14px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 480px;
+  padding: clamp(28px, 3vw, 42px);
+  border-radius: 20px;
+  background: #fff;
+}
+
+.login-card h2 {
+  margin: 0;
+  font-size: 26px;
+}
+
+.login-description {
+  margin: 12px 0 22px;
+  color: #70809d;
+  font-size: 14px;
+}
+
+.login-card .auth-form {
+  display: block;
+}
+
+.login-card .signup-field {
+  margin-bottom: 14px;
+}
+
+.login-card .signup-field input {
+  width: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-card .signup-field:focus-within {
+  border-color: #2d66ee;
+  box-shadow: 0 0 0 3px rgb(45 102 238 / 12%);
+}
+
+.login-card .signup-field:has(input[aria-invalid="true"]) {
+  border-color: #d63737;
+}
+
+.login-card .field-error {
+  margin: 8px 0 0;
+  color: #d63737;
+  font-size: 13px;
+}
+
+.login-card .signup-submit-button {
+  margin-top: 18px;
+}
+
+.login-signup-link {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 32px;
+  border: 1px solid #dfe5ef;
+  border-radius: 14px;
+  color: #23304b;
+  font-weight: 700;
+}
+
+.login-signup-link:hover {
+  color: #2d66ee;
+  border-color: #2d66ee;
+}
+
+@media (max-width: 720px) {
+  .login-content {
+    padding: 40px 20px 60px;
+  }
+
+  .login-layout {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .login-intro img {
+    height: 200px;
+  }
+
+  .login-card {
+    max-width: none;
+  }
+}

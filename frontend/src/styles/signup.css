@@ -26,7 +26,19 @@ a {
 
 .signup-page {
   min-height: 100vh;
+  padding-bottom: 16px;
+  background: #ffffff;
+}
+
+.auth-page-panel {
+  margin: 16px;
+  min-height: calc(100vh - 90px - 32px);
   background: #f4f7fc;
+}
+
+.signup-page:not(.login-page) > .auth-page-panel {
+  display: flex;
+  flex-direction: column;
 }
 
 .signup-header {
@@ -92,6 +104,10 @@ a {
   padding: 50px 5%;
   color: #ffffff;
   background: #101d41;
+}
+
+.auth-page-panel .signup-content {
+  flex: 1;
 }
 
 .signup-eyebrow {
@@ -316,6 +332,10 @@ a {
 }
 
 @media (max-width: 720px) {
+  .auth-page-panel {
+    margin: 12px;
+    min-height: calc(100vh - 72px - 24px);
+  }
   .signup-header {
     min-height: 72px;
     padding: 0 20px;
