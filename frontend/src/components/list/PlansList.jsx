@@ -11,7 +11,7 @@ const PlansList = ({ary, onUpdate}) => {
             <div className="empty-state">
                 <p className="empty-state-title">아직 저장한 일정이 없어요.</p>
                 <p>마음에 드는 여행 코스를 만들어보세요.</p>
-                <button className="primary-button" onClick={() => moveUrl(`/events/${event.eventId}`)}>일정 만들기</button>
+                <button className="primary-button" onClick={() => moveUrl(`/`)}>메인 페이지로 이동</button>
             </div>
         )
     }
