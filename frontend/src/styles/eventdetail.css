@@ -65,7 +65,6 @@
   display: grid;
   gap: 24px;
   align-content: start;
-  align-self: start;
   padding: 24px;
   border-radius: 16px;
   background: var(--tripai-canvas);
@@ -77,9 +76,6 @@
 }
 
 .event-detail-info p {
-  color: var(--tripai-text);
-  font-size: 16px;
-  font-weight: 500;
   line-height: 1.45;
 }
 
@@ -93,12 +89,6 @@
 .event-detail-info section {
   display: grid;
   gap: 24px;
-}
-
-.event-detail-info section p {
-  color: var(--tripai-muted);
-  font-size: 15px;
-  font-weight: 400;
 }
 
 .event-modal__row,
@@ -223,10 +213,9 @@
   color: var(--tripai-blue);
 }
 
-.event-page .event-add-plan-button {
+.event-add-plan-button {
   border-color: var(--tripai-blue);
   background: var(--tripai-selected);
-  font-weight: 700;
 }
 
 .event-saved-plan-list {
