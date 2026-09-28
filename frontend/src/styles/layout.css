@@ -13,6 +13,19 @@
   margin: 0 auto;
 }
 
+.home-plan-header .tp-nav__search {
+  width: 48px;
+  padding: 0;
+  border-color: #e6ebf4;
+  cursor: pointer;
+}
+
+.home-plan-header .tp-nav__search:hover,
+.home-plan-header .tp-nav__search[aria-expanded="true"] {
+  color: #2d66ee;
+  background: #eff4ff;
+}
+
 .feature-placeholder {
   width: min(100% - 40px, 720px);
   min-height: calc(100vh - 84px);

@@ -9,7 +9,7 @@ import '../../styles/plan-base.css'
  * 공통 헤더·내비게이션은 WBS-101(1조) 담당 — 공통 헤더가 나오면 이 컴포넌트를 교체한다.
  * 이탈 방지(UX-004)를 위해 onNavigate로 이동을 가로챌 수 있게 했다.
  */
-export default function PlanHeader({ onNavigate }) {
+export default function PlanHeader({ onNavigate, onSearch, searchOpen = false }) {
   const navigate = useNavigate()
   const { isAuthenticated, logout } = useAuth()
 
@@ -48,6 +48,14 @@ export default function PlanHeader({ onNavigate }) {
         TripAI
       </button>
       <span className="tp-nav__spacer" />
+      {onSearch && (
+        <button className="tp-btn tp-nav__search" type="button" onClick={onSearch} aria-label="키워드 검색" title="키워드 검색" aria-haspopup="dialog" aria-expanded={searchOpen}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true" focusable="false">
+            <circle cx="10.5" cy="10.5" r="6.5" />
+            <path d="m16 16 4.5 4.5" />
+          </svg>
+        </button>
+      )}
       <button className="tp-btn tp-nav__link" type="button" onClick={() => go('/')}>
         메인페이지
       </button>

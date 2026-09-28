@@ -1,11 +1,10 @@
 import React, { useState } from 'react'
-import KeywordModal from './KeywordModal.jsx'
 import FilterModal from './FilterModal.jsx'
 import DateModal from './DateModal.jsx'
 
 const initialFilters = { categories: [], district: '전체 지역', freeOnly: false }
 
-export default function SearchPanel({ onKeywordSearch, onFilterSearch, onRecommend }) {
+export default function SearchPanel({ onFilterSearch, onRecommend }) {
   const [filters, setFilters] = useState(initialFilters)
   const [dates, setDates] = useState([])
   const [activeModal, setActiveModal] = useState(null)
@@ -18,13 +17,6 @@ export default function SearchPanel({ onKeywordSearch, onFilterSearch, onRecomme
 
   return (
     <div className="home-search-area">
-      <div className="home-keyword-search">
-        <button className="home-search__field home-search__field--button home-search__field--keyword" type="button" onClick={() => setActiveModal('keyword')} aria-haspopup="dialog">
-          <span>행사 검색</span>
-          <strong>행사명 · 장소 · 지역 · 행사 분야로 찾기</strong>
-        </button>
-      </div>
-
       <form className="home-search" onSubmit={submitFilters} aria-label="문화행사 조건 검색">
         <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
           <span>날짜 선택</span>
@@ -45,12 +37,6 @@ export default function SearchPanel({ onKeywordSearch, onFilterSearch, onRecomme
 
         <button className="primary-button home-search__submit" type="submit">조건 검색</button>
       </form>
-      {activeModal === 'keyword' && (
-        <KeywordModal
-          onClose={() => setActiveModal(null)}
-          onSearch={(keyword) => { setActiveModal(null); onKeywordSearch(keyword) }}
-        />
-      )}
       {activeModal === 'date' && (
         <DateModal
           dates={dates}

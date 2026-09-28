@@ -22,7 +22,7 @@ export default function KeywordModal({ initialKeyword = '', onClose, onSearch })
       <form onSubmit={submit} noValidate>
         <label className={`keyword-modal__field${validationError ? ' keyword-modal__field--error' : ''}`}>
           <span>검색어</span>
-          <input type="search" value={keyword} onChange={(event) => { setKeyword(event.target.value); setValidationError('') }} placeholder="행사명 · 장소 · 지역 · 행사 분야" aria-invalid={Boolean(validationError)} aria-describedby={validationError ? 'keyword-error' : undefined} autoFocus />
+          <input type="search" value={keyword} onChange={(event) => { setKeyword(event.target.value); setValidationError('') }} placeholder="행사명 · 장소 · 지역 · 행사 분야" aria-invalid={Boolean(validationError)} aria-describedby={validationError ? 'keyword-error' : undefined} />
         </label>
         {validationError && <p className="home-search__error" id="keyword-error" role="alert">{validationError}</p>}
         <h3 className="home-modal__section-title">추천 검색어</h3>
