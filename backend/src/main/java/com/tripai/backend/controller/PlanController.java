@@ -33,7 +33,7 @@ public class PlanController {
     @GetMapping("")
     public ResponseEntity<ApiResponse<PlanListResponse>> getPlans(
             @AuthenticationPrincipal Long userId,
-            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "0") Integer page,
             @RequestParam(defaultValue = "10") Integer size
         ) 
     {
