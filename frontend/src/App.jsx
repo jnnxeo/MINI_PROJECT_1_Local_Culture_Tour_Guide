@@ -9,6 +9,7 @@ import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
 import EventDetailPage from './pages/EventDetailPage.jsx'
 import MyPage from './pages/MyPage.jsx'
+import EventSavedPlanPage from './pages/EventSavedPlanPage.jsx'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -40,6 +41,14 @@ export default function App() {
         element={(
           <ProtectedRoute>
             <PlanEditorPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/my-trips/:planId"
+        element={(
+          <ProtectedRoute>
+            <EventSavedPlanPage />
           </ProtectedRoute>
         )}
       />

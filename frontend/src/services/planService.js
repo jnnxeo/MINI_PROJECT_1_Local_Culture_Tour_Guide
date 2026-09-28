@@ -245,3 +245,18 @@ export async function getPlan(planId) {
     })),
   }
 }
+
+/** EVENT-003: 저장 일정에 행사 추가. 서버가 소유권·중복·개수·시간 충돌을 다시 검사한다. */
+export function addEventToSavedPlan(planId, eventId, startTime) {
+  return request(() => api.post(`/api/plans/${encodeURIComponent(planId)}/events`, {
+    eventId,
+    startTime,
+  }))
+}
+
+export function updateSavedEventTime(planId, itemId, startTime) {
+  return request(() => api.patch(
+    `/api/plans/${encodeURIComponent(planId)}/events/${encodeURIComponent(itemId)}`,
+    { startTime },
+  ))
+}

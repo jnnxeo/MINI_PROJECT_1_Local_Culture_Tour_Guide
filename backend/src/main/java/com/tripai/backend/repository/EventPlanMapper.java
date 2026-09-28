@@ -14,6 +14,8 @@ import com.tripai.backend.domain.dto.plan.EventPlanRow;
 public interface EventPlanMapper {
     EventPlanRow findPlan(@Param("planId") long planId);
 
+    EventPlanRow findSavedPlanForUpdate(@Param("planId") long planId, @Param("userId") long userId);
+
     List<EventPlanItemRow> findItems(@Param("planId") long planId);
 
     List<String> findInterests(@Param("planId") long planId);
@@ -41,4 +43,12 @@ public interface EventPlanMapper {
             @Param("aiReason") String aiReason,
             @Param("timeFixed") boolean timeFixed
     );
+
+    int updateItemStartTime(@Param("planId") long planId, @Param("itemId") long itemId,
+                            @Param("startTime") LocalTime startTime);
+
+    int offsetItemSeq(@Param("planId") long planId, @Param("offset") int offset);
+
+    int updateItemSeq(@Param("planId") long planId, @Param("itemId") long itemId,
+                      @Param("seq") int seq);
 }

@@ -215,9 +215,7 @@ export default function EventDetailPage() {
           event={event}
           onClose={() => setSavedPlanModalOpen(false)}
           onChoose={(planId) => {
-            navigate(`/my-trips/${planId}?eventApi=1`, {
-              state: { eventToAdd: event, useRealPlanApi: true },
-            })
+            navigate(`/my-trips/${planId}`, { state: { addedEventId: event.eventId } })
           }}
         />
       )}

@@ -14,6 +14,13 @@
         FROM trip_plan WHERE trip_plan_id = #{planId}
     </select>
 
+    <select id="findSavedPlanForUpdate" resultType="com.tripai.backend.domain.dto.plan.EventPlanRow">
+        SELECT <include refid="planColumns" />
+        FROM trip_plan
+        WHERE trip_plan_id = #{planId} AND user_id = #{userId} AND save_yn = 1
+        FOR UPDATE
+    </select>
+
     <select id="findItems" resultType="com.tripai.backend.domain.dto.plan.EventPlanItemRow">
         SELECT i.trip_item_id AS itemId, i.trip_plan_id AS planId,
                i.seq_order AS seq, i.item_type AS type,
@@ -81,5 +88,22 @@
          <choose><when test="type == 'PLACE'">#{contentId}</when><otherwise>NULL</otherwise></choose>,
          #{startTime}, #{durationMin}, #{aiReason}, #{timeFixed})
     </insert>
+
+    <update id="updateItemStartTime">
+        UPDATE trip_item SET start_time = #{startTime}
+        WHERE trip_plan_id = #{planId} AND trip_item_id = #{itemId}
+          AND item_type = 'EVENT' AND time_fix_yn = 0
+    </update>
+
+    <update id="offsetItemSeq">
+        UPDATE trip_item SET seq_order = seq_order + #{offset}
+        WHERE trip_plan_id = #{planId}
+        ORDER BY seq_order DESC
+    </update>
+
+    <update id="updateItemSeq">
+        UPDATE trip_item SET seq_order = #{seq}
+        WHERE trip_plan_id = #{planId} AND trip_item_id = #{itemId}
+    </update>
 
 </mapper>

@@ -1,12 +1,25 @@
 import React, { useEffect, useState } from 'react'
 import Modal from '../common/Modal.jsx'
-import { getPlan, getSavedPlans } from '../../services/planService.js'
+import { addEventToSavedPlan, getPlan, getSavedPlans } from '../../services/planService.js'
 import { buildEventPlanItem } from '../../utils/eventPlan.js'
 
 export default function EventSavedPlanModal({ event, onClose, onChoose }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [addingPlanId, setAddingPlanId] = useState(null)
+
+  async function choose(plan, item) {
+    setError('')
+    setAddingPlanId(plan.planId)
+    try {
+      await addEventToSavedPlan(plan.planId, event.eventId, item.startTime)
+      onChoose(plan.planId)
+    } catch (requestError) {
+      setError(requestError.message)
+      setAddingPlanId(null)
+    }
+  }
 
   useEffect(() => {
     let active = true
@@ -55,10 +68,10 @@ export default function EventSavedPlanModal({ event, onClose, onChoose }) {
             <button
               type="button"
               className="tp-btn tp-btn--secondary"
-              disabled={Boolean(result.error)}
-              onClick={() => onChoose(plan.planId)}
+              disabled={Boolean(result.error) || addingPlanId != null}
+              onClick={() => choose(plan, result.item)}
             >
-              선택
+              {addingPlanId === plan.planId ? '추가 중…' : '선택'}
             </button>
           </div>
         ))}
