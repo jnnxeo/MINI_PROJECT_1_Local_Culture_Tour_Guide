@@ -188,9 +188,55 @@ export function formatDistance(meters) {
   return meters < 1000 ? `${Math.round(meters / 10) * 10}m` : `${(meters / 1000).toFixed(1)}km`
 }
 
+const DAY_MINUTES = 24 * 60
+
+// 영업·브레이크 구간 [시작, 끝) — 끝이 시작보다 이르거나 같으면 자정을 넘긴 것으로 본다
+function toRange(from, to) {
+  const start = toMinutes(from)
+  const end = toMinutes(to)
+  return [start, end <= start ? end + DAY_MINUTES : end]
+}
+
+function overlaps(aStart, aEnd, bStart, bEnd) {
+  return aStart < bEnd && bStart < aEnd
+}
+
+/**
+ * 방문 구간이 영업시간 안에 있고 브레이크타임과 겹치지 않는지 — 백엔드 추천(PlanRecommendService)과 같은 기준.
+ * 전날 밤부터 이어진 영업(예: 17:00~02:00 가게의 00:30 방문)과 자정을 넘는 브레이크타임도 본다.
+ * @returns 'OK' | 'OUTSIDE_HOURS' | 'BREAK_TIME'
+ */
+export function checkBusinessHours({ openTime, closeTime, breakTime }, startTime, durationMin) {
+  const [open, rangeClose] = toRange(openTime, closeTime)
+  // 시작 = 종료(예: TourAPI 00:00~24:00 → 00:00~00:00)는 24시간 영업 — 자정을 넘는 방문도 영업 중으로 본다
+  const close = openTime === closeTime ? open + 2 * DAY_MINUTES : rangeClose
+  const [breakFrom, breakTo] = breakTime ? toRange(...breakTime.split('~')) : [null, null]
+  let result = 'OUTSIDE_HOURS'
+
+  for (const shift of [0, DAY_MINUTES]) {
+    const start = toMinutes(startTime) + shift
+    const end = start + durationMin
+
+    if (start < open || end > close) {
+      continue
+    }
+
+    const inBreak = breakFrom != null
+      && [-DAY_MINUTES, 0, DAY_MINUTES].some((offset) => overlaps(start, end, breakFrom + offset, breakTo + offset))
+
+    if (!inBreak) {
+      return 'OK'
+    }
+
+    result = 'BREAK_TIME'
+  }
+
+  return result
+}
+
 /**
  * 저장을 막지는 않지만 알려야 할 사항 — 화면 안내용(API 응답 필드 아님).
- * FOOD-002: 영업시간 미확인·영업시간 밖 방문 맛집을 알린다.
+ * FOOD-002: 영업시간 미확인·영업시간 밖·브레이크타임 방문 맛집을 알린다.
  */
 export function getPlanWarnings(items) {
   return items
@@ -200,11 +246,14 @@ export function getPlanWarnings(items) {
         return [{ sequence: item.sequence, code: 'HOURS_UNKNOWN', message: `${item.name} · 영업시간 정보가 없어 방문 전 확인이 필요합니다.` }]
       }
 
-      const start = toMinutes(item.startTime)
-      const end = start + item.durationMin
+      const result = checkBusinessHours(item, item.startTime, item.durationMin)
 
-      if (start < toMinutes(item.openTime) || end > toMinutes(item.closeTime)) {
+      if (result === 'OUTSIDE_HOURS') {
         return [{ sequence: item.sequence, code: 'OUTSIDE_HOURS', message: `${item.name} · 영업시간(${item.openTime}–${item.closeTime}) 밖 방문입니다.` }]
+      }
+
+      if (result === 'BREAK_TIME') {
+        return [{ sequence: item.sequence, code: 'BREAK_TIME', message: `${item.name} · 브레이크타임(${item.breakTime.replace('~', '–')})과 방문 시간이 겹칩니다.` }]
       }
 
       return []

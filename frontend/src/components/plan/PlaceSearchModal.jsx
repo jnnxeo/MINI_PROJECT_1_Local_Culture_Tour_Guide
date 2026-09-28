@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import PlanModal from './PlanModal.jsx'
 import { searchRestaurants } from '../../services/planService.js'
-import { formatDistance, toMinutes } from '../../utils/planTime.js'
+import { checkBusinessHours, formatDistance } from '../../utils/planTime.js'
 import { withObject } from '../../utils/korean.js'
 
 const COPY = {
@@ -19,17 +19,8 @@ const COPY = {
   },
 }
 
-// 요청 시간에 영업 중인지 (영업시간 정보가 없으면 null)
-function isOpenAt(place, time, durationMin) {
-  if (!place.openTime || !place.closeTime || !time) {
-    return null
-  }
-
-  const start = toMinutes(time)
-  return start >= toMinutes(place.openTime) && start + (durationMin ?? 60) <= toMinutes(place.closeTime)
-}
-
-// 후보 설명: 거리·영업정보 (SCR-013 "거리·영업정보", API-PLACE-001 distance·openTime·closeTime)
+// 후보 설명: 거리·영업정보 (SCR-013 "거리·영업정보", API-PLACE-001 distance·openTime·breakTime·closeTime)
+// 영업 여부는 백엔드 추천과 같은 기준(checkBusinessHours) — 24시간 영업(시작 = 종료)·자정을 넘는 영업·브레이크타임을 판단한다
 function describePlace(place, time, durationMin) {
   const parts = ['맛집']
   const distance = formatDistance(place.distance)
@@ -38,19 +29,35 @@ function describePlace(place, time, durationMin) {
     parts.push(`행사장에서 약 ${distance}`)
   }
 
-  if (!place.openTime) {
+  if (!place.openTime || !place.closeTime) {
     parts.push('영업시간 정보 없음')
-  } else if (isOpenAt(place, time, durationMin) === false) {
+    return parts.join(' · ')
+  }
+
+  const status = time ? checkBusinessHours(place, time, durationMin ?? 60) : 'OK'
+  if (status === 'OUTSIDE_HOURS') {
     parts.push('이 시간엔 영업하지 않아요')
+  } else if (status === 'BREAK_TIME') {
+    parts.push('이 시간엔 브레이크 타임이에요')
   } else {
-    parts.push(`${place.openTime}–${place.closeTime} 영업`)
+    parts.push(place.openTime === place.closeTime ? '24시간 영업' : `${place.openTime}–${place.closeTime} 영업`)
   }
 
   return parts.join(' · ')
 }
 
 /** Figma "place · 팝업"(추가, SCR-014) / "placechange · 팝업"(변경, SCR-013) */
-export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, durationMin, onConfirm, onClose }) {
+export default function PlaceSearchModal({
+  mode,
+  eventId,
+  usedPlaceIds,
+  time,
+  durationMin,
+  foodPreference,
+  mealType,
+  onConfirm,
+  onClose,
+}) {
   const copy = COPY[mode]
   const [keyword, setKeyword] = useState('')
   const [state, setState] = useState({ status: 'loading', places: [], message: '' })
@@ -68,7 +75,7 @@ export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, du
     let ignore = false
     setState((previous) => ({ ...previous, status: 'loading' }))
 
-    searchRestaurants({ eventId })
+    searchRestaurants({ eventId, foodPreference, mealType })
       .then(({ items }) => {
         if (!ignore) {
           setState({ status: 'done', places: items, message: '' })
@@ -83,7 +90,7 @@ export default function PlaceSearchModal({ mode, eventId, usedPlaceIds, time, du
     return () => {
       ignore = true
     }
-  }, [eventId, retryCount])
+  }, [eventId, foodPreference, mealType, retryCount])
 
   const selectedPlace = state.places.find((place) => place.placeId === selectedId)
 
