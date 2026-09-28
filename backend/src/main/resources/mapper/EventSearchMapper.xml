@@ -24,6 +24,14 @@
             AND event_start_date &lt;= #{criteria.monthEnd}
             AND event_end_date &gt;= #{criteria.monthStart}
         </if>
+        <!-- 메인 날짜 선택: 고른 날짜 중 하루라도 진행 중인 행사 (날짜끼리는 OR) -->
+        <if test="criteria.dates != null and !criteria.dates.isEmpty()">
+            AND (
+            <foreach collection="criteria.dates" item="date" separator=" OR ">
+                (event_start_date &lt;= #{date} AND event_end_date &gt;= #{date})
+            </foreach>
+            )
+        </if>
         <if test="criteria.eventTypes != null and !criteria.eventTypes.isEmpty()">
             AND event_type IN
             <foreach collection="criteria.eventTypes" item="eventType" open="(" separator="," close=")">

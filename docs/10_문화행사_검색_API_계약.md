@@ -9,12 +9,14 @@
 ```text
 GET /api/events?keyword=종로구&page=0&size=10
 GET /api/events?month=2026-09&category=전시&category=공연&district=종로구&freeYn=true&sort=startDateAsc&page=0&size=10
+GET /api/events?date=2026-10-03&date=2026-10-04&category=전시&page=0&size=10
 ```
 
 | 파라미터 | 규칙 |
 |---|---|
 | `keyword` | 선택. 앞뒤 공백을 제거하고 행사명·장소·자치구/주소·분야 중 한 필드에 검색어가 포함된 행사를 조회한다. 영문 대소문자는 구분하지 않는다. 검색어의 단어 분해나 자동완성은 이 API에서 제공하지 않는다. |
 | `month` | 선택. `YYYY-MM` 형식. 생략하면 월 조건을 적용하지 않는다. |
+| `date` | 선택. `YYYY-MM-DD` 형식, `date=2026-10-03&date=2026-10-04`처럼 반복할 수 있다(최대 31개). 메인 날짜 선택에서 고른 날 중 **하루라도 진행 중인** 행사(`event_start_date <= 날짜 <= event_end_date`)를 조회한다. 날짜끼리는 OR, 다른 조건과는 AND. 형식이 틀리면 400. (09-28 추가) |
 | `category` | 선택. `category=전시&category=공연`처럼 반복할 수 있다. 선택한 분야 사이에는 OR를 적용하며, 생략하면 전체 분야를 조회한다. 화면 분야와 서울시 원본 분류의 대응은 `EventCategory`를 사용한다. |
 | `district` | 선택. 생략하면 전체 서울 지역을 조회한다. |
 | `freeYn` | 무료만 보기에서 `true`를 보낸다. 선택하지 않으면 파라미터를 생략하며 무료·유료·요금 정보 없음 행사를 모두 포함한다. `false`가 전달돼도 필터를 적용하지 않는다. |
