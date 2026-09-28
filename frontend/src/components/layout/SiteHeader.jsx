@@ -21,14 +21,14 @@ export default function SiteHeader({ onNavigate }) {
     navigate(path)
   }
 
-  const handleAuthClick = async () => {
+  const handleAuthClick = () => {
     if (!isAuthenticated) {
       go('/login')
       return
     }
 
-    const leave = async () => {
-      await logout()
+    const leave = () => {
+      logout()
       navigate('/login', { replace: true })
     }
 
@@ -37,7 +37,7 @@ export default function SiteHeader({ onNavigate }) {
       return
     }
 
-    await leave()
+    leave()
   }
 
   return (
