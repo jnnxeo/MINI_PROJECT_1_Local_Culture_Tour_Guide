@@ -102,16 +102,18 @@ export function forgetDraftId() {
  * Body: {eventId, visitDate, startTime, endTime, companion, foodPreference, transportMode}
  *       + mealType(BOTH·LUNCH·DINNER), headcount (docs/07 [제안], 선택값)
  *       + lunchFoodPreference·dinnerFoodPreference(끼니별 음식 종류, 없으면 foodPreference), includeCafe(카페 포함) [제안]
+ * 메인 AI 추천처럼 행사를 고르지 않았으면 eventId·visitDate 대신 availableDates(YYYY-MM-DD 배열)와
+ * categories(화면 분야명 배열)·district·freeYn 을 보내면 서버가 조건에 맞는 행사와 방문일을 고른다 [제안]
  * 성공하면 draftId를 기억해 두므로 이어서 navigate('/trips/draft', { state: { draftId } })로 이동하면 된다.
  * 오류: 지난 날짜·행사일 불일치 400, 없는 행사 404, 추천 후보 부족 422 (error.status)
  */
 export async function recommendDraft({
   eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
-  lunchFoodPreference, dinnerFoodPreference, includeCafe,
+  lunchFoodPreference, dinnerFoodPreference, includeCafe, availableDates, categories, district, freeYn,
 }) {
   const body = {
     eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
-    lunchFoodPreference, dinnerFoodPreference, includeCafe,
+    lunchFoodPreference, dinnerFoodPreference, includeCafe, availableDates, categories, district, freeYn,
   }
 
   const draft = USE_MOCK_API
@@ -138,14 +140,15 @@ export function getDraft(draftId) {
 /**
  * API-PLAN-003 일정 추천 조건 수정 — Body: {visitDate,startTime,endTime,companion,foodPreference,mealType,transportMode}
  * + lunchFoodPreference·dinnerFoodPreference·includeCafe [제안]. foodPreference만 보내면 두 끼 모두 그 음식 종류로 바뀐다.
+ * + availableDates·categories·district·freeYn [제안] — 조건으로 만든 초안이면 새 조건에 맞는 행사를 다시 고른다.
  */
 export function updateConditions(draftId, {
   visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode,
-  lunchFoodPreference, dinnerFoodPreference, includeCafe,
+  lunchFoodPreference, dinnerFoodPreference, includeCafe, availableDates, categories, district, freeYn,
 }) {
   const body = {
     visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode,
-    lunchFoodPreference, dinnerFoodPreference, includeCafe,
+    lunchFoodPreference, dinnerFoodPreference, includeCafe, availableDates, categories, district, freeYn,
   }
 
   if (USE_MOCK_API) {

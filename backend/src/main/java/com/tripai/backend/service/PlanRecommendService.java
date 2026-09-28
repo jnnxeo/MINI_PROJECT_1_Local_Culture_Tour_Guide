@@ -714,13 +714,19 @@ public class PlanRecommendService {
 
     /**
      * 초안의 조건·기준 행사를 바꾼 사본. 행사가 바뀌면 제목을 새 추천 제목(없으면 기본 제목)으로, 그대로면 지금 제목을 둔다.
+     * 행사가 그대로여도 기본 제목을 그대로 쓰고 있었다면 바뀐 날짜로 기본 제목을 다시 만든다.
      */
     private static TripPlan copyConditions(TripPlan plan, RecommendEventView event, LocalDate visitDate, Generated generated,
                                            String transportMode, FoodChoice food, String mealType,
                                            EventConditions conditions) {
         boolean eventChanged = !event.getEventContentId().equals(plan.getAnchorContentId());
-        String title = !eventChanged ? plan.getTitle()
-                : (generated.title() != null ? generated.title() : defaultTitle(visitDate, event.getEventName()));
+        // 사용자가 고치지 않은 기본 제목("M월 D일 행사명")이면 날짜가 바뀔 때 제목의 날짜도 맞춘다
+        boolean untouchedDefaultTitle = plan.getTitle() != null && plan.getTripDate() != null
+                && plan.getTitle().equals(defaultTitle(plan.getTripDate(), event.getEventName()));
+        String title = eventChanged
+                ? (generated.title() != null ? generated.title() : defaultTitle(visitDate, event.getEventName()))
+                : (untouchedDefaultTitle && !visitDate.equals(plan.getTripDate())
+                        ? defaultTitle(visitDate, event.getEventName()) : plan.getTitle());
         return TripPlan.builder()
                 .tripPlanId(plan.getTripPlanId())
                 .userId(plan.getUserId())

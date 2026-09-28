@@ -581,9 +581,16 @@ export default function PlanEditorPage() {
           <ConditionsModal
             visitDate={draft.visitDate}
             conditions={draft.conditions}
+            selectedEvent={draft.selectedEvent}
             coreItem={coreItem}
-            onSubmit={({ mealType, transportMode, lunchFoodPreference, dinnerFoodPreference, includeCafe }) => startGeneration({
+            onSubmit={({
+              mealType, transportMode, lunchFoodPreference, dinnerFoodPreference, includeCafe,
+              visitDate, availableDates, categories, district, freeYn,
+            }) => startGeneration({
               mealType, transportMode, lunchFoodPreference, dinnerFoodPreference, includeCafe, foodPreference: undefined,
+              // 행사를 직접 고른 초안은 방문 날짜만, 조건으로 만든 초안은 날짜들·분야·지역·무료 여부를 보낸다
+              ...(visitDate ? { visitDate } : {}),
+              ...(availableDates ? { availableDates, categories, district, freeYn } : {}),
             })}
             onClose={closeModal}
           />

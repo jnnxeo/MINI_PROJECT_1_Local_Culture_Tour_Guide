@@ -95,13 +95,14 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | `items[]` | `itemId, type(EVENT·PLACE), placeId, sequence, startTime, durationMin` | API-PLAN-006 요청 필드 |
 | 〃 화면 표시용 | `name, addr, lat, lng, imageUrl, openTime, breakTime, closeTime, timeFixed` | API-PLACE-001 응답 필드 / TRIP-004 "행사 고정 시간" |
 | 〃 음식 분류 | `cuisineType` — 맛집 `KOREAN·CHINESE·JAPANESE·WESTERN`, 카페 `CAFE`, 행사 `null` | 카페 카드를 "카페"로 표시하려고 추가 (조건 수정 팝업·메인 AI 추천 모달의 카페 포함과 함께) |
+| `selectedEvent.startDate`·`endDate` | 기준 행사 기간 | 조건 수정 달력을 행사 기간 안으로 제한 (09-28 추가) |
 | `recommendationReasons[]` | `{ itemId, reason }` | AI-007 항목별 추천 이유 |
 | `mapPoints[]` | `{ sequence, lat, lng }` | MAP-001·TRIP-008 방문 순서 마커 |
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
 | 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `BOTH·LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안]. `mealType`은 항상 셋 중 하나를 명시적으로 보낸다 — 화면 기본값도 `BOTH`(점심+저녁 모두)라 조건 창을 열고 그대로 적용해도 기존 식사 범위가 좁아지지 않는다. `GET /api/places/restaurants`(API-PLACE-001, cuisineType/mealTime)는 이와 별개로 한 시점(`HH:mm`) 조회이며, `BOTH`·미지정은 시간 필터 없이 조회한다 |
 | 끼니별 음식 종류 `lunchFoodPreference` / `dinnerFoodPreference`, 카페 `includeCafe` | 음식 종류 값은 `foodPreference`와 같음 / `true·false` | 메인 AI 추천 모달에서 점심·저녁 음식 종류를 따로 하나씩 고르고 카페 포함을 체크한다(09-28 강산님과 결정). 001·003 요청과 002 응답 `conditions`에 추가. 끼니별 값이 없으면 `foodPreference`(없으면 ALL)를 두 끼에 쓰고, 두 끼가 다르면 응답 `foodPreference`는 `null`. 003에서 `foodPreference`만 보내면 두 끼 모두 바꾸고, 끼니별 값을 보내면 그 끼니만 바꾼다. 카페는 음식 종류 값이 아니다(`CAFE`를 보내면 400) |
-| 조건 수정 팝업 (SCR-010) | 점심·저녁 체크 카드 → 켠 끼니마다 음식 종류 칩 하나 → 카페 체크 카드. 인원은 −/+, 이동 방법은 세그먼트(드롭다운 없음) | 메인 AI 추천 모달과 같은 구조. 점심·저녁 모두 해제하면 적용할 수 없음. 저장된 조건이 그대로 채워짐. 장소 변경 팝업은 바꾸려는 항목 시각이 점심·저녁 시간대면 그 끼니 음식 종류로 검색 |
+| 조건 수정 팝업 (SCR-010) | 여행 날짜 달력 → (조건으로 만든 초안만) 행사 분야 칩·서울 지역 펼침·무료 행사만 → 인원 −/+·이동 방법 세그먼트 → 점심·저녁 체크 카드와 끼니별 음식 종류 칩·카페 체크 카드. 조건으로 만든 초안은 갈 수 있는 날 여러 개, 행사를 직접 고른 초안은 그 행사 기간 안에서 하루(`selectedEvent.startDate`~`endDate`) | 드롭다운 없이 모두 펼쳐 둠. 점심·저녁을 모두 끄거나 날짜를 비우면 적용할 수 없음 |
 | `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK`는 화면에서 쓰는 **예시** 값 | 명세에 값 목록이 없어 서버는 30자 이하 문자열을 받음 (허용 목록을 따로 만들지 않음) |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]
@@ -130,6 +131,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | 오류 | 날짜가 없음·모두 지남 400, 조건에 맞는 행사가 없거나 맛집이 없음 422 |
 | 004 다시 추천 | 조건으로 만든 초안이면 **같은 조건에서 지금과 다른 행사**를 먼저 찾고(날짜는 고른 날짜 안에서), 행사가 바뀌면 제목도 새 추천 제목으로. 다른 행사가 없으면 지금 행사로 맛집만 바꿈 |
 | 003 조건 수정 | 날짜·분야·지역·무료 여부를 보내거나 조건으로 만든 초안이면, 지금 행사가 새 조건에도 맞으면 그 행사를 먼저 쓰고 아니면 다시 고름. `visitDate`만 보내면 그 날짜 하나로 봄. 행사가 바뀔 때만 제목을 바꿈 |
+| 제목 | 행사가 바뀌면 새 추천 제목(없으면 기본 제목). 행사가 그대로여도 기본 제목(`M월 D일 행사명`)을 그대로 쓰고 있었다면 바뀐 날짜로 다시 만들고, 사용자가 바꾼 제목은 그대로 둠 |
 | 응답 | `conditions`에 `availableDates`·`categories`·`district`·`freeYn` 추가 (행사를 직접 고른 초안은 null) |
 
 ### API-PLAN-001 초안 생성 규칙 (규칙 기반 — AI 결과를 쓰지 못할 때의 기본값) [제안]

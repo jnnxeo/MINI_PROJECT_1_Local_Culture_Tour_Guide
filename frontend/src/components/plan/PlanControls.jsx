@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 
 /**
  * 나의 일정 팝업에서 쓰는 선택 컨트롤 모음.
@@ -130,6 +130,29 @@ export function Stepper({ label, value, min, max, unit = '', onChange }) {
       >
         +
       </button>
+    </div>
+  )
+}
+
+/**
+ * 펼침 칸 — 항목이 많은 선택(예: 서울 25개 구)을 접어 두고, 제목 줄에 지금 값과 화살표를 보여 준다.
+ * 누르면 아래로 부드럽게 펼쳐진다.
+ */
+export function ExpandSection({ title, value, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen)
+
+  return (
+    <div className={`plan-expand${open ? ' is-open' : ''}`}>
+      <button className="plan-expand__head" type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+        <span className="plan-expand__title">{title}</span>
+        <span className="plan-expand__value">{value}</span>
+        <span className="plan-expand__chevron" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        </span>
+      </button>
+      <div className="plan-expand__body" aria-hidden={!open}>
+        <div className="plan-expand__inner">{children}</div>
+      </div>
     </div>
   )
 }
