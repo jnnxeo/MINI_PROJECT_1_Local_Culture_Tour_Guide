@@ -171,6 +171,21 @@
   cursor: pointer;
 }
 
+.search-results__sort-chevron {
+  flex: none;
+  transition: transform 150ms ease;
+}
+
+.search-results__sort-trigger[aria-expanded="true"] .search-results__sort-chevron {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-results__sort-chevron {
+    transition: none;
+  }
+}
+
 .search-results__sort-options {
   position: absolute;
   top: calc(100% + 8px);

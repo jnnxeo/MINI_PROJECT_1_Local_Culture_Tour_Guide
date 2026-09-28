@@ -27,7 +27,7 @@ public class EventSearchController {
             @RequestParam(required = false) List<String> category,
             @RequestParam(required = false) String district,
             @RequestParam(required = false) String freeYn,
-            @RequestParam(defaultValue = "startDateAsc") String sort,
+            @RequestParam(required = false) String sort,
             @RequestParam(defaultValue = "0") String page,
             @RequestParam(defaultValue = "10") String size,
             @RequestParam(required = false) List<String> date
