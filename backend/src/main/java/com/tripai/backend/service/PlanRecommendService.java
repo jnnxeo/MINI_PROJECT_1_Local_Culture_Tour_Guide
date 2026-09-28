@@ -802,12 +802,45 @@ public class PlanRecommendService {
     /** 다시 추천용 — 다른 행사를 못 찾으면 빈 값 (지금 행사로 맛집만 바꾼다) */
     private Optional<Selection> trySelectEvent(EventConditions conditions, Set<String> excludeIds, LocalTime start,
                                                LocalTime end, FoodChoice food, String mealType) {
-        try {
-            return Optional.of(selectEvent(conditions, null, excludeIds, start, end, food, mealType));
-        } catch (PlanRuleException noOther) {
-            return Optional.empty();
+        // 날짜별 후보를 행사 단위로 모아 현재 행사 다음부터 순환한다.
+        // 같은 행사가 여러 날짜에 걸쳐도 두 행사만 반복하지 않으며, 뒤 날짜의 행사도 탐색한다.
+        Map<String, List<DatedEvent>> byEvent = new LinkedHashMap<>();
+        for (LocalDate date : conditions.dates().stream().filter(Objects::nonNull).distinct().sorted()
+                .filter(day -> !day.isBefore(LocalDate.now(clock))).toList()) {
+            for (RecommendEventView event : planDraftMapper.findRecommendEventCandidates(date,
+                    conditions.eventTypes(), conditions.district(), conditions.freeOnly(), EVENT_CANDIDATE_LIMIT)) {
+                if (Boolean.TRUE.equals(event.getDisplayYn())) {
+                    byEvent.computeIfAbsent(event.getEventContentId(), ignored -> new ArrayList<>())
+                            .add(new DatedEvent(event, date));
+                }
+            }
         }
+        List<String> ids = new ArrayList<>(byEvent.keySet());
+        int startIndex = 0;
+        for (int i = 0; i < ids.size(); i++) {
+            if (excludeIds.contains(ids.get(i))) {
+                startIndex = i + 1;
+                break;
+            }
+        }
+        int tried = 0;
+        for (int offset = 0; offset < ids.size(); offset++) {
+            String id = ids.get((startIndex + offset) % ids.size());
+            if (excludeIds.contains(id)) continue;
+            for (DatedEvent candidate : byEvent.get(id)) {
+                if (++tried > MAX_EVENT_TRIES) return Optional.empty();
+                try {
+                    return Optional.of(new Selection(candidate.event(), candidate.date(),
+                            generate(candidate.event(), candidate.date(), start, end, food, mealType, List.of())));
+                } catch (PlanRuleException unavailable) {
+                    // 날짜별 운영시간이나 주변 맛집 조건에 맞지 않으면 다음 후보로 진행한다.
+                }
+            }
+        }
+        return Optional.empty();
     }
+
+    private record DatedEvent(RecommendEventView event, LocalDate date) {}
 
     /** "전체 지역"·빈 값은 조건 없음 */
     private static String normalizeDistrict(String district) {

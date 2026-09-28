@@ -127,6 +127,26 @@ class PlanRecommendConditionTest {
     }
 
     @Test
+    void 다시_추천은_세_행사를_순환한_뒤_처음으로_돌아온다() {
+        Long id = service.recommend(1L, conditions(List.of(OCT_3), null, null, null)).draftId();
+        assertThat(draftService.getDraft(1L, id).selectedEvent().eventId()).isEqualTo("EV-A");
+        assertThat(service.regenerate(1L, id).selectedEvent().eventId()).isEqualTo("EV-B");
+        assertThat(service.regenerate(1L, id).selectedEvent().eventId()).isEqualTo("EV-C");
+        assertThat(service.regenerate(1L, id).selectedEvent().eventId()).isEqualTo("EV-A");
+    }
+
+    @Test
+    void 다시_추천은_나중_날짜에서만_열리는_행사까지_순환한다() {
+        event("EV-D", "나중 전시", "전시/미술", "종로구", true, "10-08", "10-15", "14:00", "16:00", true);
+        Long id = service.recommend(1L, conditions(List.of(OCT_3, OCT_8), List.of("전시"), null, null)).draftId();
+        assertThat(service.regenerate(1L, id).selectedEvent().eventId()).isEqualTo("EV-C");
+        DraftResponse later = service.regenerate(1L, id);
+        assertThat(later.selectedEvent().eventId()).isEqualTo("EV-D");
+        assertThat(later.visitDate()).isEqualTo(OCT_8);
+        assertThat(service.regenerate(1L, id).selectedEvent().eventId()).isEqualTo("EV-A");
+    }
+
+    @Test
     void 다른_행사가_없으면_행사는_그대로_두고_맛집만_바꾼다() {
         Long draftId = service.recommend(1L, conditions(List.of(OCT_3), List.of("공연"), null, null)).draftId();
         List<String> before = placeIds(draftService.getDraft(1L, draftId));
