@@ -20,9 +20,9 @@ public class EventService {
 
     // Event-001 행사 상세 조회
     // 예외 : 누락 항목은 "정보없음"으로 표시 -> 프론트에서 null 체크로 처리 (DTO는 NULL 그대로 내려줌)
-    public EventDetailResponse getEventDetail(String eventId) {
+    public EventDetailResponse getEventDetail(String eventId, Long userId) {
 
-        EventDetailResponse event = eventMapper.selectEventDetail(eventId);
+        EventDetailResponse event = eventMapper.selectEventDetail(eventId, userId);
 
         if(event == null) {
             throw new CustomException(ErrorCode.EVENT_NOT_FOUND);
