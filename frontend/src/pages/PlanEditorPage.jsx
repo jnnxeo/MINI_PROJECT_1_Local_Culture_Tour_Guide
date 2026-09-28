@@ -450,6 +450,7 @@ export default function PlanEditorPage() {
   useEffect(() => {
     if (status === 'ready' && autoRegenerateRef.current) {
       autoRegenerateRef.current = false
+      navigate(location.pathname, { replace: true, state: { draftId } })
       startGeneration(null)
     }
   }, [status])
@@ -573,10 +574,10 @@ export default function PlanEditorPage() {
             title="일정을 저장했어요"
             description={`${modal.plan.title}\n${formatDate(modal.plan.visitDate)} · 당일 여행`}
             confirmLabel="저장한 일정 확인"
-            cancelLabel="계속 편집"
-            onConfirm={() => navigate('/my-trips')}
-            onCancel={() => navigate(`/my-trips/${modal.plan.planId}`)}
-            onClose={closeModal}
+            cancelLabel="내 여행 목록"
+            onConfirm={() => navigate(`/my-trips/${modal.plan.planId}`)}
+            onCancel={() => navigate('/mypage')}
+            onClose={() => navigate(`/my-trips/${modal.plan.planId}`)}
           />
         )
       case 'regenerate':
