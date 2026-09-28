@@ -65,4 +65,9 @@ public interface PlanDraftMapper {
 
 	/** 다시 추천할 때 초안의 항목을 모두 지운다 (API-PLAN-004) */
 	int deleteItemsByPlanId(Long tripPlanId);
+
+	/** 검증을 마친 편집 초안의 조건을 기존 저장 일정에 반영한다. */
+	int replaceSavedFromDraft(@Param("planId") Long planId, @Param("draftId") Long draftId);
+
+	int deleteDraft(Long draftId);
 }
