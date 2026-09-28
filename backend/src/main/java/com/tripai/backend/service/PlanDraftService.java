@@ -406,7 +406,10 @@ public class PlanDraftService {
                 null,
                 plan.getFoodPreference(),
                 plan.getMealType(),
-                plan.getTransportMd()
+                plan.getTransportMd(),
+                firstNonNull(plan.getLunchFoodPreference(), plan.getFoodPreference(), "ALL"),
+                firstNonNull(plan.getDinnerFoodPreference(), plan.getFoodPreference(), "ALL"),
+                Boolean.TRUE.equals(plan.getCafeYn())
         );
     }
 
@@ -449,5 +452,9 @@ public class PlanDraftService {
 
     private static Double toDouble(BigDecimal value) {
         return value == null ? null : value.doubleValue();
+    }
+
+    private static String firstNonNull(String first, String second, String fallback) {
+        return first != null ? first : (second != null ? second : fallback);
     }
 }

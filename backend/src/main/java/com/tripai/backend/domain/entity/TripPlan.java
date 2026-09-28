@@ -31,6 +31,10 @@ public class TripPlan {
 	// database/schema/03_trip_plan_food_condition_v3.2.3.sql 에서 추가한 추천 조건
 	private String foodPreference;
 	private String mealType;
+	// database/schema/04_trip_plan_meal_food_cafe_v3.2.4.sql 에서 추가한 끼니별 음식 종류·카페 포함 (null 이면 foodPreference)
+	private String lunchFoodPreference;
+	private String dinnerFoodPreference;
+	private Boolean cafeYn;
 	private Integer headcount;
 	private LocalDateTime createdAt;
 	private LocalDateTime updAt;

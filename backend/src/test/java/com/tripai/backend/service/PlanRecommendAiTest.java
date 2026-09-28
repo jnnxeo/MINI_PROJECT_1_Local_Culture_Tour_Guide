@@ -236,6 +236,88 @@ class PlanRecommendAiTest {
         mapper.cuisines.put(restaurant.getContentId(), restaurant.getCuisineType());
     }
 
+    @Test
+    void AI_에는_끼니별_음식_종류와_카페_후보를_넘긴다() {
+        addRestaurant(restaurant("CF-1", "CAFE", 200, "10:00", "22:00", null, null));
+        ai.answer = input -> { throw new IllegalStateException("검사용"); };
+
+        service.recommend(1L, foodRequest("KOREAN", "WESTERN", true));
+
+        AiPlanInput input = ai.inputs.get(0);
+        assertThat(input.getUserConditions().getLunchFoodPreference()).isEqualTo("KOREAN");
+        assertThat(input.getUserConditions().getDinnerFoodPreference()).isEqualTo("WESTERN");
+        assertThat(input.getUserConditions().getFoodPreference()).isNull();
+        assertThat(input.getUserConditions().getIncludeCafe()).isTrue();
+        assertThat(input.getRestaurantCandidates()).extracting(RestaurantCandidate::getContentId)
+                .containsExactlyInAnyOrder("PL-1", "PL-2", "PL-3", "CF-1");
+        assertThat(input.getRestaurantCandidates()).filteredOn(c -> c.getContentId().equals("CF-1"))
+                .extracting(RestaurantCandidate::getCuisineType).containsExactly("CAFE");
+    }
+
+    @Test
+    void AI_가_끼니별_음식_종류를_어기면_규칙_기반_추천을_쓴다() {
+        // 점심 한식을 골랐는데 AI 가 점심에 양식(PL-3)을 넣음
+        ai.answer = input -> response("제목",
+                item(1, "12:00", "13:00", "RESTAURANT", "PL-3", "양식"),
+                item(2, "17:00", "18:00", "RESTAURANT", "PL-2", "저녁"),
+                item(3, "18:00", "21:00", "EVENT", "EV-1", "행사"));
+
+        DraftResponse draft = service.recommend(1L, foodRequest("KOREAN", "ALL", false));
+
+        assertThat(mapper.plans.get(draft.draftId()).getAiYn()).isFalse();
+        assertThat(draft.items()).extracting(PlanItemResponse::placeId).doesNotContain("PL-3");
+    }
+
+    @Test
+    void AI_카페_결과는_요청했을_때_식사_시간대_밖에서만_쓴다() {
+        addRestaurant(restaurant("CF-1", "CAFE", 200, "10:00", "22:00", null, null));
+
+        // 점심 시간대(13:00)에 카페 → 규칙 기반 (카페 16:00)
+        ai.answer = input -> response("제목",
+                item(1, "11:30", "12:30", "RESTAURANT", "PL-1", "점심"),
+                item(2, "13:00", "14:00", "RESTAURANT", "CF-1", "카페"),
+                item(3, "17:00", "18:00", "RESTAURANT", "PL-2", "저녁"),
+                item(4, "18:00", "21:00", "EVENT", "EV-1", "행사"));
+        DraftResponse draft = service.recommend(1L, foodRequest(null, null, true));
+        assertThat(mapper.plans.get(draft.draftId()).getAiYn()).isFalse();
+        assertThat(draft.items()).extracting(PlanItemResponse::startTime).containsExactly("12:30", "16:00", "17:00", "18:00");
+
+        // 카페를 빼먹음 → 규칙 기반 (규칙 기반은 카페를 넣었으므로)
+        ai.answer = input -> response("제목",
+                item(1, "12:00", "13:00", "RESTAURANT", "PL-1", "점심"),
+                item(2, "17:00", "18:00", "RESTAURANT", "PL-2", "저녁"),
+                item(3, "18:00", "21:00", "EVENT", "EV-1", "행사"));
+        draft = service.recommend(1L, foodRequest(null, null, true));
+        assertThat(mapper.plans.get(draft.draftId()).getAiYn()).isFalse();
+
+        // 규칙을 지킨 카페 → AI 결과 사용
+        ai.answer = input -> response("고궁 산책과 카페",
+                item(1, "12:00", "13:00", "RESTAURANT", "PL-1", "점심"),
+                item(2, "15:00", "16:00", "RESTAURANT", "CF-1", "카페"),
+                item(3, "17:00", "18:00", "RESTAURANT", "PL-2", "저녁"),
+                item(4, "18:00", "21:00", "EVENT", "EV-1", "행사"));
+        draft = service.recommend(1L, foodRequest(null, null, true));
+        assertThat(mapper.plans.get(draft.draftId()).getAiYn()).isTrue();
+        assertThat(draft.items()).extracting(PlanItemResponse::placeId).containsExactly("PL-1", "CF-1", "PL-2", "EV-1");
+    }
+
+    @Test
+    void 카페를_요청하지_않았는데_AI_가_카페를_넣으면_규칙_기반_추천을_쓴다() {
+        addRestaurant(restaurant("CF-1", "CAFE", 200, "10:00", "22:00", null, null));
+        ai.answer = input -> response("제목",
+                item(1, "12:00", "13:00", "RESTAURANT", "PL-1", "점심"),
+                item(2, "15:00", "16:00", "RESTAURANT", "CF-1", "카페"),
+                item(3, "17:00", "18:00", "RESTAURANT", "PL-2", "저녁"),
+                item(4, "18:00", "21:00", "EVENT", "EV-1", "행사"));
+
+        assertRuleBased(service.recommend(1L, foodRequest(null, null, false)));
+    }
+
+    private static PlanRecommendRequest foodRequest(String lunch, String dinner, boolean cafe) {
+        return new PlanRecommendRequest("EV-1", VISIT_DATE, null, null, null, null, null, "WALK_TRANSIT", null,
+                lunch, dinner, cafe);
+    }
+
     private void assertRuleBased(DraftResponse draft) {
         assertThat(draft.items()).extracting(PlanItemResponse::placeId).containsExactly("PL-1", "PL-2", "EV-1");
         assertThat(draft.items()).extracting(PlanItemResponse::startTime).containsExactly("12:30", "17:00", "18:00");

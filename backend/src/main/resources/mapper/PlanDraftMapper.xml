@@ -8,7 +8,8 @@
 			resultType="TripPlan">
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
-		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at,
+		       tp.food_preference, tp.meal_type, tp.lunch_food_preference, tp.dinner_food_preference, tp.cafe_yn,
+		       tp.headcount, tp.created_at, tp.upd_at,
 		       e.event_name AS anchor_event_name
 		FROM trip_plan tp
 		JOIN event e ON e.event_content_id = tp.anchor_content_id
@@ -20,7 +21,8 @@
 			resultType="TripPlan">
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
-		       tp.food_preference, tp.meal_type, tp.headcount, tp.created_at, tp.upd_at
+		       tp.food_preference, tp.meal_type, tp.lunch_food_preference, tp.dinner_food_preference, tp.cafe_yn,
+		       tp.headcount, tp.created_at, tp.upd_at
 		FROM trip_plan tp
 		WHERE tp.trip_plan_id = #{tripPlanId}
 		FOR UPDATE
@@ -36,7 +38,8 @@
 		       COALESCE(e.mapx, p.mapx) AS mapx,
 		       COALESCE(e.mapy, p.mapy) AS mapy,
 		       COALESCE(e.image_url, p.image_url) AS image_url,
-		       p.open_time, p.close_time, p.break_open_time, p.break_close_time, p.cuisine_type
+		       p.open_time, p.close_time, p.break_open_time, p.break_close_time,
+		       CASE WHEN p.tour_cat3_code = 'A05020900' THEN 'CAFE' ELSE p.cuisine_type END AS cuisine_type
 		FROM trip_item ti
 		LEFT JOIN event e ON ti.item_type = 'EVENT' AND e.event_content_id = ti.event_content_id
 		LEFT JOIN place p ON ti.item_type = 'PLACE' AND p.content_id = ti.place_content_id
@@ -136,9 +139,11 @@
 
 	<insert id="insertPlan" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="tripPlanId">
 		INSERT INTO trip_plan (user_id, anchor_content_id, title, trip_date, visit_start_time, visit_end_time,
-		                       save_yn, ai_yn, transport_md, food_preference, meal_type, headcount)
+		                       save_yn, ai_yn, transport_md, food_preference, meal_type,
+		                       lunch_food_preference, dinner_food_preference, cafe_yn, headcount)
 		VALUES (#{userId}, #{anchorContentId}, #{title}, #{tripDate}, #{visitStartTime}, #{visitEndTime},
-		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType}, #{headcount})
+		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType},
+		        #{lunchFoodPreference}, #{dinnerFoodPreference}, COALESCE(#{cafeYn}, FALSE), #{headcount})
 	</insert>
 
 	<update id="updateConditions" parameterType="TripPlan">
@@ -149,6 +154,9 @@
 		    transport_md = #{transportMd},
 		    food_preference = #{foodPreference},
 		    meal_type = #{mealType},
+		    lunch_food_preference = #{lunchFoodPreference},
+		    dinner_food_preference = #{dinnerFoodPreference},
+		    cafe_yn = COALESCE(#{cafeYn}, FALSE),
 		    ai_yn = #{aiYn}
 		WHERE trip_plan_id = #{tripPlanId}
 		  AND save_yn = FALSE
