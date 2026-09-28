@@ -28,7 +28,7 @@ export default function SearchPanel({ onKeywordSearch, onFilterSearch, onRecomme
       <form className="home-search" onSubmit={submitFilters} aria-label="문화행사 조건 검색">
         <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
           <span>날짜 선택</span>
-          <strong>{dates.length ? `${dates.length}일 선택 · ${dates[0].slice(5).replace('-', '/')}${dates.length > 1 ? ' 외' : ''}` : '갈 수 있는 날 고르기'}</strong>
+          <strong>{dates.length ? `${dates.length}일 선택 · ${dates[0]}${dates.length > 1 ? ' 외' : ''}` : '갈 수 있는 날 고르기'}</strong>
         </button>
 
         <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('category')} aria-haspopup="dialog">

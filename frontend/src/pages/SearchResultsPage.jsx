@@ -4,20 +4,16 @@ import FilterModal from '../features/home/components/FilterModal.jsx'
 import KeywordModal from '../features/home/components/KeywordModal.jsx'
 import DateModal from '../features/home/components/DateModal.jsx'
 import SearchResultCard from '../features/search/components/SearchResultCard.jsx'
-import { buildSearchParams, DEFAULT_SORT, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
+import { buildSubmittedSearchParams, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
+import { getDefaultSort, getSortOptions } from '../features/search/eventSort.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
 
-const SORT_OPTIONS = [
-  { value: 'startDateAsc', label: '시작 날짜순' },
-  { value: 'endDateAsc', label: '종료 임박순' },
-  { value: 'titleAsc', label: '행사명순' },
-]
-
-function SortDropdown({ selected, onSelect }) {
+function SortDropdown({ selected, dates, onSelect }) {
+  const options = getSortOptions(dates)
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
-  const label = SORT_OPTIONS.find((option) => option.value === selected)?.label || SORT_OPTIONS[0].label
+  const label = options.find((option) => option.value === selected)?.label || options[0].label
 
   useEffect(() => {
     if (!open) return undefined
@@ -38,11 +34,14 @@ function SortDropdown({ selected, onSelect }) {
   return (
     <div className="search-results__sort" ref={containerRef}>
       <button type="button" className="search-results__sort-trigger" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="event-sort-options">
-        {label} <span aria-hidden="true">⌄</span>
+        {label}
+        <svg className="search-results__sort-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
       {open && (
         <div className="search-results__sort-options" id="event-sort-options" role="group" aria-label="정렬 방식">
-          {SORT_OPTIONS.map((option) => (
+          {options.map((option) => (
             <button
               key={option.value}
               type="button"
@@ -104,7 +103,7 @@ export default function SearchResultsPage() {
 
   const submitSearch = (event) => {
     event.preventDefault()
-    const params = buildSearchParams({ ...draft, page: 0, sort: applied.sort })
+    const params = buildSubmittedSearchParams(draft, applied)
     if (params.toString() === new URLSearchParams(location.search).toString()) {
       setRetryCount((count) => count + 1)
     } else {
@@ -114,7 +113,7 @@ export default function SearchResultsPage() {
 
   const selectSort = (sort) => {
     const params = new URLSearchParams(location.search)
-    if (sort === DEFAULT_SORT) params.delete('sort')
+    if (sort === getDefaultSort(applied.dates)) params.delete('sort')
     else params.set('sort', sort)
     params.delete('page')
     navigateWith(params)
@@ -179,7 +178,7 @@ export default function SearchResultsPage() {
 
         <div className="search-results-toolbar">
           <h2>{status === 'success' ? (result.totalCount ? `검색 결과 ${result.totalCount}건` : '검색 결과가 없어요') : '검색 결과'}</h2>
-          <SortDropdown selected={applied.sort} onSelect={selectSort} />
+          <SortDropdown selected={applied.sort} dates={applied.dates} onSelect={selectSort} />
         </div>
 
         <p className="home-visually-hidden" role="status">{status === 'loading' ? '행사 검색 결과를 불러오는 중입니다.' : ''}</p>

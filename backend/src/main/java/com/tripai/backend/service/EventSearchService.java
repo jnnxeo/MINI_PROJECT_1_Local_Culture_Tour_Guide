@@ -21,7 +21,7 @@ public class EventSearchService {
 
     private static final int MAX_PAGE_SIZE = 100;
     private static final int MAX_DATES = 31;
-    private static final Set<String> SORT_VALUES = Set.of("startDateAsc", "endDateAsc", "titleAsc");
+    private static final Set<String> SORT_VALUES = Set.of("dateClosest", "recentStart", "startDateAsc", "endDateAsc", "titleAsc");
 
     private final EventSearchMapper eventSearchMapper;
 
@@ -46,7 +46,7 @@ public class EventSearchService {
                                             String pageValue, String sizeValue, List<String> dates) {
         int page = parseNumber(pageValue);
         int size = parseNumber(sizeValue);
-        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE || !SORT_VALUES.contains(sort)) {
+        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE || (sort != null && !SORT_VALUES.contains(sort))) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
@@ -61,6 +61,11 @@ public class EventSearchService {
         List<String> keywordEventTypes = normalizedKeyword == null
                 ? List.of() : EventCategory.queryTypesMatchingKeyword(normalizedKeyword);
 
+        List<LocalDate> selectedDates = parseDates(dates);
+        String resolvedSort = sort;
+        if (sort == null || "dateClosest".equals(sort) || "recentStart".equals(sort)) {
+            resolvedSort = selectedDates.isEmpty() ? "recentStart" : "dateClosest";
+        }
         EventSearchCriteria criteria = new EventSearchCriteria(
                 normalizedKeyword == null ? null : toLikePattern(normalizedKeyword),
                 keywordEventTypes,
@@ -69,10 +74,10 @@ public class EventSearchService {
                 eventTypes,
                 normalizedDistrict,
                 freeOnly,
-                sort,
+                resolvedSort,
                 size,
                 (long) page * size,
-                parseDates(dates)
+                selectedDates
         );
 
         List<MonthlyEventItemResponse> items = eventSearchMapper.findEvents(criteria).stream()
