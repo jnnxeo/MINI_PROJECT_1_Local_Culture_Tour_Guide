@@ -1,0 +1,37 @@
+.home-modal.date-modal {
+  width: min(100%, 620px);
+  max-height: calc(100dvh - 32px);
+  padding: 32px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 24px;
+}
+
+.date-modal .home-modal__heading h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.date-modal .home-modal__description {
+  margin: 16px 0 24px;
+  font-size: 15px;
+}
+
+.date-modal .home-modal__full-button {
+  height: 48px;
+  min-height: 48px;
+  margin: 24px 0 0;
+  padding: 0 16px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.date-modal .home-modal__full-button:hover {
+  transform: none;
+}
+
+@media (max-width: 640px) {
+  .home-modal.date-modal {
+    padding: 24px 20px;
+  }
+}
