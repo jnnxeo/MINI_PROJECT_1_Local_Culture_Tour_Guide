@@ -31,6 +31,8 @@ import {
   getEndTime,
   getPlanWarnings,
   sortItems,
+  toMinutes,
+  toTime,
   validatePlan,
 } from '../utils/planTime.js'
 import { withSubject } from '../utils/korean.js'
@@ -38,6 +40,8 @@ import '../styles/plan-base.css'
 import '../styles/plan.css'
 
 const NEW_PLACE_DURATION = 60
+// 이 시간 이상 비는 구간은 카드 사이에 알려 준다
+const FREE_GAP_MINUTES = 120
 
 function withKeys(items) {
   return items.map((item) => ({ ...item, key: `item-${item.itemId}` }))
@@ -359,7 +363,8 @@ export default function PlanEditorPage() {
       await syncDraft()
       const saved = await saveDraftAsPlan(draftId)
       forgetDraftId()
-      applyDraft(await getDraft(draftId).catch(() => ({ ...draft, title, items })))
+      // 저장된 일정은 더 이상 초안이 아니라 초안 조회(002)는 404 — 방금 저장한 화면 내용을 그대로 둔다
+      applyDraft({ ...draft, title, items })
       // 저장된 초안은 다시 저장할 수 없다(API-PLAN-009 409). 이후 편집은 저장 일정 상세(SCR-017)에서
       setSavedPlan(saved)
       setModal({ type: 'saved', plan: saved })
@@ -505,7 +510,8 @@ export default function PlanEditorPage() {
             onConfirm={(place) => setModal({
               type: 'placeChosen',
               place,
-              startTime: findFreeSlot(items, NEW_PLACE_DURATION, timeWindow),
+              // 빈 시간 안내에서 들어오면 그 빈 시간에, 아니면 처음 비는 시간에
+              startTime: modal.startTime ?? findFreeSlot(items, NEW_PLACE_DURATION, timeWindow),
               durationMin: NEW_PLACE_DURATION,
             })}
             onClose={closeModal}
@@ -569,7 +575,9 @@ export default function PlanEditorPage() {
         return (
           <ConfirmModal
             title="새로운 일정으로 추천받을까요?"
-            description="지금 편집한 일정은 새 추천으로 바뀝니다. 선택한 행사는 유지됩니다."
+            description={draft.conditions?.availableDates?.length
+              ? '지금 편집한 일정은 새 추천으로 바뀝니다. 조건에 맞는 다른 행사와 맛집을 찾아봅니다.'
+              : '지금 편집한 일정은 새 추천으로 바뀝니다. 선택한 행사는 유지됩니다.'}
             confirmLabel="다시 추천받기"
             cancelLabel="현재 일정 유지"
             onConfirm={() => startGeneration(null)}
@@ -716,6 +724,7 @@ export default function PlanEditorPage() {
         <div className="plan-layout">
           <div className="plan-timeline">
             {items.map((item, index) => (
+              <React.Fragment key={item.key}>
               <TimelineItem
                 key={item.key}
                 item={item}
@@ -730,6 +739,30 @@ export default function PlanEditorPage() {
                 onRemove={() => setModal({ type: 'remove', key: item.key })}
                 onShowOnMap={() => showOnMap(item)}
               />
+              {(() => {
+                // 다음 일정까지 2시간 이상 비면 알려 주고 그 자리에 바로 장소를 넣을 수 있게 한다
+                const next = items[index + 1]
+                if (!next || !item.startTime || !next.startTime) return null
+                const gapStart = toMinutes(item.startTime) + item.durationMin
+                const gap = toMinutes(next.startTime) - gapStart
+                if (gap < FREE_GAP_MINUTES) return null
+                return (
+                  <div className="plan-gap" role="note">
+                    <span className="plan-gap__text">
+                      {`${toTime(gapStart)}~${next.startTime} · ${Math.floor(gap / 60)}시간${gap % 60 ? ` ${gap % 60}분` : ''} 비어 있어요`}
+                    </span>
+                    <button
+                      className="tp-btn tp-btn--secondary plan-gap__add"
+                      type="button"
+                      disabled={Boolean(savedPlan)}
+                      onClick={() => setModal({ type: 'placeAdd', startTime: toTime(gapStart) })}
+                    >
+                      + 이 시간에 장소 추가
+                    </button>
+                  </div>
+                )
+              })()}
+              </React.Fragment>
             ))}
             <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'placeAdd' })}>
               + 장소 직접 추가

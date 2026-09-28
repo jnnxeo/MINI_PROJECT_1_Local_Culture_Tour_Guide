@@ -15,6 +15,13 @@ export function todayInSeoul() {
   return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
 }
 
+/** 여행을 만들 수 있는 가장 이른 날 — 저녁 8시가 지나면 오늘은 만들 수 없어(서버 규칙) 내일 */
+export function earliestTripDate() {
+  const hour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }))
+  if (hour < 20) return todayInSeoul()
+  return new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
+}
+
 function toKey(year, month, day) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }

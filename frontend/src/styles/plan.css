@@ -1111,6 +1111,29 @@
   font-weight: 500;
 }
 
+/* 일정 사이 빈 시간 안내 — 2시간 이상 비면 카드 사이에 보여 주고 그 시간에 장소를 넣을 수 있게 한다 */
+.plan-gap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border: 1.5px dashed #bfd3fb;
+  border-radius: var(--tripai-radius-16);
+  background: var(--tripai-selected);
+}
+
+.plan-gap__text {
+  color: var(--tripai-blue);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.plan-gap__add {
+  height: 40px;
+}
+
 /* 머무는 시간 칩(시간 변경 팝업)도 같은 눌림·선택 효과 */
 .plan-chip {
   cursor: pointer;

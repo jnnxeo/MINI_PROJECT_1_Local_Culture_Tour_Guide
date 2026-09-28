@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import PlanModal from './PlanModal.jsx'
 import { CheckCard, ChoiceChips, ExpandSection, Segmented, Stepper } from './PlanControls.jsx'
-import DateCalendar, { todayInSeoul } from '../common/DateCalendar.jsx'
+import DateCalendar, { earliestTripDate } from '../common/DateCalendar.jsx'
 import { ALL_DISTRICTS, EVENT_CATEGORIES, SEOUL_DISTRICTS } from '../../constants/eventFilters.js'
 
 export const TRANSPORT_LABELS = {
@@ -32,7 +32,9 @@ const DISTRICT_OPTIONS = [ALL_DISTRICTS, ...SEOUL_DISTRICTS].map((district) => (
  */
 export default function ConditionsModal({ visitDate, conditions, selectedEvent, coreItem, onSubmit, onClose, mode = 'edit', busy = false, error = '' }) {
   const conditionMode = Array.isArray(conditions?.availableDates)
-  const [dates, setDates] = useState(conditionMode ? conditions.availableDates : [visitDate])
+  // 지난 날짜(밤 8시 이후면 오늘 포함)는 달력에서 고를 수도 풀 수도 없으니 처음부터 뺀다
+  const [dates, setDates] = useState(() => (conditionMode ? conditions.availableDates : [visitDate])
+    .filter((date) => date && date >= earliestTripDate()))
   const [categories, setCategories] = useState(conditions?.categories ?? [])
   const [district, setDistrict] = useState(conditions?.district ?? ALL_DISTRICTS)
   const [freeOnly, setFreeOnly] = useState(conditions?.freeYn === true)
@@ -51,7 +53,7 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
   const noDate = dates.length === 0
   const tooManyDates = dates.length > 31
   const mealType = lunch && dinner ? 'BOTH' : (lunch ? 'LUNCH' : 'DINNER')
-  const today = todayInSeoul()
+  const today = earliestTripDate()
   const eventStart = selectedEvent?.startDate
   const eventEnd = selectedEvent?.endDate
 
