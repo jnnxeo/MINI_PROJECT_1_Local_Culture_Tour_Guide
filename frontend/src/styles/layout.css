@@ -1,3 +1,8 @@
+/* 모달이 배경 스크롤을 잠가도 스크롤바 자리의 폭을 유지한다. */
+html {
+  scrollbar-gutter: stable;
+}
+
 .home-plan-header {
   --tripai-page-gutter: clamp(20px, 5vw, 64px);
   --tripai-radius-12: 12px;
