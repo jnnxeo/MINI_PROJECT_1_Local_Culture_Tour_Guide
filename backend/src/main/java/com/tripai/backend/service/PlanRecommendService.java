@@ -79,6 +79,9 @@ public class PlanRecommendService {
     static final int MAX_MEAL_DURATION = 120;
     static final int CAFE_DURATION = 60;
     static final int AI_CAFE_CANDIDATE_LIMIT = 5;
+    /** 조건으로 행사를 고를 때 날짜마다 볼 후보 수와, 전체에서 일정을 만들어 볼 최대 행사 수 */
+    static final int EVENT_CANDIDATE_LIMIT = 30;
+    static final int MAX_EVENT_TRIES = 20;
     /** 카페를 찾을 때 PlaceMapper 에 넘기는 내부값 — TourAPI cat3 A05020900(카페/전통찻집) */
     static final String CAFE = "CAFE";
 
@@ -144,22 +147,46 @@ public class PlanRecommendService {
     /** API-PLAN-001 문화행사 1개 기준 맛집 조합 초안 생성 */
     @Transactional
     public DraftResponse recommend(Long userId, PlanRecommendRequest request) {
-        checkNotPast(request.visitDate());
-        RecommendEventView event = findEvent(request.eventId());
         String baseFood = firstNonNull(request.foodPreference(), null, "ALL");
         FoodChoice food = new FoodChoice(
                 firstNonNull(request.lunchFoodPreference(), baseFood, "ALL"),
                 firstNonNull(request.dinnerFoodPreference(), baseFood, "ALL"),
                 Boolean.TRUE.equals(request.includeCafe()));
         String mealType = normalizeMealType(request.mealType());
-        Generated generated = generate(event, request.visitDate(), parse(request.startTime()), parse(request.endTime()),
-                food, mealType, List.of());
+        LocalTime start = parse(request.startTime());
+        LocalTime end = parse(request.endTime());
+
+        RecommendEventView event;
+        LocalDate visitDate;
+        Generated generated;
+        EventConditions conditions = null;
+        if (request.eventId() != null && !request.eventId().isBlank()) {
+            // 행사 상세처럼 행사를 직접 고른 경우
+            if (request.visitDate() == null) {
+                throw new PlanRuleException(HttpStatus.BAD_REQUEST, "방문 날짜를 입력해 주세요.");
+            }
+            checkNotPast(request.visitDate());
+            event = findEvent(request.eventId());
+            visitDate = request.visitDate();
+            generated = generate(event, visitDate, start, end, food, mealType, List.of());
+        } else {
+            // 메인 AI 추천 — 방문 가능한 날짜와 행사 조건으로 서버가 행사를 고른다
+            if (request.availableDates() == null || request.availableDates().isEmpty()) {
+                throw new PlanRuleException(HttpStatus.BAD_REQUEST, "행사를 고르거나 방문 가능한 날짜를 골라 주세요.");
+            }
+            conditions = new EventConditions(request.availableDates(), request.categories(),
+                    normalizeDistrict(request.district()), request.freeYn());
+            Selection selection = selectEvent(conditions, null, Set.of(), start, end, food, mealType);
+            event = selection.event();
+            visitDate = selection.visitDate();
+            generated = selection.generated();
+        }
 
         TripPlan plan = TripPlan.builder()
                 .userId(userId)
                 .anchorContentId(event.getEventContentId())
-                .title(generated.title() != null ? generated.title() : defaultTitle(request.visitDate(), event.getEventName()))
-                .tripDate(request.visitDate())
+                .title(generated.title() != null ? generated.title() : defaultTitle(visitDate, event.getEventName()))
+                .tripDate(visitDate)
                 .visitStartTime(generated.windowStart())
                 .visitEndTime(generated.windowEnd())
                 .aiYn(generated.aiUsed())
@@ -169,6 +196,10 @@ public class PlanRecommendService {
                 .lunchFoodPreference(food.lunch())
                 .dinnerFoodPreference(food.dinner())
                 .cafeYn(food.cafe())
+                .searchDates(conditions == null ? null : conditions.datesText())
+                .searchCategories(conditions == null ? null : conditions.categoriesText())
+                .searchDistrict(conditions == null ? null : conditions.district())
+                .searchFreeYn(conditions == null ? null : conditions.freeYn())
                 .headcount(request.headcount() == null ? 1 : request.headcount())
                 .build();
         planDraftMapper.insertPlan(plan);
@@ -187,12 +218,7 @@ public class PlanRecommendService {
     @Transactional
     public DraftConditionsResponse updateConditions(Long userId, Long draftId, DraftConditionsRequest request) {
         TripPlan plan = planDraftService.lockOwnedDraft(userId, draftId);
-        RecommendEventView event = findEvent(plan.getAnchorContentId());
 
-        LocalDate visitDate = request.visitDate() != null ? request.visitDate() : plan.getTripDate();
-        if (request.visitDate() != null) {
-            checkNotPast(visitDate);
-        }
         LocalTime start = request.startTime() != null ? parse(request.startTime()) : plan.getVisitStartTime();
         LocalTime end = request.endTime() != null ? parse(request.endTime()) : plan.getVisitEndTime();
         // foodPreference 만 보내면 두 끼 모두 그 음식 종류, 끼니별 값을 보내면 그 끼니만 바꾼다
@@ -204,10 +230,35 @@ public class PlanRecommendService {
         String mealType = request.mealType() != null ? normalizeMealType(request.mealType()) : plan.getMealType();
         String transportMode = request.transportMode() != null ? request.transportMode() : plan.getTransportMd();
 
-        Generated generated = generate(event, visitDate, start, end, food, mealType, List.of());
+        EventConditions savedConditions = EventConditions.of(plan);
+        RecommendEventView event;
+        LocalDate visitDate;
+        Generated generated;
+        EventConditions conditions = savedConditions;
+        if (savedConditions == null && !request.hasEventConditions()) {
+            // 행사를 직접 고른 초안 — 행사는 그대로, 방문 날짜만 바꿀 수 있다
+            event = findEvent(plan.getAnchorContentId());
+            visitDate = request.visitDate() != null ? request.visitDate() : plan.getTripDate();
+            if (request.visitDate() != null) {
+                checkNotPast(visitDate);
+            }
+            generated = generate(event, visitDate, start, end, food, mealType, List.of());
+        } else {
+            // 행사 조건 초안 — 새 조건에 지금 행사가 맞으면 그 행사를 먼저 쓰고, 아니면 조건에 맞는 행사를 다시 고른다
+            List<LocalDate> dates = request.availableDates() != null ? request.availableDates()
+                    : request.visitDate() != null ? List.of(request.visitDate())
+                    : savedConditions != null ? savedConditions.dates() : List.of(plan.getTripDate());
+            conditions = new EventConditions(dates,
+                    request.categories() != null ? request.categories() : (savedConditions == null ? null : savedConditions.categories()),
+                    request.district() != null ? normalizeDistrict(request.district()) : (savedConditions == null ? null : savedConditions.district()),
+                    request.freeYn() != null ? request.freeYn() : (savedConditions == null ? null : savedConditions.freeYn()));
+            Selection selection = selectEvent(conditions, plan.getAnchorContentId(), Set.of(), start, end, food, mealType);
+            event = selection.event();
+            visitDate = selection.visitDate();
+            generated = selection.generated();
+        }
 
-        TripPlan updated = copyConditions(plan, visitDate, generated.windowStart(), generated.windowEnd(),
-                transportMode, food, mealType, generated.aiUsed());
+        TripPlan updated = copyConditions(plan, event, visitDate, generated, transportMode, food, mealType, conditions);
         planDraftMapper.updateConditions(updated);
         planDraftMapper.deleteItemsByPlanId(draftId);
         insertItems(draftId, generated.items());
@@ -216,15 +267,30 @@ public class PlanRecommendService {
 
     /**
      * API-PLAN-004 지금 조건 그대로 일정 다시 추천 (AI-010).
-     * 기준 행사는 사용자가 고른 행사라 그대로 두고, 맛집은 지금과 다른 곳을 먼저 찾는다.
-     * 결과가 지금 초안과 같으면(대체 후보 없음) 바꾸지 않고 422. 제목은 사용자가 바꿨을 수 있어 유지한다.
+     * 행사 조건으로 만든 초안이면 같은 조건에서 지금과 다른 행사를 먼저 찾는다 (행사가 바뀌면 제목도 새로 만든다).
+     * 다른 행사가 없거나 행사를 직접 고른 초안이면 행사는 그대로 두고 맛집을 지금과 다른 곳으로 찾는다.
+     * 결과가 지금 초안과 같으면(대체 후보 없음) 바꾸지 않고 422. 행사가 그대로면 제목은 사용자가 바꿨을 수 있어 유지한다.
      */
     @Transactional
     public DraftResponse regenerate(Long userId, Long draftId) {
         TripPlan plan = planDraftService.lockOwnedDraft(userId, draftId);
+        FoodChoice food = FoodChoice.of(plan);
+        EventConditions conditions = EventConditions.of(plan);
+        if (conditions != null) {
+            Optional<Selection> other = trySelectEvent(conditions, Set.of(plan.getAnchorContentId()),
+                    plan.getVisitStartTime(), plan.getVisitEndTime(), food, plan.getMealType());
+            if (other.isPresent()) {
+                Selection selection = other.get();
+                planDraftMapper.updateConditions(copyConditions(plan, selection.event(), selection.visitDate(),
+                        selection.generated(), plan.getTransportMd(), food, plan.getMealType(), conditions));
+                planDraftMapper.deleteItemsByPlanId(draftId);
+                insertItems(draftId, selection.generated().items());
+                return planDraftService.getDraft(userId, draftId);
+            }
+        }
+
         RecommendEventView event = findEvent(plan.getAnchorContentId());
         List<PlanItemView> current = planDraftMapper.findItemsByPlanId(draftId);
-        FoodChoice food = FoodChoice.of(plan);
 
         Generated generated = generate(event, plan.getTripDate(), plan.getVisitStartTime(), plan.getVisitEndTime(),
                 food, plan.getMealType(), current);
@@ -233,8 +299,8 @@ public class PlanRecommendService {
                     "지금 조건으로는 다른 추천 후보가 없어 기존 일정을 유지합니다. 조건을 바꿔 다시 시도해 주세요.");
         }
 
-        planDraftMapper.updateConditions(copyConditions(plan, plan.getTripDate(), generated.windowStart(),
-                generated.windowEnd(), plan.getTransportMd(), food, plan.getMealType(), generated.aiUsed()));
+        planDraftMapper.updateConditions(copyConditions(plan, event, plan.getTripDate(), generated,
+                plan.getTransportMd(), food, plan.getMealType(), conditions));
         planDraftMapper.deleteItemsByPlanId(draftId);
         insertItems(draftId, generated.items());
         return planDraftService.getDraft(userId, draftId);
@@ -646,28 +712,102 @@ public class PlanRecommendService {
         return type + ":" + contentId + "@" + format(start) + "/" + duration;
     }
 
-    private static TripPlan copyConditions(TripPlan plan, LocalDate visitDate, LocalTime start, LocalTime end,
-                                           String transportMode, FoodChoice food, String mealType, boolean aiYn) {
+    /**
+     * 초안의 조건·기준 행사를 바꾼 사본. 행사가 바뀌면 제목을 새 추천 제목(없으면 기본 제목)으로, 그대로면 지금 제목을 둔다.
+     */
+    private static TripPlan copyConditions(TripPlan plan, RecommendEventView event, LocalDate visitDate, Generated generated,
+                                           String transportMode, FoodChoice food, String mealType,
+                                           EventConditions conditions) {
+        boolean eventChanged = !event.getEventContentId().equals(plan.getAnchorContentId());
+        String title = !eventChanged ? plan.getTitle()
+                : (generated.title() != null ? generated.title() : defaultTitle(visitDate, event.getEventName()));
         return TripPlan.builder()
                 .tripPlanId(plan.getTripPlanId())
                 .userId(plan.getUserId())
-                .anchorContentId(plan.getAnchorContentId())
-                .anchorEventName(plan.getAnchorEventName())
-                .title(plan.getTitle())
+                .anchorContentId(event.getEventContentId())
+                .anchorEventName(event.getEventName())
+                .title(title)
                 .tripDate(visitDate)
-                .visitStartTime(start)
-                .visitEndTime(end)
+                .visitStartTime(generated.windowStart())
+                .visitEndTime(generated.windowEnd())
                 .saveYn(plan.getSaveYn())
-                .aiYn(aiYn)
+                .aiYn(generated.aiUsed())
                 .transportMd(transportMode)
                 .foodPreference(food.single())
                 .mealType(mealType)
                 .lunchFoodPreference(food.lunch())
                 .dinnerFoodPreference(food.dinner())
                 .cafeYn(food.cafe())
+                .searchDates(conditions == null ? null : conditions.datesText())
+                .searchCategories(conditions == null ? null : conditions.categoriesText())
+                .searchDistrict(conditions == null ? null : conditions.district())
+                .searchFreeYn(conditions == null ? null : conditions.freeYn())
                 .headcount(plan.getHeadcount())
                 .build();
     }
+
+    /**
+     * 조건으로 행사와 방문일을 고른다 (메인 AI 추천, docs/07 [제안]).
+     * 고른 날짜 중 오늘 이후를 빠른 날부터 보고, 그날 진행 중이고 조건에 맞는 행사를 종료가 가까운 순으로
+     * 일정을 만들어 본다(행사 시간이 방문 시간 밖이거나 주변 맛집이 없으면 다음 행사). 처음 만들어지는 행사를 쓴다.
+     * @param preferEventId 조건 수정에서 지금 행사가 새 조건에도 맞으면 먼저 시도할 행사 (없으면 null)
+     * @param excludeIds    다시 추천에서 뺄 행사
+     */
+    private Selection selectEvent(EventConditions conditions, String preferEventId, Set<String> excludeIds,
+                                  LocalTime start, LocalTime end, FoodChoice food, String mealType) {
+        LocalDate today = LocalDate.now(clock);
+        List<LocalDate> dates = conditions.dates().stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .filter(date -> !date.isBefore(today))
+                .toList();
+        if (dates.isEmpty()) {
+            throw new PlanRuleException(HttpStatus.BAD_REQUEST,
+                    "지난 날짜로는 일정을 만들 수 없습니다. 오늘(" + today + ") 이후 날짜를 골라 주세요.");
+        }
+        List<String> eventTypes = conditions.eventTypes();
+        int tried = 0;
+        for (LocalDate date : dates) {
+            List<RecommendEventView> candidates = new ArrayList<>(planDraftMapper.findRecommendEventCandidates(
+                    date, eventTypes, conditions.district(), conditions.freeOnly(), EVENT_CANDIDATE_LIMIT));
+            if (preferEventId != null) {
+                candidates.sort(Comparator.comparing(candidate -> !preferEventId.equals(candidate.getEventContentId())));
+            }
+            for (RecommendEventView candidate : candidates) {
+                if (excludeIds.contains(candidate.getEventContentId()) || !Boolean.TRUE.equals(candidate.getDisplayYn())) {
+                    continue;
+                }
+                if (++tried > MAX_EVENT_TRIES) {
+                    break;
+                }
+                try {
+                    return new Selection(candidate, date,
+                            generate(candidate, date, start, end, food, mealType, List.of()));
+                } catch (PlanRuleException skipped) {
+                    // 이 행사로는 일정이 안 된다 (방문 시간 밖·주변 맛집 없음) → 다음 행사
+                }
+            }
+        }
+        throw new PlanRuleException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "고른 날짜와 조건에 맞는 행사가 없거나 행사 주변에 조건에 맞는 맛집이 없습니다. 날짜나 조건을 바꿔 보세요.");
+    }
+
+    /** 다시 추천용 — 다른 행사를 못 찾으면 빈 값 (지금 행사로 맛집만 바꾼다) */
+    private Optional<Selection> trySelectEvent(EventConditions conditions, Set<String> excludeIds, LocalTime start,
+                                               LocalTime end, FoodChoice food, String mealType) {
+        try {
+            return Optional.of(selectEvent(conditions, null, excludeIds, start, end, food, mealType));
+        } catch (PlanRuleException noOther) {
+            return Optional.empty();
+        }
+    }
+
+    /** "전체 지역"·빈 값은 조건 없음 */
+    private static String normalizeDistrict(String district) {
+        return district == null || district.isBlank() || "전체 지역".equals(district.trim()) ? null : district.trim();
+    }
+
 
     /**
      * 식사 시간 후보(기본 → 행사 직전 → 행사 직후) 중 방문 시간 안에서 다른 일정과 겹치지 않는 시간에
@@ -997,6 +1137,10 @@ public class PlanRecommendService {
         String single() {
             return lunch.equals(dinner) ? lunch : null;
         }
+    }
+
+    /** 조건으로 고른 행사·방문일과 그 행사로 만든 일정 */
+    record Selection(RecommendEventView event, LocalDate visitDate, Generated generated) {
     }
 
     /** 지금 초안의 맛집 id 와 식사 시작 시각별 거리 */

@@ -9,6 +9,7 @@
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
 		       tp.food_preference, tp.meal_type, tp.lunch_food_preference, tp.dinner_food_preference, tp.cafe_yn,
+		       tp.search_dates, tp.search_categories, tp.search_district, tp.search_free_yn,
 		       tp.headcount, tp.created_at, tp.upd_at,
 		       e.event_name AS anchor_event_name
 		FROM trip_plan tp
@@ -22,6 +23,7 @@
 		SELECT tp.trip_plan_id, tp.user_id, tp.anchor_content_id, tp.title, tp.trip_date,
 		       tp.visit_start_time, tp.visit_end_time, tp.save_yn, tp.ai_yn, tp.transport_md,
 		       tp.food_preference, tp.meal_type, tp.lunch_food_preference, tp.dinner_food_preference, tp.cafe_yn,
+		       tp.search_dates, tp.search_categories, tp.search_district, tp.search_free_yn,
 		       tp.headcount, tp.created_at, tp.upd_at
 		FROM trip_plan tp
 		WHERE tp.trip_plan_id = #{tripPlanId}
@@ -137,13 +139,38 @@
 		WHERE event_content_id = #{eventContentId}
 	</select>
 
+	<!-- 조건으로 행사를 고를 때의 후보 (docs/07 [제안]). 분야는 EventCategory 가 원본 event_type 으로 바꿔 넘긴다 -->
+	<select id="findRecommendEventCandidates" resultType="RecommendEventView">
+		SELECT event_content_id, event_name, event_type, district_name, event_place, date_text, free_yn,
+		       display_yn, event_start_date, event_end_date, event_start_time, event_end_time, mapx, mapy
+		FROM event
+		WHERE display_yn = TRUE
+		  AND mapx IS NOT NULL AND mapy IS NOT NULL
+		  AND event_start_date &lt;= #{visitDate}
+		  AND event_end_date &gt;= #{visitDate}
+		  <if test="eventTypes != null and !eventTypes.isEmpty()">
+		  AND event_type IN
+		      <foreach collection="eventTypes" item="type" open="(" separator="," close=")">#{type}</foreach>
+		  </if>
+		  <if test="district != null">
+		  AND district_name = #{district}
+		  </if>
+		  <if test="freeOnly">
+		  AND free_yn = TRUE
+		  </if>
+		ORDER BY event_end_date, event_content_id
+		LIMIT #{limit}
+	</select>
+
 	<insert id="insertPlan" parameterType="TripPlan" useGeneratedKeys="true" keyProperty="tripPlanId">
 		INSERT INTO trip_plan (user_id, anchor_content_id, title, trip_date, visit_start_time, visit_end_time,
 		                       save_yn, ai_yn, transport_md, food_preference, meal_type,
-		                       lunch_food_preference, dinner_food_preference, cafe_yn, headcount)
+		                       lunch_food_preference, dinner_food_preference, cafe_yn,
+		                       search_dates, search_categories, search_district, search_free_yn, headcount)
 		VALUES (#{userId}, #{anchorContentId}, #{title}, #{tripDate}, #{visitStartTime}, #{visitEndTime},
 		        FALSE, #{aiYn}, #{transportMd}, #{foodPreference}, #{mealType},
-		        #{lunchFoodPreference}, #{dinnerFoodPreference}, COALESCE(#{cafeYn}, FALSE), #{headcount})
+		        #{lunchFoodPreference}, #{dinnerFoodPreference}, COALESCE(#{cafeYn}, FALSE),
+		        #{searchDates}, #{searchCategories}, #{searchDistrict}, #{searchFreeYn}, #{headcount})
 	</insert>
 
 	<update id="updateConditions" parameterType="TripPlan">
@@ -157,6 +184,12 @@
 		    lunch_food_preference = #{lunchFoodPreference},
 		    dinner_food_preference = #{dinnerFoodPreference},
 		    cafe_yn = COALESCE(#{cafeYn}, FALSE),
+		    search_dates = #{searchDates},
+		    search_categories = #{searchCategories},
+		    search_district = #{searchDistrict},
+		    search_free_yn = #{searchFreeYn},
+		    anchor_content_id = #{anchorContentId},
+		    title = #{title},
 		    ai_yn = #{aiYn}
 		WHERE trip_plan_id = #{tripPlanId}
 		  AND save_yn = FALSE

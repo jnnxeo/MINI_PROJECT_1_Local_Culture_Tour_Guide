@@ -5,6 +5,7 @@ import com.tripai.backend.domain.entity.PlanItemView;
 import com.tripai.backend.domain.entity.RecommendEventView;
 import com.tripai.backend.domain.entity.TripItem;
 import com.tripai.backend.domain.entity.TripPlan;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.apache.ibatis.annotations.Mapper;
@@ -47,6 +48,14 @@ public interface PlanDraftMapper {
 
 	/** 초안을 만들 기준 행사 — 기간·시간·좌표까지 가져온다 (API-PLAN-001) */
 	Optional<RecommendEventView> findRecommendEvent(String eventContentId);
+
+	/**
+	 * 조건으로 행사를 고를 때의 후보 — visitDate 에 진행 중이고 좌표가 있는 표시 행사 중
+	 * 분야(eventTypes, 비면 전체)·자치구(district, null 이면 전체)·무료(freeOnly)에 맞는 곳, 종료일이 가까운 순 (docs/07 [제안])
+	 */
+	List<RecommendEventView> findRecommendEventCandidates(@Param("visitDate") LocalDate visitDate,
+			@Param("eventTypes") List<String> eventTypes, @Param("district") String district,
+			@Param("freeOnly") boolean freeOnly, @Param("limit") int limit);
 
 	/** useGeneratedKeys 로 tripPlanId 가 채워진다 */
 	int insertPlan(TripPlan plan);
