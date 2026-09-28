@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import FilterModal from './FilterModal.jsx'
 import DateModal from './DateModal.jsx'
+import '../../../styles/condition-filters.css'
 
 const initialFilters = { categories: [], district: '전체 지역', freeOnly: false }
 
@@ -17,7 +18,7 @@ export default function SearchPanel({ onFilterSearch, onRecommend }) {
 
   return (
     <div className="home-search-area">
-      <form className="home-search" onSubmit={submitFilters} aria-label="문화행사 조건 검색">
+      <form className="home-search event-condition-filters" onSubmit={submitFilters} aria-label="문화행사 조건 검색">
         <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
           <span>날짜 선택</span>
           <strong>{dates.length ? `${dates.length}일 선택 · ${dates[0]}${dates.length > 1 ? ' 외' : ''}` : '갈 수 있는 날 고르기'}</strong>

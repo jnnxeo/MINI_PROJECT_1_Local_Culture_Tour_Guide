@@ -7,6 +7,7 @@ import { buildSubmittedSearchParams, readSearchConditions, SEARCH_PAGE_SIZE } fr
 import { getDefaultSort, getSortOptions } from '../features/search/eventSort.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
+import '../styles/condition-filters.css'
 import useFavoriteEvents from '../hooks/useFavoriteEvents.js'
 
 function SortDropdown({ selected, dates, onSelect }) {
@@ -163,7 +164,7 @@ export default function SearchResultsPage() {
           <p aria-live="polite">검색어: <strong>{applied.keyword || '없음'}</strong></p>
           <button type="button" onClick={clearKeyword} disabled={!applied.keyword} className={!applied.keyword ? 'search-results-keyword__clear--hidden' : undefined}>검색어 지우기</button>
         </div>
-        <form className="search-results-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
+        <form className="search-results-filters event-condition-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
           <div className="search-results-filters__month">
             <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
               <span>날짜 선택</span>
