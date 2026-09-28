@@ -562,8 +562,10 @@
   gap: 8px;
 }
 
-.plan-conditions__meal select:disabled {
-  opacity: 0.5;
+.plan-conditions__meal-hint {
+  margin: 0;
+  color: var(--tripai-subtle);
+  font-size: 12px;
 }
 
 .plan-conditions__label {

@@ -57,6 +57,7 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
       >
         {`${checked ? '☑' : '☐'} ${label}`}
       </button>
+      <span className="tp-field__label">{`${label} 음식 종류`}</span>
       <select
         aria-label={`${label} 음식 종류`}
         value={food}
@@ -67,6 +68,9 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
           <option key={value} value={value}>{text}</option>
         ))}
       </select>
+      <p className="plan-conditions__meal-hint">
+        {checked ? '눌러서 음식 종류를 바꿀 수 있어요' : `${label}을 체크하면 고를 수 있어요`}
+      </p>
     </div>
   )
 
@@ -99,6 +103,7 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
       </div>
 
       <p className="plan-conditions__label">식사 · 카페</p>
+      <p className="plan-conditions__help">원하는 끼니를 체크하고, 끼니마다 음식 종류를 하나씩 골라 주세요.</p>
       <button
         className={`tp-btn tp-btn--secondary tp-btn--block plan-toggle${includeCafe ? ' is-checked' : ''}`}
         type="button"
