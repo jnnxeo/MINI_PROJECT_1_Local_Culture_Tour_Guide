@@ -30,7 +30,7 @@ const DISTRICT_OPTIONS = [ALL_DISTRICTS, ...SEOUL_DISTRICTS].map((district) => (
  * - 식사: 점심·저녁 체크 카드 + 끼니별 음식 종류, 카페 포함 (lunchFoodPreference·dinnerFoodPreference·includeCafe).
  * mealType은 "BOTH"·"LUNCH"·"DINNER"로 항상 명시적인 값을 보낸다. 선택지는 드롭다운 없이 모두 펼쳐 둔다.
  */
-export default function ConditionsModal({ visitDate, conditions, selectedEvent, coreItem, onSubmit, onClose }) {
+export default function ConditionsModal({ visitDate, conditions, selectedEvent, coreItem, onSubmit, onClose, mode = 'edit', busy = false, error = '' }) {
   const conditionMode = Array.isArray(conditions?.availableDates)
   const [dates, setDates] = useState(conditionMode ? conditions.availableDates : [visitDate])
   const [categories, setCategories] = useState(conditions?.categories ?? [])
@@ -49,6 +49,7 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
   const coreInfo = coreItem?.timeFixed ? `${coreItem.startTime} 시작` : '운영시간 정보 없음'
   const noMeal = !lunch && !dinner
   const noDate = dates.length === 0
+  const tooManyDates = dates.length > 31
   const mealType = lunch && dinner ? 'BOTH' : (lunch ? 'LUNCH' : 'DINNER')
   const today = todayInSeoul()
   const eventStart = selectedEvent?.startDate
@@ -85,10 +86,11 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
   }
 
   return (
-    <PlanModal title="어떤 하루를 만들어 볼까요?" onClose={onClose}>
+    <PlanModal title="어떤 하루를 만들어 볼까요?" onClose={busy ? undefined : onClose}>
+      <fieldset disabled={busy} className="plan-conditions__fields">
       <p className="tp-modal__desc">
         {conditionMode
-          ? '조건을 바꾸면 조건에 맞는 행사와 맛집으로 일정을 다시 만들어요.'
+          ? (mode === 'create' ? '갈 수 있는 날과 취향을 고르면 행사와 맛집을 묶어 하루 일정을 만들어요.' : '조건을 바꾸면 조건에 맞는 행사와 맛집으로 일정을 다시 만들어요.')
           : `선택한 행사 · ${selectedEvent?.title ?? ''} · ${coreInfo}`}
       </p>
 
@@ -168,24 +170,28 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
         />
       </section>
 
-      <CheckCard
+      {mode !== 'create' && <CheckCard
         checked={useAi}
         onChange={setUseAi}
         title="AI 추천받기"
         description="아직 추천 결과에는 반영되지 않아요 (항상 AI 추천 기준으로 만들어요)"
-      />
+      />}
 
+      {error && <p className="tp-modal__error" role="alert">{error}</p>}
+      {busy && <p role="status">조건에 맞는 하루 일정을 만들고 있어요. 잠시 기다려 주세요.</p>}
+      {tooManyDates && <p className="tp-modal__error" role="alert">날짜는 최대 31일까지 선택해 주세요.</p>}
       {noDate && <p className="tp-modal__error" role="alert">날짜를 하루 이상 골라 주세요.</p>}
       {noMeal && <p className="tp-modal__error" role="alert">점심과 저녁 중 하나 이상 켜 주세요.</p>}
 
       <button
         className="tp-btn tp-btn--primary tp-btn--block tp-btn--bold"
         type="button"
-        disabled={noMeal || noDate}
+        disabled={busy || noMeal || noDate || tooManyDates}
         onClick={submit}
       >
-        {useAi ? 'AI로 하루 일정 만들기' : '하루 일정 만들기'}
+        {busy ? '일정 만드는 중…' : (useAi ? 'AI로 하루 일정 만들기' : '하루 일정 만들기')}
       </button>
+      </fieldset>
     </PlanModal>
   )
 }

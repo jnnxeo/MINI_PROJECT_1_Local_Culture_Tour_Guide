@@ -42,6 +42,25 @@ class EventSearchIntegrationTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Test
+    void selectedDatesUseOrAndKeepOtherFiltersWithoutDuplicates() throws Exception {
+        assertEquals(0, fixtureCount());
+        insert(EXHIBITION, "전시/미술", "IT53날짜 전시", "종로구", "전시장", "2098-10-03", "2098-10-04", true, true);
+        insert(PERFORMANCE, "콘서트", "IT53날짜 공연", "종로구", "공연장", "2098-10-08", "2098-10-08", true, true);
+        insert(OUTSIDE, "전시/미술", "IT53날짜 제외", "중구", "미술관", "2098-10-05", "2098-10-06", false, true);
+        String authorization = authorization();
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT53날짜").param("date", "2098-10-03", "2098-10-04", "2098-10-08"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(2));
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT53날짜").param("date", "2098-10-03", "2098-10-04", "2098-10-08")
+                        .param("category", "전시").param("freeYn", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(1))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(EXHIBITION));
+    }
+
+    @Test
     void searchMatchesKeywordAcrossMonthsAndCombinesFiltersWithoutDuplicateRows() throws Exception {
         assertEquals(0, fixtureCount());
         insert(EXHIBITION, "전시/미술", "Z-IT53키워드_ 전시", "종로구", "세종문화회관", "2098-01-31", "2098-03-31", null, true);

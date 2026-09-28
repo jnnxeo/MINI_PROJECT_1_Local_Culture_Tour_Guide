@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import FilterModal from '../features/home/components/FilterModal.jsx'
 import KeywordModal from '../features/home/components/KeywordModal.jsx'
-import MonthModal from '../features/home/components/MonthModal.jsx'
+import DateModal from '../features/home/components/DateModal.jsx'
 import SearchResultCard from '../features/search/components/SearchResultCard.jsx'
-import { buildSearchParams, DEFAULT_SORT, getCurrentMonth, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
+import { buildSearchParams, DEFAULT_SORT, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
 
@@ -63,7 +63,7 @@ export default function SearchResultsPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const applied = useMemo(() => readSearchConditions(new URLSearchParams(location.search)), [location.search])
-  const appliedFilterKey = JSON.stringify([applied.keyword, applied.month, applied.categories, applied.district, applied.freeOnly])
+  const appliedFilterKey = JSON.stringify([applied.keyword, applied.month, applied.dates, applied.categories, applied.district, applied.freeOnly])
   const [draft, setDraft] = useState(applied)
   const [activeModal, setActiveModal] = useState(null)
   const [result, setResult] = useState({ items: [], page: 0, totalCount: 0 })
@@ -139,7 +139,7 @@ export default function SearchResultsPage() {
         <div className="search-results-hero__inner">
           <p>문화행사 찾기</p>
           <h1>어떤 하루를 보내고 싶으세요?</h1>
-          <p>키워드와 월, 행사 분야로 나에게 맞는 행사를 찾아보세요.</p>
+          <p>키워드와 날짜, 행사 분야로 나에게 맞는 행사를 찾아보세요.</p>
         </div>
       </header>
 
@@ -153,11 +153,11 @@ export default function SearchResultsPage() {
         </div>
         <form className="search-results-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
           <div className="search-results-filters__month">
-            <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('month')} aria-haspopup="dialog">
-              <span>월별 탐색</span>
-              <strong>{draft.month ? `${draft.month.slice(0, 4)}년 ${Number(draft.month.slice(5))}월` : '전체 기간'}</strong>
+            <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
+              <span>날짜 선택</span>
+              <strong>{draft.dates.length ? `${draft.dates.length}일 선택 · ${draft.dates.slice(0, 2).join(', ')}${draft.dates.length > 2 ? ' 외' : ''}` : (draft.month || '전체 기간')}</strong>
             </button>
-            {draft.month && <button type="button" className="search-results-filters__clear" onClick={() => setDraft((current) => ({ ...current, month: '' }))} aria-label="월 조건 해제">×</button>}
+            {(draft.month || draft.dates.length > 0) && <button type="button" className="search-results-filters__clear" onClick={() => setDraft((current) => ({ ...current, month: '', dates: [] }))} aria-label="날짜 조건 해제">×</button>}
           </div>
           <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('category')} aria-haspopup="dialog">
             <span>행사 분야 · 요금</span>
@@ -172,7 +172,7 @@ export default function SearchResultsPage() {
         <button
           className="search-results-filters__reset"
           type="button"
-          onClick={() => setDraft((current) => ({ ...current, month: getCurrentMonth(), categories: [], district: '전체 지역', freeOnly: false }))}
+          onClick={() => setDraft((current) => ({ ...current, month: '', dates: [], categories: [], district: '전체 지역', freeOnly: false }))}
         >
           조건 초기화
         </button>
@@ -227,10 +227,10 @@ export default function SearchResultsPage() {
           onSearch={(keyword) => { setActiveModal(null); navigateWith(new URLSearchParams({ keyword })) }}
         />
       )}
-      {activeModal === 'month' && (
-        <MonthModal
-          month={draft.month || getCurrentMonth()}
-          onConfirm={(month) => { setDraft((current) => ({ ...current, month })); setActiveModal(null) }}
+      {activeModal === 'date' && (
+        <DateModal
+          dates={draft.dates}
+          onConfirm={(dates) => { setDraft((current) => ({ ...current, month: '', dates })); setActiveModal(null) }}
           onClose={() => setActiveModal(null)}
         />
       )}

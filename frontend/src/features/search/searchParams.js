@@ -10,6 +10,7 @@ export function readSearchConditions(params) {
   return {
     keyword: params.get('keyword') || '',
     month: params.get('month') || '',
+    dates: params.getAll('date'),
     categories: params.getAll('category'),
     district: params.get('district') || '전체 지역',
     freeOnly: params.get('freeYn') === 'true',
@@ -22,6 +23,7 @@ export function buildSearchParams(conditions) {
   const params = new URLSearchParams()
   if (conditions.keyword?.trim()) params.set('keyword', conditions.keyword.trim())
   if (conditions.month) params.set('month', conditions.month)
+  for (const date of conditions.dates ?? []) params.append('date', date)
   conditions.categories.forEach((category) => params.append('category', category))
   if (conditions.district !== '전체 지역') params.set('district', conditions.district)
   if (conditions.freeOnly) params.set('freeYn', 'true')

@@ -1,8 +1,7 @@
 import React, { useState } from 'react'
 import HomeModal from './HomeModal.jsx'
 
-const categories = ['공연', '전시', '전통문화', '축제', '교육·체험']
-const districts = ['종로구', '중구', '성동구', '광진구', '동대문구', '중랑구', '성북구', '강북구', '도봉구', '노원구', '은평구', '서대문구', '마포구', '양천구', '강서구', '구로구', '금천구', '영등포구', '동작구', '관악구', '서초구', '강남구', '송파구', '강동구', '용산구']
+import { EVENT_CATEGORIES as categories, SEOUL_DISTRICTS as districts } from '../../../constants/eventFilters.js'
 
 export default function FilterModal({ mode, filters, onConfirm, onClose }) {
   const [draft, setDraft] = useState(() => ({ ...filters, categories: [...filters.categories] }))

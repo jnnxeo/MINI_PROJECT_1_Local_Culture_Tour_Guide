@@ -1,20 +1,19 @@
 import React, { useState } from 'react'
 import KeywordModal from './KeywordModal.jsx'
 import FilterModal from './FilterModal.jsx'
-import MonthModal from './MonthModal.jsx'
+import DateModal from './DateModal.jsx'
 
 const initialFilters = { categories: [], district: '전체 지역', freeOnly: false }
 
-export default function SearchPanel({ month, onMonthChange, onKeywordSearch, onFilterSearch }) {
+export default function SearchPanel({ onKeywordSearch, onFilterSearch, onRecommend }) {
   const [filters, setFilters] = useState(initialFilters)
-  const [aiRecommended, setAiRecommended] = useState(false)
+  const [dates, setDates] = useState([])
   const [activeModal, setActiveModal] = useState(null)
   const categoryLabel = filters.categories.length ? filters.categories.join(' · ') : '전체 분야'
-  const [yearValue, monthValue] = month.split('-').map(Number)
 
   const submitFilters = (event) => {
     event.preventDefault()
-    onFilterSearch({ month, ...filters, aiRecommended })
+    onFilterSearch({ dates, ...filters })
   }
 
   return (
@@ -27,9 +26,9 @@ export default function SearchPanel({ month, onMonthChange, onKeywordSearch, onF
       </div>
 
       <form className="home-search" onSubmit={submitFilters} aria-label="문화행사 조건 검색">
-        <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('month')} aria-haspopup="dialog">
-          <span>월별 탐색</span>
-          <strong>{yearValue}년 {monthValue}월</strong>
+        <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
+          <span>날짜 선택</span>
+          <strong>{dates.length ? `${dates.length}일 선택 · ${dates[0].slice(5).replace('-', '/')}${dates.length > 1 ? ' 외' : ''}` : '갈 수 있는 날 고르기'}</strong>
         </button>
 
         <button className="home-search__field home-search__field--button" type="button" onClick={() => setActiveModal('category')} aria-haspopup="dialog">
@@ -42,10 +41,7 @@ export default function SearchPanel({ month, onMonthChange, onKeywordSearch, onF
           <strong>{filters.district}</strong>
         </button>
 
-        <label className={`ai-toggle${aiRecommended ? ' ai-toggle--checked' : ''}`}>
-          <input type="checkbox" checked={aiRecommended} onChange={(event) => setAiRecommended(event.target.checked)} />
-          <span>AI 추천받기</span>
-        </label>
+        <button className="primary-button home-search__recommend" type="button" onClick={() => onRecommend({ availableDates: dates, categories: filters.categories, district: filters.district, freeYn: filters.freeOnly })}>AI 추천받기</button>
 
         <button className="primary-button home-search__submit" type="submit">조건 검색</button>
       </form>
@@ -55,10 +51,10 @@ export default function SearchPanel({ month, onMonthChange, onKeywordSearch, onF
           onSearch={(keyword) => { setActiveModal(null); onKeywordSearch(keyword) }}
         />
       )}
-      {activeModal === 'month' && (
-        <MonthModal
-          month={month}
-          onConfirm={(nextMonth) => { onMonthChange(nextMonth); setActiveModal(null) }}
+      {activeModal === 'date' && (
+        <DateModal
+          dates={dates}
+          onConfirm={(nextDates) => { setDates(nextDates); setActiveModal(null) }}
           onClose={() => setActiveModal(null)}
         />
       )}
