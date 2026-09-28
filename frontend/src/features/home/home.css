@@ -1081,3 +1081,12 @@
     transition: none;
   }
 }
+
+.home-search__recommend {
+  min-height: 78px;
+  border-radius: 18px;
+  padding: 16px;
+  background: #eaf2ff;
+  color: #2457c5;
+}
+.home-search__recommend:hover { background: #dce9ff; }

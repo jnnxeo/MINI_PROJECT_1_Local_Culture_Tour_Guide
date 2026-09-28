@@ -1,9 +1,10 @@
 /*
  * 나의 일정 화면 기본 스타일 — Figma(Page Ver2) 토큰·버튼·팝업·상단 메뉴
- * 전역(:root)을 건드리지 않도록 .plan-page 안에서만 적용한다.
+ * 전역(:root)을 건드리지 않도록 일정 페이지와 모달에 적용한다.
  * 토큰 이름은 Figma 변수(--tripai-*)와 같게 맞춘다.
  */
-.plan-page {
+.plan-page,
+.tp-modal-backdrop {
   --tripai-blue: #2563eb;
   --tripai-navy: #111c3d;
   --tripai-white: #fff;

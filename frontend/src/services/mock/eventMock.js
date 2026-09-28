@@ -25,6 +25,7 @@ const SORT_VALUES = ['startDateAsc', 'endDateAsc', 'titleAsc']
 
 export async function mockSearchEvents(params) {
   const month = params.get('month')
+  const dates = params.getAll('date')
   const keyword = params.get('keyword')?.trim().toLocaleLowerCase('ko-KR')
   const categories = params.getAll('category')
   const district = params.get('district')
@@ -52,6 +53,7 @@ export async function mockSearchEvents(params) {
     }))
     .filter((event) => {
       if (month && (event.startDate > monthEnd || event.endDate < `${month}-01`)) return false
+      if (dates.length && !dates.some((date) => event.startDate <= date && date <= event.endDate)) return false
       if (categories.length && !categories.includes(event.category)) return false
       if (district && district !== event.district) return false
       if (freeYn === 'true' && event.freeYn !== true) return false
@@ -101,6 +103,7 @@ export async function mockGetHomeEventPreviews(month) {
 
 export async function mockHasMatchingEvents(params) {
   const month = params.get('month')
+  const dates = params.getAll('date')
   const keyword = params.get('keyword')?.trim().toLocaleLowerCase('ko-KR')
   const categories = params.getAll('category')
   const district = params.get('district')

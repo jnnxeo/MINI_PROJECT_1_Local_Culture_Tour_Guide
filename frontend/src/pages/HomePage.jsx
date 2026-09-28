@@ -1,22 +1,27 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import EventSection from '../features/home/components/EventSection.jsx'
 import HeroSection from '../features/home/components/HeroSection.jsx'
 import MonthSelector from '../features/home/components/MonthSelector.jsx'
 import SearchPanel from '../features/home/components/SearchPanel.jsx'
 import { getHomeEventPreviews } from '../services/eventService.js'
-import { startHomeRecommendation } from '../services/homeRecommendationService.js'
+import { recommendDraft } from '../services/planService.js'
+import ConditionsModal from '../components/plan/ConditionsModal.jsx'
+import '../styles/plan.css'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const today = new Date()
-  const [selectedYear, setSelectedYear] = useState(today.getFullYear())
+  const [selectedYear] = useState(today.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
   const [favoriteIds, setFavoriteIds] = useState(new Set())
   const [eventSections, setEventSections] = useState({ all: [], exhibition: [], performance: [] })
   const [eventStatus, setEventStatus] = useState('loading')
   const [eventError, setEventError] = useState('')
   const [searchError, setSearchError] = useState('')
+  const [recommendConditions, setRecommendConditions] = useState(null)
+  const [recommending, setRecommending] = useState(false)
+  const recommendationPending = useRef(false)
   const [reloadCount, setReloadCount] = useState(0)
   const selectedPeriod = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
 
@@ -47,16 +52,6 @@ export default function HomePage() {
     })
   }
 
-  const handleMonthChange = (period) => {
-    if (!/^\d{4}-\d{2}$/.test(period)) return
-    const [year, month] = period.split('-').map(Number)
-    if (month < 1 || month > 12) return
-    if (period === selectedPeriod) return
-    setEventStatus('loading')
-    setSelectedYear(year)
-    setSelectedMonth(month)
-  }
-
   const handleMonthSelect = (month) => {
     if (month === selectedMonth) return
     setEventStatus('loading')
@@ -67,26 +62,29 @@ export default function HomePage() {
     navigate(`/events?${new URLSearchParams({ keyword })}`)
   }
 
-  const handleFilterSearch = async ({ month, categories, district, freeOnly, aiRecommended }) => {
-    setSearchError('')
+  const handleFilterSearch = ({ dates, categories, district, freeOnly }) => {
     const params = new URLSearchParams()
-    if (month) params.set('month', month)
+    dates.forEach((date) => params.append('date', date))
     categories.forEach((category) => params.append('category', category))
     if (district !== '전체 지역') params.set('district', district)
     if (freeOnly) params.set('freeYn', 'true')
-    const query = params.toString()
-    if (aiRecommended) {
-      try {
-        const { draftId } = await startHomeRecommendation()
-        navigate('/trips/draft', {
-          state: { draftId, searchConditions: { month, categories, district, freeYn: freeOnly } },
-        })
-      } catch (error) {
-        setSearchError(error.message || 'AI 일정을 열지 못했습니다.')
-      }
-      return
+    navigate(`/events?${params}`)
+  }
+
+  const createRecommendation = async (conditions) => {
+    if (recommendationPending.current) return
+    recommendationPending.current = true
+    setRecommending(true)
+    setSearchError('')
+    try {
+      const { draftId } = await recommendDraft(conditions)
+      navigate('/trips/draft', { state: { draftId } })
+    } catch (error) {
+      setSearchError(error.message || '일정을 만들지 못했습니다. 조건을 바꿔 다시 시도해 주세요.')
+    } finally {
+      recommendationPending.current = false
+      setRecommending(false)
     }
-    navigate(query ? `/events?${query}` : '/events')
   }
 
   const showMore = (category) => {
@@ -109,8 +107,12 @@ export default function HomePage() {
       <HeroSection onExplore={scrollToEvents} />
 
       <div className="home-content">
-        <SearchPanel month={selectedPeriod} onMonthChange={handleMonthChange} onKeywordSearch={handleKeywordSearch} onFilterSearch={handleFilterSearch} />
-        {searchError && <p className="home-search__error" role="alert">{searchError}</p>}
+        <SearchPanel onKeywordSearch={handleKeywordSearch} onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
+        {recommendConditions && <ConditionsModal
+          mode="create" conditions={recommendConditions} busy={recommending} error={searchError}
+          onSubmit={createRecommendation}
+          onClose={() => { if (!recommendationPending.current) setRecommendConditions(null) }}
+        />}
         <MonthSelector selectedMonth={selectedMonth} onSelect={handleMonthSelect} />
 
         <p className="home-visually-hidden" role="status">

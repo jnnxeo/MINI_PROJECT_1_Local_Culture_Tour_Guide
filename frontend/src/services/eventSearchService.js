@@ -1,7 +1,18 @@
+import api from './api.js'
+import { getErrorMessage } from './authService.js'
 import { mockSearchEvents } from './mock/eventMock.js'
 
-// #53 병합 후 이 함수 내부의 조회만 GET /api/events로 교체한다.
-// 화면은 API-EVENT-001과 같은 items, page, totalCount 응답 형태를 사용한다.
+const USE_MOCK_API = import.meta.env.VITE_USE_EVENT_MOCK_API !== undefined
+  ? import.meta.env.VITE_USE_EVENT_MOCK_API === 'true'
+  : import.meta.env.VITE_USE_MOCK_API === 'true'
+
 export async function getEventSearchResults(params) {
-  return mockSearchEvents(params)
+  if (USE_MOCK_API) return mockSearchEvents(params)
+  try {
+    const { data } = await api.get('/api/events', { params })
+    if (data?.success === false) throw new Error(data.message || '행사를 찾지 못했습니다.')
+    return data.data
+  } catch (error) {
+    throw new Error(error.response ? getErrorMessage(error) : error.message || '서버에 연결할 수 없습니다.')
+  }
 }
