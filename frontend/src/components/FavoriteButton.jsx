@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { addFavorite, removeFavorite } from '../services/favoriteApi.js'
 import { getErrorMessage } from '../services/authService.js'
 
-function FavoriteButton({ eventContentId, initialFavorite = false, onRemoved }) {
+function FavoriteButton({ eventContentId, initialFavorite = false, onRemoved, className }) {
   const [isFavorite, setIsFavorite] = useState(initialFavorite)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +37,7 @@ function FavoriteButton({ eventContentId, initialFavorite = false, onRemoved }) 
     <>
       <button
         type="button"
+        className={className}
         onClick={handleFavorite}
         disabled={!eventContentId || saving}
         aria-label={isFavorite ? '관심 행사 해제' : '관심 행사 저장'}

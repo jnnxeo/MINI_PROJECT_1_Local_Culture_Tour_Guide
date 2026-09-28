@@ -23,9 +23,13 @@
                district_name     AS district,
                 date_text         AS dateText,
                 event_start_time  AS startTime,
-                event_end_time    AS endTime
-        FROM event
-        WHERE event_content_id = #{eventId}
+                event_end_time    AS endTime,
+               EXISTS (SELECT 1
+                       FROM favorite_event f
+                       WHERE f.user_id = #{userId,jdbcType=BIGINT}
+                         AND f.event_content_id = e.event_content_id) AS favorited
+        FROM event e
+        WHERE e.event_content_id = #{eventId}
     </select>
 
     <!-- EVENT-004: 화면에 표시 중인 행사만 일정 생성에 사용 -->

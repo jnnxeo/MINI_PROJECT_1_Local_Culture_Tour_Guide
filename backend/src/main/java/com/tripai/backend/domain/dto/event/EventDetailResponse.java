@@ -33,4 +33,5 @@ public class EventDetailResponse {
     private String dateText;
     private LocalTime startTime;
     private LocalTime endTime;
+    private Boolean favorited;   // 로그인 사용자의 관심 행사 저장 여부 (하트 초기 상태)
 }
