@@ -5,7 +5,8 @@
 
     <!--
         event_content_id가 PK라서 같은 행사가 다시 수집되면 UPDATE로 처리된다.
-        display_yn, collected_at은 건드리지 않는다 (신규는 DDL 기본값 TRUE / 현재시각).
+        collected_at은 건드리지 않는다 (신규는 현재시각).
+        display_yn은 배치가 관리한다: 온라인 행사는 FALSE로 숨기고, 그 외는 TRUE로 둔다.
         upd_at은 DB의 ON UPDATE CURRENT_TIMESTAMP가 처리한다.
         NULL이 들어갈 수 있는 값은 jdbcType을 명시한다.
         addr(주소)은 서울시 응답에 별도 필드가 없어 채우지 않는다.
@@ -15,14 +16,14 @@
             event_content_id, event_type, district_name, event_name,
             event_start_date, event_end_date, event_start_time, date_text,
             event_place, mapx, mapy, tel_no, use_fee, free_yn,
-            overview, image_url, homepage
+            overview, image_url, homepage, display_yn
         )
         VALUES (
             #{eventContentId}, #{eventType}, #{districtName,jdbcType=VARCHAR}, #{eventName},
             #{eventStartDate}, #{eventEndDate}, #{eventStartTime,jdbcType=TIME}, #{dateText,jdbcType=VARCHAR},
             #{eventPlace,jdbcType=VARCHAR}, #{mapx,jdbcType=DECIMAL}, #{mapy,jdbcType=DECIMAL},
             #{telNo,jdbcType=VARCHAR}, #{useFee,jdbcType=VARCHAR}, #{freeYn,jdbcType=BOOLEAN},
-            #{overview,jdbcType=LONGVARCHAR}, #{imageUrl,jdbcType=VARCHAR}, #{homepage,jdbcType=VARCHAR}
+            #{overview,jdbcType=LONGVARCHAR}, #{imageUrl,jdbcType=VARCHAR}, #{homepage,jdbcType=VARCHAR}, #{displayYn,jdbcType=BOOLEAN}
         )
         ON DUPLICATE KEY UPDATE
             event_type = VALUES(event_type),
@@ -40,7 +41,8 @@
             free_yn = VALUES(free_yn),
             overview = VALUES(overview),
             image_url = VALUES(image_url),
-            homepage = VALUES(homepage)
+            homepage = VALUES(homepage),
+            display_yn = VALUES(display_yn)
     </insert>
 
 </mapper>
