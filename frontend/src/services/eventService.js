@@ -6,6 +6,21 @@ const USE_MOCK_API = import.meta.env.VITE_USE_EVENT_MOCK_API !== undefined
   ? import.meta.env.VITE_USE_EVENT_MOCK_API === 'true'
   : import.meta.env.VITE_USE_MOCK_API === 'true'
 
+export async function getEventDetail(eventId) {
+  try {
+    const response = await api.get(
+      `/api/events/${encodeURIComponent(eventId)}`
+    )
+    return response.data.data
+  } catch (error) {
+    const eventError = new Error(
+      error.response?.data?.message || '행사 정보를 불러오지 못했습니다.'
+    )
+    eventError.status = error.response?.status
+    throw eventError
+  }
+}
+
 // API-EVENT-003: GET /api/events/months/{YYYY-MM}
 export async function getMonthlyEvents(month, { category, page, size } = {}) {
   if (USE_MOCK_API) {
