@@ -19,3 +19,11 @@ server:
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:3600000}
+
+seoul:
+  api:
+    key: ${SEOUL_CULTURE_API_KEY:}
+
+batch:
+  event:
+    initial-load: ${BATCH_EVENT_INITIAL_LOAD:false}
