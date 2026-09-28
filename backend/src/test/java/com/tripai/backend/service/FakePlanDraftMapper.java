@@ -222,7 +222,7 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .visitStartTime(plan.getVisitStartTime())
                 .visitEndTime(plan.getVisitEndTime())
                 .saveYn(before.getSaveYn())
-                .aiYn(before.getAiYn())
+                .aiYn(plan.getAiYn())
                 .transportMd(plan.getTransportMd())
                 .foodPreference(plan.getFoodPreference())
                 .mealType(plan.getMealType())

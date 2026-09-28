@@ -1,9 +1,15 @@
 package com.tripai.backend.service;
 
+import com.tripai.backend.domain.dto.AiPlanInput;
+import com.tripai.backend.domain.dto.AiPlanResponse;
 import com.tripai.backend.domain.dto.DraftConditionsRequest;
 import com.tripai.backend.domain.dto.DraftConditionsResponse;
 import com.tripai.backend.domain.dto.DraftResponse;
+import com.tripai.backend.domain.dto.EventCandidate;
+import com.tripai.backend.domain.dto.PlanGenerateRequest;
+import com.tripai.backend.domain.dto.PlanScheduleItem;
 import com.tripai.backend.domain.dto.PlanRecommendRequest;
+import com.tripai.backend.domain.dto.RestaurantCandidate;
 import com.tripai.backend.domain.entity.PlanItemView;
 import com.tripai.backend.domain.entity.RecommendEventView;
 import com.tripai.backend.domain.entity.RestaurantView;
@@ -21,11 +27,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -33,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 나의 일정 초안 추천 — API-PLAN-001 생성, 003 조건 수정, 004 다시 추천 (AI-002·004·005·009·010, FOOD-002).
- * AI 연동 전이라 규칙 기반으로 만든다 (ai_yn = FALSE).
+ * 아래 규칙 기반 결과를 기본으로 만들고(ai_yn = FALSE), 키가 있으면 AI 결과가 검사를 통과할 때만 그것을 쓴다(ai_yn = TRUE).
  *
  * 규칙 — 명세에 값이 없어 정한 부분은 docs/07 [제안]
  * 1. 여행 날짜는 오늘 이후이고 행사가 그날 진행 중이어야 한다 (아니면 400 행사일 불일치).
@@ -42,6 +52,12 @@ import org.springframework.transaction.annotation.Transactional;
  * 4. 맛집은 선택한 음식 종류 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을
  *    행사장에서 가까운 순으로 고른다 (반경 1.5km → 3km → 5km).
  * 5. 맛집을 하나도 못 찾으면 초안을 만들거나 바꾸지 않고 422 (추천 후보 부족).
+ *
+ * AI 추천 (OPENAI_API_KEY 가 있을 때, docs/07 [제안])
+ * - 위 규칙으로 만든 결과를 기본값으로 두고, 선택 행사 + 주변 맛집 후보로 AI(ApiPlanService)에 일정을 맡긴다.
+ * - AI 결과는 서버에서 다시 검사한다 (행사 1개·고정 시간, 후보 안의 맛집, 식사 시간대·영업시간·브레이크, 시간 겹침·범위,
+ *   규칙 기반보다 식사 수가 적지 않은지, 다시 추천이면 지금 일정과 다른지).
+ * - 키가 없거나, 호출이 실패하거나, 검사에 걸리면 규칙 기반 결과를 쓴다 → 사용자에게는 항상 규칙에 맞는 일정이 나간다.
  */
 @Service
 public class PlanRecommendService {
@@ -53,6 +69,11 @@ public class PlanRecommendService {
     static final int[] SEARCH_RADII = {1500, 3000, 5000};
     static final int CANDIDATE_LIMIT = 20;
     static final int DAY_MINUTES = 24 * 60;
+    static final int AI_CANDIDATE_LIMIT = 15;
+    static final int MIN_EVENT_DURATION = 30;
+    static final int MAX_EVENT_DURATION = 360;
+    static final int MIN_MEAL_DURATION = 30;
+    static final int MAX_MEAL_DURATION = 120;
 
     private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm");
     private static final Map<String, String> CUISINE_LABELS = Map.of(
@@ -75,20 +96,42 @@ public class PlanRecommendService {
     private final PlaceMapper placeMapper;
     private final PlanDraftService planDraftService;
     private final Clock clock;
+    private final AiPlanClient aiPlanClient;
+
+    private static final Logger log = LoggerFactory.getLogger(PlanRecommendService.class);
+
+    /** AI 를 쓰지 않는 경우 (테스트 기본값) */
+    static final AiPlanClient AI_DISABLED = new AiPlanClient() {
+        @Override
+        public boolean isEnabled() {
+            return false;
+        }
+
+        @Override
+        public AiPlanResponse generate(AiPlanInput input) {
+            throw new IllegalStateException("AI 를 쓰지 않습니다.");
+        }
+    };
 
     @Autowired
     public PlanRecommendService(PlanDraftMapper planDraftMapper, PlaceMapper placeMapper,
-                                PlanDraftService planDraftService) {
-        this(planDraftMapper, placeMapper, planDraftService, Clock.system(ZoneId.of("Asia/Seoul")));
+                                PlanDraftService planDraftService, AiPlanClient aiPlanClient) {
+        this(planDraftMapper, placeMapper, planDraftService, Clock.system(ZoneId.of("Asia/Seoul")), aiPlanClient);
     }
 
-    // 오늘 날짜를 테스트에서 고정하려고 둔 생성자
+    // 오늘 날짜를 테스트에서 고정하려고 둔 생성자 (AI 없이 규칙 기반만)
     PlanRecommendService(PlanDraftMapper planDraftMapper, PlaceMapper placeMapper,
                          PlanDraftService planDraftService, Clock clock) {
+        this(planDraftMapper, placeMapper, planDraftService, clock, AI_DISABLED);
+    }
+
+    PlanRecommendService(PlanDraftMapper planDraftMapper, PlaceMapper placeMapper,
+                         PlanDraftService planDraftService, Clock clock, AiPlanClient aiPlanClient) {
         this.planDraftMapper = planDraftMapper;
         this.placeMapper = placeMapper;
         this.planDraftService = planDraftService;
         this.clock = clock;
+        this.aiPlanClient = aiPlanClient;
     }
 
     /** API-PLAN-001 문화행사 1개 기준 맛집 조합 초안 생성 */
@@ -104,11 +147,11 @@ public class PlanRecommendService {
         TripPlan plan = TripPlan.builder()
                 .userId(userId)
                 .anchorContentId(event.getEventContentId())
-                .title(defaultTitle(request.visitDate(), event.getEventName()))
+                .title(generated.title() != null ? generated.title() : defaultTitle(request.visitDate(), event.getEventName()))
                 .tripDate(request.visitDate())
                 .visitStartTime(generated.windowStart())
                 .visitEndTime(generated.windowEnd())
-                .aiYn(false)
+                .aiYn(generated.aiUsed())
                 .transportMd(request.transportMode())
                 .foodPreference(foodPreference)
                 .mealType(mealType)
@@ -145,7 +188,7 @@ public class PlanRecommendService {
         Generated generated = generate(event, visitDate, start, end, foodPreference, mealType, List.of());
 
         TripPlan updated = copyConditions(plan, visitDate, generated.windowStart(), generated.windowEnd(),
-                transportMode, foodPreference, mealType);
+                transportMode, foodPreference, mealType, generated.aiUsed());
         planDraftMapper.updateConditions(updated);
         planDraftMapper.deleteItemsByPlanId(draftId);
         insertItems(draftId, generated.items());
@@ -172,7 +215,7 @@ public class PlanRecommendService {
         }
 
         planDraftMapper.updateConditions(copyConditions(plan, plan.getTripDate(), generated.windowStart(),
-                generated.windowEnd(), plan.getTransportMd(), foodPreference, plan.getMealType()));
+                generated.windowEnd(), plan.getTransportMd(), foodPreference, plan.getMealType(), generated.aiUsed()));
         planDraftMapper.deleteItemsByPlanId(draftId);
         insertItems(draftId, generated.items());
         return planDraftService.getDraft(userId, draftId);
@@ -256,7 +299,204 @@ public class PlanRecommendService {
                 .ifPresent(result -> {
                     throw new IllegalStateException("추천 결과가 일정 규칙에 맞지 않습니다: " + result.message());
                 });
-        return new Generated(windowStart, windowEnd, items);
+        Generated ruleBased = new Generated(windowStart, windowEnd, items, false, null);
+
+        if (!aiPlanClient.isEnabled()) {
+            return ruleBased;
+        }
+        // 다시 추천에서는 지금 조건에 맞는지와 상관없이 지금 일정의 맛집은 모두 AI 후보에서 뺀다
+        Set<String> currentPlaces = new HashSet<>();
+        currentItems.stream().map(PlanItemView::getPlaceContentId).filter(Objects::nonNull).forEach(currentPlaces::add);
+        int ruleBasedMeals = (int) items.stream().filter(item -> !"EVENT".equals(item.getItemType())).count();
+        return tryAi(event, visitDate, windowStart, windowEnd, eventStart, eventEnd, foodPreference, mealType, meals,
+                ruleBasedMeals, currentPlaces, currentItems).orElse(ruleBased);
+    }
+
+    /**
+     * 선택 행사 + 주변 맛집 후보로 AI 에 일정을 맡기고, 서버 규칙을 모두 통과할 때만 쓴다.
+     * 실패·규칙 위반이면 빈 값 → 규칙 기반 결과를 쓴다.
+     */
+    private Optional<Generated> tryAi(RecommendEventView event, LocalDate visitDate, LocalTime windowStart, LocalTime windowEnd,
+                                      LocalTime eventStart, LocalTime eventEnd, String foodPreference, String mealType,
+                                      List<MealType> meals, int ruleBasedMeals, Set<String> avoidPlaces,
+                                      List<PlanItemView> currentItems) {
+        Map<String, RestaurantView> restaurants = aiRestaurantCandidates(event, foodPreference, avoidPlaces);
+        if (restaurants.isEmpty()) {
+            return Optional.empty();
+        }
+        AiPlanInput input = AiPlanInput.builder()
+                .userConditions(PlanGenerateRequest.builder()
+                        .tripDate(visitDate)
+                        .visitStartTime(format(windowStart))
+                        .visitEndTime(format(windowEnd))
+                        .foodPreference(foodPreference)
+                        .mealType(mealType)
+                        .requiredEventId(event.getEventContentId())
+                        .build())
+                .eventCandidates(List.of(EventCandidate.builder()
+                        .eventContentId(event.getEventContentId())
+                        .eventName(event.getEventName())
+                        .eventType(event.getEventType())
+                        .districtName(event.getDistrictName())
+                        .eventPlace(event.getEventPlace())
+                        .freeYn(event.getFreeYn())
+                        .eventStartDate(event.getEventStartDate())
+                        .eventEndDate(event.getEventEndDate())
+                        .eventStartTime(event.getEventStartTime())
+                        .eventEndTime(event.getEventEndTime())
+                        .dateText(event.getDateText())
+                        .build()))
+                .restaurantCandidates(restaurants.values().stream()
+                        .map(restaurant -> RestaurantCandidate.builder()
+                                .contentId(restaurant.getContentId())
+                                .placeName(restaurant.getPlaceName())
+                                .addr(restaurant.getAddr())
+                                .cuisineType(restaurant.getCuisineType())
+                                .openTime(restaurant.getOpenTime())
+                                .closeTime(restaurant.getCloseTime())
+                                .breakOpenTime(restaurant.getBreakOpenTime())
+                                .breakCloseTime(restaurant.getBreakCloseTime())
+                                .distanceMeters(Math.round(restaurant.getDistance()))
+                                .build())
+                        .toList())
+                .build();
+        try {
+            AiPlanResponse response = aiPlanClient.generate(input);
+            List<TripItem> items = toAiItems(response, event, eventStart, eventEnd, restaurants, meals, windowStart, windowEnd);
+            long aiMeals = items.stream().filter(item -> !"EVENT".equals(item.getItemType())).count();
+            if (aiMeals < ruleBasedMeals) {
+                // 규칙 기반으로는 채운 식사를 AI 가 빼먹으면 일정이 줄어드므로 쓰지 않는다
+                throw new IllegalStateException("식사 " + aiMeals + "번 (규칙 기반 " + ruleBasedMeals + "번)");
+            }
+            if (!currentItems.isEmpty() && sameItems(currentItems, items)) {
+                throw new IllegalStateException("지금 일정과 같은 결과");
+            }
+            return Optional.of(new Generated(windowStart, windowEnd, items, true, aiTitle(response.getTitle())));
+        } catch (RuntimeException exception) {
+            log.warn("AI 일정 생성 결과를 쓰지 않고 규칙 기반 추천으로 대체합니다: {}", exception.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /** AI 에 넘길 맛집 후보 — 영업시간을 아는 곳 중 행사장에서 가까운 순 최대 15곳 (다시 추천에서는 지금 맛집 제외) */
+    private Map<String, RestaurantView> aiRestaurantCandidates(RecommendEventView event, String foodPreference,
+                                                               Set<String> avoidPlaces) {
+        double lat = event.getMapy().doubleValue();
+        double lng = event.getMapx().doubleValue();
+        Map<String, RestaurantView> candidates = new LinkedHashMap<>();
+        for (int radius : SEARCH_RADII) {
+            double latDelta = radius / PlaceService.METERS_PER_DEGREE_LAT * PlaceService.BOX_MARGIN;
+            double lngDelta = radius / (PlaceService.METERS_PER_DEGREE_LAT * Math.cos(Math.toRadians(lat)))
+                    * PlaceService.BOX_MARGIN;
+            placeMapper.findRestaurantsNear(lat, lng, radius, lat - latDelta, lat + latDelta, lng - lngDelta, lng + lngDelta,
+                            foodPreference, null, AI_CANDIDATE_LIMIT * 3, 0)
+                    .stream()
+                    .filter(restaurant -> restaurant.getOpenTime() != null && restaurant.getCloseTime() != null)
+                    .filter(restaurant -> !avoidPlaces.contains(restaurant.getContentId()))
+                    .limit(AI_CANDIDATE_LIMIT)
+                    .forEach(restaurant -> candidates.putIfAbsent(restaurant.getContentId(), restaurant));
+            if (candidates.size() >= AI_CANDIDATE_LIMIT / 2) {
+                break;
+            }
+        }
+        return candidates;
+    }
+
+    /** AI 결과를 일정 항목으로 바꾸면서 서버 규칙을 모두 확인한다. 하나라도 어기면 예외 */
+    private static List<TripItem> toAiItems(AiPlanResponse response, RecommendEventView event, LocalTime eventStart,
+                                            LocalTime eventEnd, Map<String, RestaurantView> restaurants, List<MealType> meals,
+                                            LocalTime windowStart, LocalTime windowEnd) {
+        List<PlanScheduleItem> schedule = response.getSchedule();
+        if (schedule == null || schedule.isEmpty()) {
+            throw new IllegalStateException("일정 없음");
+        }
+        List<TripItem> items = new ArrayList<>();
+        Set<MealType> usedMeals = new HashSet<>();
+        Set<String> usedPlaces = new HashSet<>();
+        int eventCount = 0;
+
+        for (PlanScheduleItem scheduled : schedule) {
+            LocalTime start = LocalTime.parse(scheduled.getStartTime().trim());
+            LocalTime end = LocalTime.parse(scheduled.getEndTime().trim());
+            int duration = minutes(end) - minutes(start);
+            String reason = aiReason(scheduled.getReason());
+
+            if ("EVENT".equals(scheduled.getPlaceType())) {
+                eventCount++;
+                if (!event.getEventContentId().equals(scheduled.getPlaceContentId())) {
+                    throw new IllegalStateException("선택 행사가 아닌 행사");
+                }
+                boolean fixed = event.getEventStartTime() != null;
+                if (fixed && (!start.equals(eventStart) || end.isAfter(eventEnd))) {
+                    throw new IllegalStateException("행사 고정 시간 변경 " + start + "~" + end);
+                }
+                if (duration < MIN_EVENT_DURATION || duration > MAX_EVENT_DURATION) {
+                    throw new IllegalStateException("행사 소요시간 " + duration + "분");
+                }
+                items.add(TripItem.builder().itemType("EVENT").eventContentId(event.getEventContentId())
+                        .startTime(start).durationMin(duration).aiReason(reason).timeFixYn(fixed).build());
+            } else {
+                RestaurantView restaurant = restaurants.get(scheduled.getPlaceContentId());
+                if (restaurant == null || !usedPlaces.add(restaurant.getContentId())) {
+                    throw new IllegalStateException("후보 밖이거나 두 번 넣은 식당 " + scheduled.getPlaceContentId());
+                }
+                MealType meal = mealOf(start);
+                if (meal == null || !meals.contains(meal) || !usedMeals.add(meal)) {
+                    throw new IllegalStateException("식사 시간대가 아님 " + start);
+                }
+                if (duration < MIN_MEAL_DURATION || duration > MAX_MEAL_DURATION
+                        || !openDuring(restaurant.getOpenTime(), restaurant.getCloseTime(),
+                        restaurant.getBreakOpenTime(), restaurant.getBreakCloseTime(), start, duration)) {
+                    throw new IllegalStateException("영업시간·브레이크 밖 " + restaurant.getPlaceName() + " " + start);
+                }
+                items.add(TripItem.builder().itemType("PLACE").placeContentId(restaurant.getContentId())
+                        .startTime(start).durationMin(duration).aiReason(reason).timeFixYn(false).build());
+            }
+        }
+        if (eventCount != 1 || usedMeals.isEmpty()) {
+            throw new IllegalStateException("행사 " + eventCount + "개, 식사 " + usedMeals.size() + "번");
+        }
+
+        items.sort(Comparator.comparing(TripItem::getStartTime));
+        List<PlanItemRules.Candidate> candidates = new ArrayList<>();
+        for (int index = 0; index < items.size(); index++) {
+            TripItem item = items.get(index);
+            candidates.add(new PlanItemRules.Candidate(item.getItemType(), contentIdOf(item),
+                    "", item.getStartTime(), item.getDurationMin(), index + 1));
+        }
+        PlanItemRules.check(candidates, event.getEventContentId(), windowStart, windowEnd, true)
+                .ifPresent(result -> {
+                    throw new IllegalStateException("일정 규칙 위반: " + result.message());
+                });
+        return items;
+    }
+
+    /** AI 가 정한 식사 시작 시각이 점심(11:00~14:30)·저녁(17:00~20:30) 중 어디인지 */
+    private static MealType mealOf(LocalTime start) {
+        if (!start.isBefore(LocalTime.of(11, 0)) && !start.isAfter(LocalTime.of(14, 30))) {
+            return MealType.LUNCH;
+        }
+        if (!start.isBefore(LocalTime.of(17, 0)) && !start.isAfter(LocalTime.of(20, 30))) {
+            return MealType.DINNER;
+        }
+        return null;
+    }
+
+    /** 추천 이유는 DB 에 100자까지 저장된다 */
+    private static String aiReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        return trimmed.length() > 100 ? trimmed.substring(0, 100) : trimmed;
+    }
+
+    /** AI-008 일정 제목 — 비어 있거나 100자를 넘으면 쓰지 않고 기본 제목을 쓴다 */
+    private static String aiTitle(String title) {
+        if (title == null || title.isBlank() || title.trim().length() > 100) {
+            return null;
+        }
+        return title.trim();
     }
 
     private void insertItems(Long tripPlanId, List<TripItem> items) {
@@ -343,7 +583,7 @@ public class PlanRecommendService {
     }
 
     private static TripPlan copyConditions(TripPlan plan, LocalDate visitDate, LocalTime start, LocalTime end,
-                                           String transportMode, String foodPreference, String mealType) {
+                                           String transportMode, String foodPreference, String mealType, boolean aiYn) {
         return TripPlan.builder()
                 .tripPlanId(plan.getTripPlanId())
                 .userId(plan.getUserId())
@@ -354,7 +594,7 @@ public class PlanRecommendService {
                 .visitStartTime(start)
                 .visitEndTime(end)
                 .saveYn(plan.getSaveYn())
-                .aiYn(plan.getAiYn())
+                .aiYn(aiYn)
                 .transportMd(transportMode)
                 .foodPreference(foodPreference)
                 .mealType(mealType)
@@ -463,6 +703,12 @@ public class PlanRecommendService {
 
     private static boolean openDuringMeal(LocalTime open, LocalTime close, LocalTime breakOpen, LocalTime breakClose,
                                           LocalTime start) {
+        return openDuring(open, close, breakOpen, breakClose, start, MEAL_DURATION);
+    }
+
+    /** start 부터 duration 분 동안 영업하고 브레이크타임과 겹치지 않는지 */
+    private static boolean openDuring(LocalTime open, LocalTime close, LocalTime breakOpen, LocalTime breakClose,
+                                      LocalTime start, int duration) {
         if (open == null || close == null) {
             return false;
         }
@@ -471,7 +717,7 @@ public class PlanRecommendService {
         // 식사를 그날 기준과, 전날 밤부터 이어진 영업(예: 17:00~02:00 가게의 00:30 식사) 기준 두 가지로 본다
         for (int shift : new int[] {0, DAY_MINUTES}) {
             int from = minutes(start) + shift;
-            int to = from + MEAL_DURATION;
+            int to = from + duration;
             if (from >= openAt && to <= closeAt && !overlapsBreak(breakOpen, breakClose, from, to)) {
                 return true;
             }
@@ -575,7 +821,8 @@ public class PlanRecommendService {
         return time == null ? null : time.format(HH_MM);
     }
 
-    record Generated(LocalTime windowStart, LocalTime windowEnd, List<TripItem> items) {
+    /** aiUsed 면 AI 가 만든 일정(ai_yn = TRUE), title 은 AI 제목(없으면 null) */
+    record Generated(LocalTime windowStart, LocalTime windowEnd, List<TripItem> items, boolean aiUsed, String title) {
     }
 
     /** 지금 초안의 맛집 id 와 식사 시작 시각별 거리 */

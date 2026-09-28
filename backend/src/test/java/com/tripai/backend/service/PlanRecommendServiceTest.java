@@ -56,8 +56,8 @@ class PlanRecommendServiceTest {
                     .filter(r -> r.getDistance() <= radius)
                     .filter(r -> "ALL".equals(cuisineType) ? RECOMMENDABLE.contains(r.getCuisineType())
                             : r.getCuisineType().equals(cuisineType))
-                    .filter(r -> r.getOpenTime() != null && r.getCloseTime() != null
-                            && !mealTime.isBefore(r.getOpenTime()) && mealTime.isBefore(r.getCloseTime()))
+                    .filter(r -> mealTime == null || (r.getOpenTime() != null && r.getCloseTime() != null
+                            && !mealTime.isBefore(r.getOpenTime()) && mealTime.isBefore(r.getCloseTime())))
                     .sorted(Comparator.comparing(RestaurantView::getDistance))
                     .skip(offset)
                     .limit(limit)

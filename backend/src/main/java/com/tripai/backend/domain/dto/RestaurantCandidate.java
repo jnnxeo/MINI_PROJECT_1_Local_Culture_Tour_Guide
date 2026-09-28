@@ -1,38 +1,24 @@
 package com.tripai.backend.domain.dto;
 
+import java.time.LocalTime;
 import lombok.Builder;
 import lombok.Getter;
 
-import java.math.BigDecimal;
-import java.time.LocalTime;
-
+/** 일정에 넣을 수 있는 맛집 후보 — 행사장 주변에서 서버가 미리 고른다 */
 @Getter
 @Builder
 public class RestaurantCandidate {
-
     // place.content_id
     private String contentId;
-
-    // place.content_type_cd
-    // 맛집만 조회한다면 FOOD 타입 코드로 고정된 후보가 들어옴
-    private Integer contentTypeCd;
-
-    // 장소 기본 정보
     private String placeName;
     private String addr;
-    private String districtName;
-    private String activityLabelName;
-    private Integer defaultDurationMin;
-
-    // 영업 가능 여부 판단용
+    // KOREAN·CHINESE·JAPANESE·WESTERN
+    private String cuisineType;
+    // 영업 가능 여부 판단용 (openTime = closeTime 이면 24시간 영업)
     private LocalTime openTime;
     private LocalTime closeTime;
     private LocalTime breakOpenTime;
     private LocalTime breakCloseTime;
-    private String businessHoursText;
-
-    // 지도·화면 표시용
-    private BigDecimal mapx; // 경도
-    private BigDecimal mapy; // 위도
-    private String imageUrl;
+    // 행사장에서의 직선거리(m)
+    private Long distanceMeters;
 }

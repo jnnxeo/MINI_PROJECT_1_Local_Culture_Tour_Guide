@@ -1,181 +1,137 @@
 package com.tripai.backend.service;
 
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-
+import com.tripai.backend.domain.dto.AiPlanInput;
+import com.tripai.backend.domain.dto.AiPlanResponse;
+import com.tripai.backend.domain.dto.EventCandidate;
+import com.tripai.backend.domain.dto.PlanScheduleItem;
+import com.tripai.backend.domain.dto.RestaurantCandidate;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
-import com.tripai.backend.domain.dto.AiPlanInput;
-import com.tripai.backend.domain.dto.AiPlanResponse;
-import com.tripai.backend.domain.dto.EventCandidate;
-import com.tripai.backend.domain.dto.PlanGenerateRequest;
-import com.tripai.backend.domain.dto.PlanScheduleItem;
-import com.tripai.backend.domain.dto.RestaurantCandidate;
-
-@Service 
-@RequiredArgsConstructor 
-public class ApiPlanService {
-    private static final String OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-    private final ObjectMapper objectMapper;
-    private final HttpClient httpClient = HttpClient.newHttpClient();
-
-    @Value("${openai.api-key}")
-    private String apiKey;
-
-    @Value("${openai.model}")
-    private String model;
+/**
+ * OpenAI Responses API 로 일정 초안을 만든다 (AI-002·007·008, 외부 AI 연동은 docs/07 [제안]).
+ * 키는 각자 backend/.env 의 OPENAI_API_KEY 에만 둔다. 키가 없으면 isEnabled() 가 false 라 호출하지 않는다.
+ */
+@Service
+public class ApiPlanService implements AiPlanClient {
 
     private static final String PLAN_GENERATION_PROMPT = """
-        당신은 서울 문화행사 기반 당일치기 여행 일정 추천 전문가입니다.
-
-        아래 INPUT_JSON에는 사용자의 여행 조건과 DB에서 사전 조회한 행사·맛집 후보가 포함되어 있습니다.
-        오직 INPUT_JSON의 후보 데이터만 사용하여, 사용자가 실행할 수 있는 하루 일정을 구성하세요.
-
-        [입력 데이터 해석]
-        - userConditions: 사용자가 선택한 여행 날짜, 인원, 이동수단, 관심사, 행사 유형, 지역, 무료 여부 조건입니다.
-        - eventCandidates: 여행 날짜와 조건을 기준으로 DB에서 조회된 행사 후보입니다.
-        - restaurantCandidates: 행사 후보 주변 반경에서 조회된 맛집 후보입니다.
-        - requiredEventId가 null이 아니면, eventCandidates 중 eventContentId가 requiredEventId와 같은 행사를 반드시 포함해야 합니다.
+        당신은 서울 문화행사를 기준으로 당일 여행 일정을 짜는 도우미입니다.
+        아래 INPUT_JSON에는 사용자의 조건(userConditions)과 서버가 미리 고른 행사 후보(eventCandidates)·맛집 후보(restaurantCandidates)가 들어 있습니다.
+        오직 INPUT_JSON에 있는 후보만 사용해 하루 일정을 만들고, 결과는 JSON으로만 답하세요.
 
         [필수 규칙]
-        1. eventCandidates와 restaurantCandidates에 없는 장소·행사는 절대로 추가하지 마세요.
-        2. 행사 일정에는 eventCandidates.eventContentId를, 식당 일정에는 restaurantCandidates.contentId를
-        placeContentId에 원문 그대로 반환하세요.
-        3. requiredEventId가 존재하면 해당 행사를 반드시 포함하세요.
-        해당 ID의 행사가 후보 목록에 없으면 일정을 임의로 만들지 말고 issues에 사유를 작성하세요.
-        4. userConditions.tripDate가 eventStartDate와 eventEndDate 사이에 포함되는 행사만 선택하세요.
-        5. eventStartTime과 eventEndTime이 모두 존재하면 해당 시간 범위 안에 행사를 배치하세요.
-        6. 식당은 openTime~closeTime 사이에만 배치하고,
-        breakOpenTime~breakCloseTime과 겹치지 않게 배치하세요.
-        7. 점심 식사는 11:30~14:00, 저녁 식사는 17:30~20:00 사이를 우선 고려하세요.
-        8. 사용자의 interests, eventTypes, districts, freeOnly 조건을 우선 반영하세요.
-        9. 후보 장소는 반경 기준으로 사전 조회된 데이터입니다.
-        mapx, mapy가 가까운 장소를 연속 배치하여 동선이 단순하도록 구성하세요.
-        10. 정확한 이동시간은 계산하거나 단정하지 마세요.
-            transportation에는 userConditions.transportation에 포함된 값 중 하나만 사용하세요.
-        11. 하루 일정은 행사 1~3개와 식사 1~2개를 적절히 포함하세요.
-            단, 조건에 맞는 후보가 부족하면 무리하게 채우지 마세요.
-        12. 행사 시간이 없으면 90~120분을 기본 관람 시간으로 배정할 수 있습니다.
-            이 경우 note에 "행사 운영시간 확인 필요"를 작성하세요.
-        13. 일정 시작은 10:00 이후, 마지막 일정 종료는 20:00 이전을 우선으로 구성하세요.
+        1. 행사는 userConditions.requiredEventId와 eventContentId가 같은 행사 1개만 넣습니다. 다른 행사는 넣지 않습니다.
+        2. 그 행사에 eventStartTime이 있으면 startTime은 반드시 eventStartTime과 같아야 하고, endTime은 eventEndTime을 넘지 않습니다.
+           eventStartTime이 없으면 방문 가능 시간 안에서 90~120분을 배정하고, reason에 "행사 운영시간 확인 필요"를 적습니다.
+        3. 식당은 restaurantCandidates의 contentId를 그대로 쓰고, 같은 식당을 두 번 넣지 않습니다.
+        4. 식사 횟수: userConditions.mealType이 LUNCH면 점심 1번, DINNER면 저녁 1번, BOTH이거나 없으면 점심·저녁 각 1번입니다(맞는 후보가 없으면 가능한 만큼만).
+           점심은 11:00~14:30 사이에, 저녁은 17:00~20:30 사이에 시작하고 식사는 60분으로 합니다.
+        5. 식당은 openTime~closeTime 안에만 두고 breakOpenTime~breakCloseTime과 겹치지 않게 합니다. openTime과 closeTime이 같으면 24시간 영업입니다.
+        6. 모든 일정은 userConditions.visitStartTime~visitEndTime 안에 두고, 일정끼리 시간이 겹치지 않게 합니다.
+        7. foodPreference가 ALL이 아니면 cuisineType이 같은 식당만 고르고, 그중 distanceMeters가 작은(가까운) 곳을 우선합니다.
+        8. reason은 80자 이내 한국어로, INPUT_JSON에 있는 정보(거리, 영업시간, 음식 종류, 행사 일시 문구 등)만 근거로 씁니다. 없는 정보를 지어내지 않습니다.
+        9. title은 행사와 하루의 특징을 담은 30자 이내 한국어 일정 제목입니다.
 
-        [출력 규칙]
-        반드시 아래 JSON 형식만 반환하세요.
-        Markdown, 코드 블록, JSON 이외의 설명은 절대로 작성하지 마세요.
-
-        {
-        "schedule": [
-            {
-            "sequence": 1,
-            "startTime": "10:00",
-            "endTime": "11:30",
-            "placeType": "EVENT",
-            "placeContentId": "eventContentId 또는 contentId 원문",
-            "placeName": "후보 데이터의 행사명 또는 장소명",
-            "reason": "사용자 관심사, 행사 유형, 지역 또는 동선을 고려한 선택 이유",
-            "transportation": "WALK 또는 PUBLIC_TRANSIT 또는 NONE",
-            "note": "운영시간 확인 등 필요한 경우에만 작성, 없으면 빈 문자열"
-            }
-        ],
-        "issues": [
-            "일정 생성에 필요한 후보가 부족하거나 조건 충돌이 있을 때만 작성"
-        ]
-        }
+        [출력 JSON 형식]
+        {"title": "일정 제목",
+         "schedule": [{"sequence": 1, "startTime": "HH:mm", "endTime": "HH:mm", "placeType": "EVENT 또는 RESTAURANT (철자 그대로)",
+                       "placeContentId": "후보의 eventContentId 또는 contentId 원문", "placeName": "후보 이름", "reason": "선택 이유"}],
+         "issues": ["조건을 모두 맞추지 못한 경우에만 사유"]}
+        sequence는 시간 순서대로 1부터 매깁니다. Markdown이나 설명 없이 JSON만 반환합니다.
 
         [INPUT_JSON]
         %s
         """;
 
-    public List<EventCandidate> generateEventCandiate(PlanGenerateRequest request){
-        return null;
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
+    private final String responsesUrl;
+    private final String apiKey;
+    private final String model;
+    private final Duration requestTimeout;
+
+    public ApiPlanService(
+            ObjectMapper objectMapper,
+            @Value("${openai.responses-url:https://api.openai.com/v1/responses}") String responsesUrl,
+            @Value("${openai.api-key:}") String apiKey,
+            @Value("${openai.model:gpt-4.1-mini}") String model,
+            @Value("${openai.timeout-seconds:20}") long timeoutSeconds
+    ) {
+        this.objectMapper = objectMapper;
+        this.responsesUrl = responsesUrl;
+        this.apiKey = apiKey == null ? "" : apiKey.trim();
+        this.model = model;
+        this.requestTimeout = Duration.ofSeconds(timeoutSeconds);
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     }
 
-    public List<RestaurantCandidate> generateRestaurantCandiate(PlanGenerateRequest request){
-        return null;
+    @Override
+    public boolean isEnabled() {
+        return !apiKey.isBlank();
     }
 
-    public List<PlanScheduleItem> generatePlan(AiPlanInput aiPlanInput) {
+    @Override
+    public AiPlanResponse generate(AiPlanInput aiPlanInput) {
+        if (!isEnabled()) {
+            throw new IllegalStateException("OpenAI API 키가 설정되지 않았습니다.");
+        }
         try {
-            // 1. AiPlanInput DTO -> JSON 문자열
             String inputJson = objectMapper.writeValueAsString(aiPlanInput);
 
-            // 2. OpenAI Responses API 요청 JSON 구성
+            // json_object 형식은 input 메시지에 'json' 단어가 있어야 해서, 프롬프트에 데이터를 넣어 input 으로 보낸다
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
-            requestBody.put("instructions", PLAN_GENERATION_PROMPT);
-            requestBody.put("input", inputJson);
+            requestBody.put("input", PLAN_GENERATION_PROMPT.formatted(inputJson));
             requestBody.put("store", false);
-
-            // JSON 형태 응답 강제
-            ObjectNode text = requestBody.putObject("text");
-            ObjectNode format = text.putObject("format");
-            format.put("type", "json_object");
+            requestBody.putObject("text").putObject("format").put("type", "json_object");
 
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(OPENAI_RESPONSES_URL))
+                    .uri(URI.create(responsesUrl))
+                    .timeout(requestTimeout)
                     .header("Content-Type", "application/json")
                     .header("Authorization", "Bearer " + apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(
-                            objectMapper.writeValueAsString(requestBody)
-                    ))
+                    .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(requestBody)))
                     .build();
 
-            // 3. OpenAI API 호출
-            HttpResponse<String> response = httpClient.send(
-                    request,
-                    HttpResponse.BodyHandlers.ofString()
-            );
-
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IllegalStateException(
-                        "OpenAI API 호출 실패: " + response.body()
-                );
+                // 오류 메시지에는 가려진 키 일부가 들어 있어(sk-xxxx****xxxx) 오류 코드·종류만 남긴다
+                JsonNode error = objectMapper.readTree(response.body()).path("error");
+                String code = error.path("code").asText(error.path("type").asText(""));
+                throw new IllegalStateException("OpenAI API 호출 실패 (HTTP " + response.statusCode() + "): " + code);
             }
 
-            // 4. Responses API 응답에서 AI가 작성한 JSON 문자열 추출
-            String aiOutputJson = extractOutputText(response.body());
-
-            // 5. AI JSON -> AiPlanResponse DTO
-            AiPlanResponse aiPlanResponse = objectMapper.readValue(
-                    aiOutputJson,
-                    AiPlanResponse.class
-            );
-
-            // 6. AI가 후보에 없는 ID를 반환하지 않았는지 서버에서 검증
-            validateSchedule(aiPlanResponse.getSchedule(), aiPlanInput);
-
-            // 7. 최종 일정 목록 반환
-            return aiPlanResponse.getSchedule();
-
+            AiPlanResponse aiPlanResponse = objectMapper.readValue(extractOutputText(response.body()), AiPlanResponse.class);
+            validateCandidates(aiPlanResponse.getSchedule(), aiPlanInput);
+            return aiPlanResponse;
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("AI 요청 또는 응답 JSON 변환에 실패했습니다.", e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("AI 일정 생성 요청이 중단되었습니다.", e);
         } catch (IOException e) {
-            throw new IllegalStateException("OpenAI API 통신 중 오류가 발생했습니다.", e);
+            throw new IllegalStateException("OpenAI API 통신 중 오류가 발생했습니다(시간 초과 포함).", e);
         }
     }
 
-    private String extractOutputText(String responseBody)
-            throws JsonProcessingException {
-
+    private String extractOutputText(String responseBody) throws JsonProcessingException {
         JsonNode root = objectMapper.readTree(responseBody);
 
-        // output[0]으로 고정하면 안 됨. output 배열을 순회해야 함.
+        // output 배열 순서가 바뀔 수 있어 첫 번째로 고정하지 않고 모두 살핀다
         for (JsonNode outputItem : root.path("output")) {
             for (JsonNode content : outputItem.path("content")) {
                 if ("output_text".equals(content.path("type").asText())) {
@@ -183,36 +139,34 @@ public class ApiPlanService {
                 }
             }
         }
-
         throw new IllegalStateException("OpenAI 응답에서 일정 JSON을 찾지 못했습니다.");
     }
 
-    private void validateSchedule(
-            List<PlanScheduleItem> schedule,
-            AiPlanInput aiPlanInput
-    ) {
+    /**
+     * AI 가 후보에 없는 행사·식당을 돌려주지 않았는지 확인한다.
+     * placeType 철자를 틀리는 경우가 있어(실제 응답 "RESTARUANT") 종류는 ID 가 어느 후보에 있는지로 정한다.
+     */
+    private void validateCandidates(List<PlanScheduleItem> schedule, AiPlanInput aiPlanInput) {
+        if (schedule == null || schedule.isEmpty()) {
+            throw new IllegalStateException("AI 응답에 일정이 없습니다.");
+        }
         Set<String> eventIds = aiPlanInput.getEventCandidates().stream()
                 .map(EventCandidate::getEventContentId)
                 .collect(Collectors.toSet());
-
         Set<String> restaurantIds = aiPlanInput.getRestaurantCandidates().stream()
                 .map(RestaurantCandidate::getContentId)
                 .collect(Collectors.toSet());
 
         for (PlanScheduleItem item : schedule) {
-            boolean validEvent = "EVENT".equals(item.getPlaceType())
-                    && eventIds.contains(item.getPlaceContentId());
-
-            boolean validRestaurant = "RESTAURANT".equals(item.getPlaceType())
-                    && restaurantIds.contains(item.getPlaceContentId());
-
-            if (!validEvent && !validRestaurant) {
-                throw new IllegalStateException(
-                        "AI가 후보 목록에 없는 장소를 반환했습니다: "
-                                + item.getPlaceContentId()
-                );
+            String id = item.getPlaceContentId();
+            if (eventIds.contains(id) && !restaurantIds.contains(id)) {
+                item.setPlaceType("EVENT");
+            } else if (restaurantIds.contains(id) && !eventIds.contains(id)) {
+                item.setPlaceType("RESTAURANT");
+            } else {
+                throw new IllegalStateException("AI가 후보 목록에 없는 장소를 반환했습니다: "
+                        + item.getPlaceType() + " " + id);
             }
         }
     }
 }
-
