@@ -43,15 +43,14 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(true)
   }
 
-  const logout = async () => {
-    try {
-      await requestLogout()
-    } catch {
-      // 서버 요청 실패와 관계없이 로컬 인증 정보는 제거한다.
-    } finally {
-      clearAuth()
-      setIsAuthenticated(false)
-    }
+  const logout = () => {
+    // 요청 인터셉터가 실행되기 전에 토큰을 보관해 서버 요청에도 전달한다.
+    const accessToken = getAccessToken()
+    clearAuth()
+    setIsAuthenticated(false)
+
+    // Stateless 로그아웃은 로컬 인증 해제로 완료된다. 서버가 응답하지 않아도 화면을 막지 않는다.
+    void requestLogout(accessToken).catch(() => {})
   }
 
   const value = useMemo(() => ({ isAuthenticated, login, logout }), [isAuthenticated])
