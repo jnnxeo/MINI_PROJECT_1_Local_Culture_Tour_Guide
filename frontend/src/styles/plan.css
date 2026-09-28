@@ -518,10 +518,6 @@
   font-size: 14px;
 }
 
-.plan-place__select {
-  width: 100%;
-}
-
 .plan-place-state {
   display: flex;
   flex-direction: column;
@@ -550,24 +546,6 @@
   gap: 20px;
 }
 
-.plan-conditions__row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.plan-conditions__meal {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.plan-conditions__meal-hint {
-  margin: 0;
-  color: var(--tripai-subtle);
-  font-size: 12px;
-}
-
 .plan-conditions__label {
   margin: 0;
   color: var(--tripai-navy);
@@ -575,28 +553,10 @@
   font-weight: 600;
 }
 
-.plan-conditions__interests {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
-
 .plan-conditions__help {
   margin: 0;
   color: var(--tripai-muted);
   font-size: 14px;
-}
-
-.plan-conditions__note {
-  margin: 0;
-  color: var(--tripai-muted);
-  font-size: 12px;
-}
-
-.plan-toggle.is-checked {
-  border-color: var(--tripai-blue);
-  background: var(--tripai-selected);
-  color: var(--tripai-blue);
 }
 
 /* ---------- 반응형 ---------- */
@@ -654,8 +614,442 @@
     height: 120px;
   }
 
-  .plan-conditions__row,
-  .plan-conditions__interests {
-    grid-template-columns: 1fr;
+}
+
+/* ---------- 사용성 개선: 선택 컨트롤·눌림 효과·팝업 등장 (나의 일정 화면 안에서만) ---------- */
+.plan-page {
+  --tripai-blue-strong: #1d4ed8;
+  --tripai-press: scale(0.97);
+  --tripai-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* 버튼·카드는 누르는 순간 살짝 눌리고, 마우스를 올리면 색이 바뀐다 */
+.plan-page .tp-btn {
+  cursor: pointer;
+  transition: transform 0.12s var(--tripai-ease), background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.plan-page .tp-btn:active:not(:disabled) {
+  transform: var(--tripai-press);
+}
+
+.plan-page .tp-btn--primary:hover:not(:disabled) {
+  background: var(--tripai-blue-strong);
+}
+
+.plan-page .tp-btn--secondary:hover:not(:disabled) {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-selected);
+}
+
+/* 팝업은 뒤 배경이 흐려지면서 아래에서 부드럽게 올라온다 */
+.plan-page .tp-modal-backdrop {
+  animation: plan-fade-in 0.18s ease both;
+}
+
+.plan-page .tp-modal {
+  animation: plan-rise-in 0.26s var(--tripai-ease) both;
+}
+
+@keyframes plan-fade-in {
+  from { opacity: 0; }
+}
+
+@keyframes plan-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+}
+
+/* 조건 수정 팝업 구획 */
+.plan-conditions__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-conditions__label small,
+.plan-conditions__line-label small {
+  margin-left: 6px;
+  color: var(--tripai-subtle);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.plan-conditions__readonly {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--tripai-radius-12);
+  background: var(--tripai-canvas);
+}
+
+.plan-conditions__readonly-label {
+  color: var(--tripai-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.plan-conditions__readonly-value {
+  color: var(--tripai-text);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.plan-conditions__readonly-hint {
+  color: var(--tripai-subtle);
+  font-size: 12px;
+}
+
+.plan-conditions__line {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.plan-conditions__line--stack {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.plan-conditions__line-label {
+  color: var(--tripai-navy);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* 체크 카드 — 켜지면 파란색이 입혀지고 동그라미가 채워지며, 세부 선택이 펼쳐진다 */
+.plan-check-card {
+  border: 1.5px solid var(--tripai-line);
+  border-radius: var(--tripai-radius-16);
+  background: var(--tripai-white);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.plan-check-card:hover {
+  border-color: #bfd3fb;
+}
+
+.plan-check-card.is-checked {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-selected);
+  box-shadow: 0 4px 14px rgb(37 99 235 / 12%);
+}
+
+.plan-check-card__head {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--tripai-radius-16);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s var(--tripai-ease);
+}
+
+.plan-check-card__head:active {
+  transform: scale(0.99);
+}
+
+.plan-check-card__head:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.plan-check-card__mark {
+  display: grid;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--tripai-faint);
+  border-radius: 50%;
+  background: var(--tripai-white);
+  color: transparent;
+  place-items: center;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s var(--tripai-ease);
+}
+
+.plan-check-card.is-checked .plan-check-card__mark {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+  transform: scale(1.06);
+}
+
+.plan-check-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-check-card__title {
+  color: var(--tripai-navy);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.plan-check-card.is-checked .plan-check-card__title {
+  color: var(--tripai-blue);
+}
+
+.plan-check-card__desc {
+  color: var(--tripai-muted);
+  font-size: 13px;
+}
+
+/* 세부 선택은 높이를 부드럽게 펼치고 접는다 */
+.plan-check-card__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s var(--tripai-ease);
+}
+
+.plan-check-card.is-checked .plan-check-card__body {
+  grid-template-rows: 1fr;
+}
+
+.plan-check-card__inner {
+  min-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.plan-check-card.is-checked .plan-check-card__inner {
+  padding-bottom: 16px;
+}
+
+/* 칩 — 모든 선택지를 펼쳐 두고, 고른 칩은 채워진 파란색 + 체크 */
+.plan-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.plan-choice__chip {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--tripai-line);
+  border-radius: 999px;
+  background: var(--tripai-white);
+  color: var(--tripai-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s var(--tripai-ease), background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.plan-choice__chip:hover:not(:disabled):not(.is-selected) {
+  border-color: var(--tripai-blue);
+  color: var(--tripai-blue);
+}
+
+.plan-choice__chip:active:not(:disabled) {
+  transform: var(--tripai-press);
+}
+
+.plan-choice__chip:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.plan-choice__chip.is-selected {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+}
+
+.plan-choice__chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.plan-choice__check {
+  display: inline-grid;
+  width: 0;
+  overflow: hidden;
+  place-items: center;
+  transition: width 0.15s ease;
+}
+
+.plan-choice__chip.is-selected .plan-choice__check {
+  width: 14px;
+}
+
+/* 세그먼트 — 고른 쪽으로 흰 배경이 미끄러져 간다 */
+.plan-segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--plan-seg-count), 1fr);
+  padding: 4px;
+  border-radius: var(--tripai-radius-12);
+  background: var(--tripai-canvas);
+}
+
+.plan-segmented__thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc((100% - 8px) / var(--plan-seg-count));
+  border-radius: 10px;
+  background: var(--tripai-white);
+  box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
+  transform: translateX(calc(100% * var(--plan-seg-index)));
+  transition: transform 0.25s var(--tripai-ease);
+}
+
+.plan-segmented__option {
+  position: relative;
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--tripai-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.plan-segmented__option.is-selected {
+  color: var(--tripai-blue);
+  font-weight: 700;
+}
+
+.plan-segmented__option:focus-visible {
+  border-radius: 10px;
+  outline: 3px solid rgb(37 99 235 / 35%);
+}
+
+/* 스테퍼 — −/+ 로 인원을 바꾼다 */
+.plan-stepper {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--tripai-canvas);
+}
+
+.plan-stepper__button {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tripai-white);
+  color: var(--tripai-blue);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 10%);
+  transition: transform 0.12s var(--tripai-ease), opacity 0.15s ease;
+}
+
+.plan-stepper__button:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.plan-stepper__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.plan-stepper__value {
+  min-width: 44px;
+  color: var(--tripai-navy);
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* 장소 검색 카드 — 카드 전체가 버튼, 고르면 파란 테두리·배경과 체크 배지 */
+.plan-page .plan-place {
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s var(--tripai-ease), border-color 0.15s ease, background-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.plan-page .plan-place:hover:not(:disabled) {
+  border-color: #bfd3fb;
+  background: var(--tripai-white);
+}
+
+.plan-page .plan-place:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.plan-page .plan-place:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.plan-page .plan-place.is-selected {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-selected);
+  box-shadow: 0 4px 14px rgb(37 99 235 / 14%);
+}
+
+.plan-page .plan-place.is-used {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.plan-page .plan-place__name,
+.plan-page .plan-place__meta {
+  display: block;
+}
+
+.plan-place__badge {
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--tripai-white);
+  color: var(--tripai-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-place.is-selected .plan-place__badge {
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+}
+
+/* 입력 칸 안내 문구는 입력한 글자와 헷갈리지 않게 연하게 */
+.plan-page .tp-field input::placeholder {
+  color: var(--tripai-subtle);
+  font-weight: 500;
+}
+
+/* 머무는 시간 칩(시간 변경 팝업)도 같은 눌림·선택 효과 */
+.plan-chip {
+  cursor: pointer;
+  transition: transform 0.12s var(--tripai-ease), background-color 0.15s ease, color 0.15s ease;
+}
+
+.plan-chip:active {
+  transform: var(--tripai-press);
+}
+
+/* 움직임 줄이기를 켠 사용자에게는 애니메이션을 끈다 */
+@media (prefers-reduced-motion: reduce) {
+  .plan-page *,
+  .plan-page *::before,
+  .plan-page *::after {
+    animation: none !important;
+    transition: none !important;
   }
 }
