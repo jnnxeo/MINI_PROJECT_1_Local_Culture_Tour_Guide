@@ -19,7 +19,7 @@ function formatFee(event) {
   return '요금 정보 없음'
 }
 
-export default function SearchResultCard({ event, onDetail }) {
+export default function SearchResultCard({ event, onDetail, isFavorite = false, favoritePending = false, onFavorite }) {
   const [failedImageUrl, setFailedImageUrl] = useState(null)
   const [landscapeImageUrl, setLandscapeImageUrl] = useState(null)
   const showImage = Boolean(event.imageUrl) && event.imageUrl !== failedImageUrl
@@ -40,7 +40,16 @@ export default function SearchResultCard({ event, onDetail }) {
               onError={() => setFailedImageUrl(event.imageUrl)}
             />
           : <span aria-hidden="true">TripAI</span>}
-        <span className="search-result-card__favorite" aria-hidden="true">♡</span>
+        <button
+          type="button"
+          className={`search-result-card__favorite${isFavorite ? ' search-result-card__favorite--active' : ''}`}
+          onClick={onFavorite}
+          disabled={!onFavorite || favoritePending}
+          aria-label={`${event.title} ${isFavorite ? '관심 행사 해제' : '관심 행사 저장'}`}
+          aria-pressed={isFavorite}
+        >
+          {isFavorite ? '♥' : '♡'}
+        </button>
       </div>
       <div className="search-result-card__body">
         <p className="search-result-card__category">{event.category || '분야 정보 없음'} · {event.district || '지역 정보 없음'}</p>

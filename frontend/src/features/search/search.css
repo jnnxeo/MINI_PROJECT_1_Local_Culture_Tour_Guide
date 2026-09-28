@@ -261,6 +261,33 @@
   background: #fff;
   font-size: 26px;
   line-height: 1;
+  cursor: pointer;
+  transition: transform 0.12s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.search-result-card__favorite:hover:not(:disabled) {
+  border-color: #e11d48;
+  color: #e11d48;
+}
+
+.search-result-card__favorite:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.search-result-card__favorite--active {
+  border-color: #fecdd3;
+  color: #e11d48;
+}
+
+.search-result-card__favorite:disabled {
+  cursor: wait;
+}
+
+.search-results-favorite-error {
+  margin: 0 0 12px;
+  color: #e11d48;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .search-result-card__body {

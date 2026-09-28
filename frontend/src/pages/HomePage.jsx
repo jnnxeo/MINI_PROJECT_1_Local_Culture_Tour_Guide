@@ -7,6 +7,7 @@ import SearchPanel from '../features/home/components/SearchPanel.jsx'
 import { getHomeEventPreviews } from '../services/eventService.js'
 import { recommendDraft } from '../services/planService.js'
 import ConditionsModal from '../components/plan/ConditionsModal.jsx'
+import useFavoriteEvents from '../hooks/useFavoriteEvents.js'
 import '../styles/plan.css'
 
 export default function HomePage() {
@@ -14,7 +15,8 @@ export default function HomePage() {
   const today = new Date()
   const [selectedYear] = useState(today.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
-  const [favoriteIds, setFavoriteIds] = useState(new Set())
+  // 하트는 서버 관심 행사와 연결 — 내 여행 > 관심 행사에 그대로 나온다
+  const { favoriteIds, toggleFavorite, favoriteError } = useFavoriteEvents()
   const [eventSections, setEventSections] = useState({ all: [], exhibition: [], performance: [] })
   const [eventStatus, setEventStatus] = useState('loading')
   const [eventError, setEventError] = useState('')
@@ -44,13 +46,7 @@ export default function HomePage() {
     return () => { active = false }
   }, [selectedPeriod, reloadCount])
 
-  const handleFavorite = (eventId) => {
-    setFavoriteIds((current) => {
-      const next = new Set(current)
-      next.has(eventId) ? next.delete(eventId) : next.add(eventId)
-      return next
-    })
-  }
+  const handleFavorite = (eventId) => toggleFavorite(eventId)
 
   const handleMonthSelect = (month) => {
     if (month === selectedMonth) return
@@ -119,6 +115,7 @@ export default function HomePage() {
           {eventStatus === 'loading' ? '행사 목록을 불러오는 중입니다.' : ''}
         </p>
 
+        {favoriteError && <p className="home-search__error" role="alert">{favoriteError}</p>}
         <EventSection
           id="monthly-events"
           title={`${selectedYear}년 ${selectedMonth}월의 문화행사`}
