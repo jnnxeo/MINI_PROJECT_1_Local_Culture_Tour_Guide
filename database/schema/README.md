@@ -35,6 +35,16 @@ mariadb -u root -p tripai < database/schema/02_place_food_category_v3.2.2.sql
 
 이미 만든 DB에는 `01_...sql`을 다시 실행하지 말고 `02_...sql`만 적용합니다.
 
+### 나의 일정 추천 조건을 사용할 때
+
+`02` 다음에 아래 두 마이그레이션을 순서대로 **한 번만** 실행합니다. 일정 초안에 음식 종류·식사 시간대(`03`)와
+점심·저녁 음식 종류·카페 포함 여부(`04`)를 저장해 조건 수정·다시 추천에서 같은 조건을 씁니다.
+
+```bash
+mariadb -u root -p tripai < database/schema/03_trip_plan_food_condition_v3.2.3.sql
+mariadb -u root -p tripai < database/schema/04_trip_plan_meal_food_cafe_v3.2.4.sql
+```
+
 ### 처음부터 다시 만들 때
 
 ```sql

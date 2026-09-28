@@ -30,6 +30,8 @@ public record DraftResponse(
 	/**
 	 * API-PLAN-003 요청과 같은 필드 + 식사 시간대(mealType, docs/07 [제안]).
 	 * companion 은 DDL 에 컬럼이 없어 null. foodPreference·mealType 은 03 마이그레이션 컬럼에서 읽는다.
+	 * lunchFoodPreference·dinnerFoodPreference·includeCafe 는 04 마이그레이션 컬럼 — 끼니별 값이 없던 초안은
+	 * foodPreference 를 두 끼 모두에 채워 준다. 점심·저녁 음식 종류가 다르면 foodPreference 는 null.
 	 */
 	public record Conditions(
 			LocalDate visitDate,
@@ -38,7 +40,10 @@ public record DraftResponse(
 			String companion,
 			String foodPreference,
 			String mealType,
-			String transportMode
+			String transportMode,
+			String lunchFoodPreference,
+			String dinnerFoodPreference,
+			boolean includeCafe
 	) {
 	}
 }

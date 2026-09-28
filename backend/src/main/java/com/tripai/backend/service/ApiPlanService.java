@@ -39,12 +39,16 @@ public class ApiPlanService implements AiPlanClient {
            eventStartTime이 없으면 방문 가능 시간 안에서 90~120분을 배정하고, reason에 "행사 운영시간 확인 필요"를 적습니다.
         3. 식당은 restaurantCandidates의 contentId를 그대로 쓰고, 같은 식당을 두 번 넣지 않습니다.
         4. 식사 횟수: userConditions.mealType이 LUNCH면 점심 1번, DINNER면 저녁 1번, BOTH이거나 없으면 점심·저녁 각 1번입니다(맞는 후보가 없으면 가능한 만큼만).
+           식사에는 cuisineType이 CAFE인 곳을 쓰지 않습니다.
            점심은 11:00~14:30 사이에, 저녁은 17:00~20:30 사이에 시작하고 식사는 60분으로 합니다.
         5. 식당은 openTime~closeTime 안에만 두고 breakOpenTime~breakCloseTime과 겹치지 않게 합니다. openTime과 closeTime이 같으면 24시간 영업입니다.
         6. 모든 일정은 userConditions.visitStartTime~visitEndTime 안에 두고, 일정끼리 시간이 겹치지 않게 합니다.
-        7. foodPreference가 ALL이 아니면 cuisineType이 같은 식당만 고르고, 그중 distanceMeters가 작은(가까운) 곳을 우선합니다.
+        7. 점심은 lunchFoodPreference, 저녁은 dinnerFoodPreference가 ALL이 아니면 cuisineType이 같은 식당만 고르고, 그중 distanceMeters가 작은(가까운) 곳을 우선합니다.
+           ALL이면 KOREAN·CHINESE·JAPANESE·WESTERN 중에서 고릅니다.
         8. reason은 80자 이내 한국어로, INPUT_JSON에 있는 정보(거리, 영업시간, 음식 종류, 행사 일시 문구 등)만 근거로 씁니다. 없는 정보를 지어내지 않습니다.
         9. title은 행사와 하루의 특징을 담은 30자 이내 한국어 일정 제목입니다.
+        10. includeCafe가 true이면 cuisineType이 CAFE인 후보 중 1곳을 60분 넣습니다. 카페는 점심(11:00~14:30)·저녁(17:00~20:30) 시간대가 아닌 빈 시간에 시작하고,
+           다른 일정과 겹치지 않으며 영업시간·브레이크 규칙(5번)을 지킵니다. includeCafe가 false이면 카페를 넣지 않습니다.
 
         [출력 JSON 형식]
         {"title": "일정 제목",

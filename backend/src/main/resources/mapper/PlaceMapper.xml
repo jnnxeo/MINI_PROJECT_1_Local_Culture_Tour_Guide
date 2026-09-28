@@ -18,12 +18,15 @@
 		close_time < open_time 인 경우로 보고 "시작 이후 또는 종료 이전"으로 판정한다.
 		open_time = close_time(예: TourAPI 00:00~24:00 이 00:00~00:00 으로 저장)은 24시간 영업으로 보고 브레이크타임만 뺀다.
 		브레이크타임도 자정을 넘길 수 있다(예: 23:00~00:30) — 같은 방식으로 판정한다.
+		cuisineType = 'CAFE' 는 일정 추천 전용 내부값 — TourAPI cat3 A05020900(카페/전통찻집)만 찾는다.
+		카페는 cuisine_type 이 OTHER 라 응답에서는 CAFE 로 바꿔 돌려준다 (이색음식점 A05020700 은 추천에서 제외).
 	-->
 	<select id="findRestaurantsNear" resultType="RestaurantView">
 		SELECT *
 		FROM (
 			SELECT p.content_id, p.place_name, p.addr, p.mapx, p.mapy, p.image_url,
-			       p.cuisine_type, p.open_time, p.close_time, p.break_open_time, p.break_close_time,
+			       CASE WHEN p.tour_cat3_code = 'A05020900' THEN 'CAFE' ELSE p.cuisine_type END AS cuisine_type,
+			       p.open_time, p.close_time, p.break_open_time, p.break_close_time,
 			       6371000 * 2 * ASIN(SQRT(
 			           POW(SIN(RADIANS(p.mapy - #{lat}) / 2), 2)
 			           + COS(RADIANS(#{lat})) * COS(RADIANS(p.mapy)) * POW(SIN(RADIANS(p.mapx - #{lng}) / 2), 2)
@@ -36,7 +39,8 @@
 			  <if test="cuisineType != null">
 			  AND (
 			      (#{cuisineType} = 'ALL' AND p.cuisine_type IN ('KOREAN', 'WESTERN', 'JAPANESE', 'CHINESE'))
-			      OR (#{cuisineType} != 'ALL' AND p.cuisine_type = #{cuisineType})
+			      OR (#{cuisineType} = 'CAFE' AND p.tour_cat3_code = 'A05020900')
+			      OR (#{cuisineType} NOT IN ('ALL', 'CAFE') AND p.cuisine_type = #{cuisineType})
 			  )
 			  </if>
 			  <if test="mealTime != null">

@@ -163,6 +163,9 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .transportMd(plan.getTransportMd())
                 .foodPreference(plan.getFoodPreference())
                 .mealType(plan.getMealType())
+                .lunchFoodPreference(plan.getLunchFoodPreference())
+                .dinnerFoodPreference(plan.getDinnerFoodPreference())
+                .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
                 .headcount(plan.getHeadcount())
                 .build());
         return 1;
@@ -201,6 +204,9 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .transportMd(plan.getTransportMd())
                 .foodPreference(plan.getFoodPreference())
                 .mealType(plan.getMealType())
+                .lunchFoodPreference(plan.getLunchFoodPreference())
+                .dinnerFoodPreference(plan.getDinnerFoodPreference())
+                .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
                 .headcount(plan.getHeadcount())
                 .build());
         return 1;
@@ -226,6 +232,9 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .transportMd(plan.getTransportMd())
                 .foodPreference(plan.getFoodPreference())
                 .mealType(plan.getMealType())
+                .lunchFoodPreference(plan.getLunchFoodPreference())
+                .dinnerFoodPreference(plan.getDinnerFoodPreference())
+                .cafeYn(Boolean.TRUE.equals(plan.getCafeYn()))
                 .headcount(before.getHeadcount())
                 .build());
         return 1;

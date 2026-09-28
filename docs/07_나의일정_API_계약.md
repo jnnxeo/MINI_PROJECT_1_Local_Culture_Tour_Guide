@@ -53,8 +53,11 @@ import { recommendDraft } from '../services/planService.js'
 const draft = await recommendDraft({
   eventId,                  // 선택한 행사 event_content_id (필수)
   visitDate: '2026-10-03',  // 방문 날짜 YYYY-MM-DD (필수, 오늘 이후·행사 기간 안)
-  foodPreference: 'ALL',    // ALL·KOREAN·CHINESE·JAPANESE·WESTERN (선택)
+  foodPreference: 'ALL',    // ALL·KOREAN·CHINESE·JAPANESE·WESTERN (선택, 두 끼 공통)
   mealType: 'BOTH',         // BOTH·LUNCH·DINNER (선택)
+  lunchFoodPreference: 'KOREAN',  // 점심 음식 종류 (선택, 없으면 foodPreference) [제안]
+  dinnerFoodPreference: 'WESTERN', // 저녁 음식 종류 (선택, 없으면 foodPreference) [제안]
+  includeCafe: true,        // 카페 포함 (선택, 기본 false) [제안]
   transportMode: 'WALK_TRANSIT', // 선택
 })
 navigate('/trips/draft', { state: { draftId: draft.draftId } })
@@ -96,6 +99,7 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | API-PLAN-002 추가 응답 | `selectedEvent`(API-PLAN-001 응답), `conditions`(API-PLAN-003 응답), `recommendationReasons` | 조건 수정 팝업 초기값·추천 이유 표시에 필요 |
 | API-PLACE-001 `distance` | 미터 단위 | 단위 미정 |
 | 추천 조건 `foodPreference` / `mealType` | `ALL·KOREAN·CHINESE·JAPANESE·WESTERN` / `BOTH·LUNCH·DINNER` | 음식 종류·식사 시간대는 Figma 조건 팝업에 추가하는 [제안]. `mealType`은 항상 셋 중 하나를 명시적으로 보낸다 — 화면 기본값도 `BOTH`(점심+저녁 모두)라 조건 창을 열고 그대로 적용해도 기존 식사 범위가 좁아지지 않는다. `GET /api/places/restaurants`(API-PLACE-001, cuisineType/mealTime)는 이와 별개로 한 시점(`HH:mm`) 조회이며, `BOTH`·미지정은 시간 필터 없이 조회한다 |
+| 끼니별 음식 종류 `lunchFoodPreference` / `dinnerFoodPreference`, 카페 `includeCafe` | 음식 종류 값은 `foodPreference`와 같음 / `true·false` | 메인 AI 추천 모달에서 점심·저녁 음식 종류를 따로 하나씩 고르고 카페 포함을 체크한다(09-28 강산님과 결정). 001·003 요청과 002 응답 `conditions`에 추가. 끼니별 값이 없으면 `foodPreference`(없으면 ALL)를 두 끼에 쓰고, 두 끼가 다르면 응답 `foodPreference`는 `null`. 003에서 `foodPreference`만 보내면 두 끼 모두 바꾸고, 끼니별 값을 보내면 그 끼니만 바꾼다. 카페는 음식 종류 값이 아니다(`CAFE`를 보내면 400) |
 | `tripType`, `transportMode` 값 | `DAY_TRIP` / `WALK_TRANSIT`, `WALK`는 화면에서 쓰는 **예시** 값 | 명세에 값 목록이 없어 서버는 30자 이하 문자열을 받음 (허용 목록을 따로 만들지 않음) |
 
 ### DB 대응 (테이블정의서·DDL v3.2.1) [제안]
@@ -108,6 +112,8 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | `lat` / `lng` | `mapy`(위도) / `mapx`(경도) |
 | (알려진 한계) 순번 임시 이동 | 수정·추가 때 `seq_order`를 +1000(추가는 2000+) 뒤로 미뤘다가 다시 매김 — 한 초안 항목이 1000개를 넘으면 충돌할 수 있으나 하루 일정에서는 생기지 않아 두었음 |
 | 조건 `foodPreference`·`mealType` | `trip_plan.food_preference`·`meal_type` — DDL v3.2.1에 없어 `database/schema/03_trip_plan_food_condition_v3.2.3.sql`로 추가 (2팀장 확인 필요) |
+| 조건 `lunchFoodPreference`·`dinnerFoodPreference`·`includeCafe` | `trip_plan.lunch_food_preference`·`dinner_food_preference`·`cafe_yn` — `database/schema/04_trip_plan_meal_food_cafe_v3.2.4.sql`로 추가 (강산님 확인 필요). 04 이전 초안은 끼니별 값 NULL(= `food_preference`), 카페 FALSE |
+| 카페 | 새 테이블 없이 `place` 중 TourAPI cat3 `A05020900`(카페/전통찻집, 146곳 중 영업시간 있는 144곳). 이색음식점(`A05020700`)은 추천에서 제외. `cuisine_type`이 `OTHER`라 조회할 때 `CAFE`로 바꿔 쓴다 |
 | API-PLAN-001 `headcount` | DDL `trip_plan.headcount`가 NOT NULL이라 선택값으로 받고, 없으면 1 |
 
 ### API-PLAN-001 초안 생성 규칙 (규칙 기반 — AI 결과를 쓰지 못할 때의 기본값) [제안]
@@ -119,8 +125,9 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | 행사 시간 | 행사 시작 시간에 고정, 소요시간은 종료 시간까지 (시간 정보가 없으면 방문 시작 시각부터 120분, 고정 안 함) |
 | 여행 날짜 | 오늘(Asia/Seoul, **오늘 포함**) 이후이고 행사 기간 안이어야 함 — 이미 끝난 행사도 여기서 400 |
 | 식사 시간 | 점심 12:30 / 저녁 17:00, 60분. 기본 시각이 행사와 겹치거나 그 시각에 영업하는 맛집이 없으면 행사 직전 → 직후 시각으로 다시 찾음. 단 옮긴 시각도 그 끼니 시간대(점심 11:00~14:30, 저녁 17:00~20:30, AI 결과 검사와 같은 기준) 안일 때만 쓰고, 맞는 시각이 없으면 그 끼니는 빠짐. `mealType`이 없거나 `BOTH`면 두 끼를 모두 **시도**하고, 한 끼만 찾아도 초안을 만듦 (저장은 null — 003 요청에서 값을 안 보내면 '유지', 저장된 null은 '둘 다') |
-| 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 자정을 넘는 영업·브레이크타임도 판단. 반경 1.5km → 3km → 5km(사각형은 SQL과 같은 구 기준 + 1% 여유), 20곳씩 끝까지 확인, 같은 맛집은 한 번만 |
-| 추천 이유 | 행사: `선택한 행사 · M월 D일 진행 · HH:mm 시작` / 맛집: `점심 12:30 · 행사장에서 약 320m · 한식 · 영업 11:30~21:00` (확인된 값만) |
+| 맛집 고르기 | `foodPreference`(없으면 ALL = 한식·중식·일식·양식) 중 식사 60분 동안 영업하고 브레이크타임과 겹치지 않는 곳을 행사장에서 가까운 순. 자정을 넘는 영업·브레이크타임도 판단. 반경 1.5km → 3km → 5km(사각형은 SQL과 같은 구 기준 + 1% 여유), 20곳씩 끝까지 확인, 같은 맛집은 한 번만. 점심은 `lunchFoodPreference`, 저녁은 `dinnerFoodPreference`로 찾음 |
+| 카페 (`includeCafe`) | 식사를 정한 뒤 남는 빈 시간에 카페 1곳을 60분. 시작 시각은 점심(11:00~14:30)·저녁(17:00~20:30) 시간대가 아니고 다른 일정과 겹치지 않아야 함. 다른 일정 바로 뒤·바로 앞 시각을 먼저, 그다음 30분 간격 시각을 다른 일정과 가까운 순으로 보고, 그 시간 동안 영업·브레이크 밖인 카페를 행사장에서 가까운 순으로 고름. 자리가 없으면 카페 없이 만듦(422 아님). 다시 추천은 지금 카페를 먼저 피함 |
+| 추천 이유 | 행사: `선택한 행사 · M월 D일 진행 · HH:mm 시작` / 맛집: `점심 12:30 · 행사장에서 약 320m · 한식 · 영업 11:30~21:00` / 카페: `카페 16:00 · 행사장에서 약 480m · 영업 11:00~21:00` (확인된 값만) |
 | 제목 | `M월 D일 {행사명}` (AI-005 실패 시 기본 제목 규칙) |
 | 오류 | 지난 날짜·기간 밖 날짜·방문 시간 밖 행사 400, 없는 행사 404, 맛집 후보 없음·행사 좌표 없음 422 |
 | 응답 | API-PLAN-002 초안 조회와 같은 모양 (명세 필드 `draftId, title, tripType, selectedEvent, items, recommendationReasons` 포함) |
@@ -150,8 +157,8 @@ navigate('/trips/draft', { state: { draftId: draft.draftId } })
 | 외부 AI (EXT-AI) | OpenAI Responses API `POST https://api.openai.com/v1/responses`, 모델 `gpt-4.1-mini`, 응답 형식 `json_object`, `store: false`, 제한 시간 20초 |
 | 키 관리 | 각자 `backend/.env`의 `OPENAI_API_KEY`에만 넣음 (GitHub·채팅에 올리지 않음). `.env.example`에는 이름만 있음. 키가 비어 있으면 AI를 부르지 않고 규칙 기반으로만 동작 |
 | 순서 | ① 규칙 기반 초안을 먼저 만듦 → ② 키가 있으면 선택 행사 1개 + 주변 맛집 후보로 AI에 일정을 요청 → ③ 서버 검사를 모두 통과하면 AI 결과 저장(`ai_yn = TRUE`), 아니면 ①을 저장(`ai_yn = FALSE`) |
-| AI에 넘기는 후보 | 행사: 선택한 행사 1개(이름·분류·자치구·장소·기간·시간·일시 원문·무료 여부). 맛집: 영업시간을 아는 곳 중 음식 종류가 맞고 행사장에서 가까운 순 최대 15곳(반경 1.5km → 3km → 5km, 7곳 이상 모일 때까지). 다시 추천(004)은 지금 일정의 맛집을 모두 뺌 |
-| 서버 검사 (하나라도 어기면 규칙 기반) | 행사는 선택 행사 1개, 시작 시간이 있으면 그대로(종료는 행사 종료 이내) / 맛집은 후보 안에서만, 같은 곳 두 번 안 됨 / 점심 11:00~14:30·저녁 17:00~20:30 사이 시작, 끼니별 1번, 요청한 식사 시간대만 / 식사 시간 동안 영업하고 브레이크와 겹치지 않음 / 식사 30~120분, 행사 30~360분 / 방문 시간 안, 서로 안 겹침(항목 편집과 같은 규칙) / 규칙 기반보다 식사 수가 적지 않음 / 다시 추천이면 지금 일정과 달라야 함 |
+| AI에 넘기는 후보 | 행사: 선택한 행사 1개(이름·분류·자치구·장소·기간·시간·일시 원문·무료 여부). 맛집: 영업시간을 아는 곳 중 음식 종류가 맞고 행사장에서 가까운 순 최대 15곳(반경 1.5km → 3km → 5km, 7곳 이상 모일 때까지). 점심·저녁 음식 종류가 다르면 종류마다 10곳. 카페 포함이면 카페 5곳(`cuisineType: CAFE`)을 더함. 다시 추천(004)은 지금 일정의 맛집·카페를 모두 뺌 |
+| 서버 검사 (하나라도 어기면 규칙 기반) | 행사는 선택 행사 1개, 시작 시간이 있으면 그대로(종료는 행사 종료 이내) / 맛집은 후보 안에서만, 같은 곳 두 번 안 됨 / 점심 11:00~14:30·저녁 17:00~20:30 사이 시작, 끼니별 1번, 요청한 식사 시간대만 / 식사 시간 동안 영업하고 브레이크와 겹치지 않음 / 식사 30~120분, 행사 30~360분 / 방문 시간 안, 서로 안 겹침(항목 편집과 같은 규칙) / 규칙 기반보다 식사 수가 적지 않음 / 끼니마다 그 끼니 음식 종류와 같아야 함 / 카페는 요청했을 때만 1곳, 점심·저녁 시간대 밖에서 시작, 규칙 기반이 카페를 넣었으면 AI도 넣어야 함 / 다시 추천이면 지금 일정과 달라야 함 |
 | 항목 종류 | AI가 `placeType` 철자를 틀리는 경우가 있어(실제 응답 `RESTARUANT`) 종류는 ID가 행사 후보·맛집 후보 중 어디에 있는지로 정함 |
 | 추천 이유 | AI가 쓴 이유를 100자까지 저장 (`trip_item.ai_reason` VARCHAR(100)). 프롬프트에서 입력에 있는 정보만 근거로 80자 이내로 쓰게 함 |
 | 제목 | 001에서만 AI 제목 사용(30자 이내 요청, 비어 있거나 100자 초과면 기본 제목). 003·004는 사용자가 바꿨을 수 있어 제목 유지 |

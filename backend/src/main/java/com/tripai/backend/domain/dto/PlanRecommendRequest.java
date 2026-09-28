@@ -13,6 +13,9 @@ import java.time.LocalDate;
  * - mealType: 음식점 추천 식사 시간대 LUNCH·DINNER. 안 보내거나 BOTH 면 점심·저녁 모두 찾아본다.
  * - headcount: DDL trip_plan.headcount 가 NOT NULL 이라 받는다. 안 보내면 1명.
  * companion 은 DDL 에 저장할 컬럼이 없어 받기만 한다.
+ * 메인 AI 추천 모달·조건 수정 팝업용 선택값 (docs/07 [제안], 04 마이그레이션에 저장):
+ * - lunchFoodPreference·dinnerFoodPreference: 점심·저녁 음식 종류. 안 보내면 foodPreference(없으면 ALL)를 쓴다.
+ * - includeCafe: true 면 식사·행사와 겹치지 않는 빈 시간에 행사장 근처 카페(카페/전통찻집) 1곳을 넣는다.
  */
 public record PlanRecommendRequest(
 		@NotBlank(message = "행사를 선택해 주세요.")
@@ -40,6 +43,23 @@ public record PlanRecommendRequest(
 		String transportMode,
 
 		@Positive(message = "인원은 1명 이상입니다.")
-		Integer headcount
+		Integer headcount,
+
+		@Pattern(regexp = "ALL|KOREAN|CHINESE|JAPANESE|WESTERN",
+				message = "점심 음식 종류는 ALL, KOREAN, CHINESE, JAPANESE, WESTERN 중 하나입니다.")
+		String lunchFoodPreference,
+
+		@Pattern(regexp = "ALL|KOREAN|CHINESE|JAPANESE|WESTERN",
+				message = "저녁 음식 종류는 ALL, KOREAN, CHINESE, JAPANESE, WESTERN 중 하나입니다.")
+		String dinnerFoodPreference,
+
+		Boolean includeCafe
 ) {
+
+	/** 끼니별 음식 종류·카페 없이 부르는 기존 호출 (행사 상세 #45 등) */
+	public PlanRecommendRequest(String eventId, LocalDate visitDate, String startTime, String endTime, String companion,
+								String foodPreference, String mealType, String transportMode, Integer headcount) {
+		this(eventId, visitDate, startTime, endTime, companion, foodPreference, mealType, transportMode, headcount,
+				null, null, null);
+	}
 }
