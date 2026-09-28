@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import api from '../services/api.js'
 import '../styles/myPage.css'
 
+import AuthHeader from '../components/AuthHeader.jsx'
 import PlansList from '../components/list/PlansList'
 import EventsList from '../components/list/EventsList'
 
@@ -125,6 +126,7 @@ const MyPage = () => {
 
     return (
     <main className="my-page">
+        <AuthHeader />
         <section className="my-page-hero">
         <p>MY TRIPS</p>
         <h1>내 여행</h1>
