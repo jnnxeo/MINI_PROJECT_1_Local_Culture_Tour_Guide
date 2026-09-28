@@ -19,3 +19,9 @@ server:
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:3600000}
+
+# AI 일정 추천 (OpenAI) — 키가 없으면 규칙 기반 추천으로 동작합니다
+openai:
+  api-key: ${OPENAI_API_KEY:}
+  model: ${OPENAI_MODEL:gpt-4.1-mini}
+  timeout-seconds: ${OPENAI_TIMEOUT_SECONDS:20}

@@ -20,6 +20,12 @@ public class RecommendEventView {
 
 	private String eventContentId;
 	private String eventName;
+	// AI 추천 후보 설명용 (행사 분류·자치구·장소·일시 원문·무료 여부)
+	private String eventType;
+	private String districtName;
+	private String eventPlace;
+	private String dateText;
+	private Boolean freeYn;
 	private Boolean displayYn;
 	private LocalDate eventStartDate;
 	private LocalDate eventEndDate;
