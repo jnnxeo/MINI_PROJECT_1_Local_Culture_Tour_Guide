@@ -84,6 +84,9 @@ public class EventBatchService {
             }
             eventBatchMapper.upsertEvent(row);
             stats.saved++;
+            if (Boolean.FALSE.equals(row.getDisplayYn())) {
+                stats.hiddenOnline++;
+            }
         } catch (Exception e) {
             // 한 건이 실패해도 배치 전체는 계속한다.
             stats.skipped++;
@@ -108,9 +111,6 @@ public class EventBatchService {
 
         boolean online = isOnline(item);
         row.setDisplayYn(!online);
-        if (online) {
-            stats.hiddenOnline++;
-        }
 
         LocalDate start = parseDate(item.getStartDate());
         LocalDate end = parseDate(item.getEndDate());
