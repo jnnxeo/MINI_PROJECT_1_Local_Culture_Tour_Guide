@@ -441,6 +441,17 @@ class PlanRecommendServiceTest {
     }
 
     @Test
+    void 영업_시작과_종료가_같으면_24시간_영업으로_자정을_넘는_식사도_영업_중이다() {
+        // 승진님 #63 리뷰: TourAPI 00:00~24:00 이 00:00~00:00 으로 저장된 식당
+        RestaurantView allDay = restaurant("ALLDAY", "KOREAN", 1, "00:00", "00:00", null, null);
+        assertThat(PlanRecommendService.openDuringMeal(allDay, LocalTime.of(12, 30))).isTrue();
+        assertThat(PlanRecommendService.openDuringMeal(allDay, LocalTime.of(23, 30))).isTrue();
+        RestaurantView allDayBreak = restaurant("ALLDAY-B", "KOREAN", 1, "00:00", "00:00", "15:00", "16:30");
+        assertThat(PlanRecommendService.openDuringMeal(allDayBreak, LocalTime.of(15, 30))).isFalse();
+        assertThat(PlanRecommendService.openDuringMeal(allDayBreak, LocalTime.of(17, 0))).isTrue();
+    }
+
+    @Test
     void 자정을_넘는_영업과_브레이크타임도_식사_60분_기준으로_판단한다() {
         // GPT 검토 E1: 17:00~02:00 가게의 00:30 식사는 전날 밤 영업에 들어간다
         assertThat(PlanRecommendService.openDuringMeal(restaurant("NIGHT", "KOREAN", 1, "17:00", "02:00", null, null),
