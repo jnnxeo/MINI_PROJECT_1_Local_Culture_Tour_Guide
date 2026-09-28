@@ -46,4 +46,6 @@ public class TripPlan {
 
 	// 조회 시 event 테이블에서 함께 가져오는 기준 행사명
 	private String anchorEventName;
+	private LocalDate anchorStartDate;
+	private LocalDate anchorEndDate;
 }

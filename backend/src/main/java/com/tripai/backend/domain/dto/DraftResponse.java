@@ -21,9 +21,12 @@ public record DraftResponse(
 		List<MapPointResponse> mapPoints
 ) {
 
+	/** startDate·endDate 는 행사 기간 — 조건 수정에서 방문 날짜를 행사 기간 안으로만 고르게 한다 (docs/07 [제안]) */
 	public record SelectedEvent(
 			String eventId,
-			String title
+			String title,
+			LocalDate startDate,
+			LocalDate endDate
 	) {
 	}
 

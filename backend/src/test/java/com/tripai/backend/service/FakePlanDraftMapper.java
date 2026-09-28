@@ -65,6 +65,17 @@ class FakePlanDraftMapper implements PlanDraftMapper {
     @Override
     public int updateTitle(Long tripPlanId, String title) {
         titles.put(tripPlanId, title);
+        // 실제 DB 처럼 초안 행의 제목도 바꾼다 (조건 수정이 지금 제목을 읽어 판단한다)
+        TripPlan plan = plans.get(tripPlanId);
+        if (plan != null) {
+            try {
+                var field = TripPlan.class.getDeclaredField("title");
+                field.setAccessible(true);
+                field.set(plan, title);
+            } catch (ReflectiveOperationException e) {
+                throw new IllegalStateException(e);
+            }
+        }
         return 1;
     }
 
@@ -155,6 +166,8 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .userId(plan.getUserId())
                 .anchorContentId(plan.getAnchorContentId())
                 .anchorEventName(plan.getAnchorEventName())
+                .anchorStartDate(plan.getAnchorStartDate())
+                .anchorEndDate(plan.getAnchorEndDate())
                 .title(plan.getTitle())
                 .tripDate(plan.getTripDate())
                 .visitStartTime(plan.getVisitStartTime())
@@ -217,6 +230,8 @@ class FakePlanDraftMapper implements PlanDraftMapper {
                 .userId(plan.getUserId())
                 .anchorContentId(plan.getAnchorContentId())
                 .anchorEventName(event == null ? null : event.getEventName())
+                .anchorStartDate(event == null ? null : event.getEventStartDate())
+                .anchorEndDate(event == null ? null : event.getEventEndDate())
                 .title(plan.getTitle())
                 .tripDate(plan.getTripDate())
                 .visitStartTime(plan.getVisitStartTime())
@@ -247,13 +262,17 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         // 실제 SQL 처럼 기준 행사·제목도 바꾼다. 행사가 그대로면 제목 수정(updateTitle)을 지킨다
         boolean eventChanged = !Objects.equals(plan.getAnchorContentId(), before.getAnchorContentId());
         RecommendEventView anchor = recommendEvents.get(plan.getAnchorContentId());
-        String title = eventChanged ? plan.getTitle() : titles.getOrDefault(before.getTripPlanId(), before.getTitle());
+        // 서비스가 제목을 바꿔 넘기면(행사 변경·기본 제목 날짜 맞춤) 그 제목, 아니면 제목 수정(updateTitle)을 지킨다
+        boolean titleChanged = eventChanged || !Objects.equals(plan.getTitle(), before.getTitle());
+        String title = titleChanged ? plan.getTitle() : titles.getOrDefault(before.getTripPlanId(), before.getTitle());
         titles.put(before.getTripPlanId(), title);
         plans.put(plan.getTripPlanId(), TripPlan.builder()
                 .tripPlanId(before.getTripPlanId())
                 .userId(before.getUserId())
                 .anchorContentId(plan.getAnchorContentId())
                 .anchorEventName(anchor == null ? before.getAnchorEventName() : anchor.getEventName())
+                .anchorStartDate(anchor == null ? before.getAnchorStartDate() : anchor.getEventStartDate())
+                .anchorEndDate(anchor == null ? before.getAnchorEndDate() : anchor.getEventEndDate())
                 .title(title)
                 .tripDate(plan.getTripDate())
                 .visitStartTime(plan.getVisitStartTime())

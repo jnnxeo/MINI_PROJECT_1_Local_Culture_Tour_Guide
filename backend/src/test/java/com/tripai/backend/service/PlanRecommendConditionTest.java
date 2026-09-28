@@ -175,6 +175,20 @@ class PlanRecommendConditionTest {
         assertThat(again.selectedEvent().eventId()).isEqualTo("EV-A");
     }
 
+    @Test
+    void 날짜만_바꿔도_기본_제목이면_제목의_날짜를_맞추고_사용자가_바꾼_제목은_둔다() {
+        Long draftId = service.recommend(1L, new PlanRecommendRequest("EV-B", OCT_3, null, null, null, null, null,
+                "WALK_TRANSIT", null)).draftId();
+        assertThat(draftService.getDraft(1L, draftId).title()).isEqualTo("10월 3일 한강 콘서트");
+
+        service.updateConditions(1L, draftId, new DraftConditionsRequest(OCT_8, null, null, null, null, null, null));
+        assertThat(draftService.getDraft(1L, draftId).title()).isEqualTo("10월 8일 한강 콘서트");
+
+        draftService.updateTitle(1L, draftId, "주말 한강 나들이");
+        service.updateConditions(1L, draftId, new DraftConditionsRequest(OCT_3, null, null, null, null, null, null));
+        assertThat(draftService.getDraft(1L, draftId).title()).isEqualTo("주말 한강 나들이");
+    }
+
     private static PlanRecommendRequest conditions(List<LocalDate> dates, List<String> categories, String district,
                                                    Boolean freeYn) {
         return new PlanRecommendRequest(null, null, null, null, null, null, null, "WALK_TRANSIT", null,

@@ -11,7 +11,8 @@
 		       tp.food_preference, tp.meal_type, tp.lunch_food_preference, tp.dinner_food_preference, tp.cafe_yn,
 		       tp.search_dates, tp.search_categories, tp.search_district, tp.search_free_yn,
 		       tp.headcount, tp.created_at, tp.upd_at,
-		       e.event_name AS anchor_event_name
+		       e.event_name AS anchor_event_name, e.event_start_date AS anchor_start_date,
+		       e.event_end_date AS anchor_end_date
 		FROM trip_plan tp
 		JOIN event e ON e.event_content_id = tp.anchor_content_id
 		WHERE tp.trip_plan_id = #{tripPlanId}

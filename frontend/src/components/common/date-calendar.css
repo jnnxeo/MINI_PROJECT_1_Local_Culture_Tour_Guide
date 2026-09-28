@@ -1,0 +1,186 @@
+/* 방문 날짜 달력 — 메인·나의 일정 어디서 써도 같게 보이도록 자체 토큰을 쓴다 */
+.tp-cal {
+  --cal-blue: #2563eb;
+  --cal-blue-soft: #eff6ff;
+  --cal-text: #1e293b;
+  --cal-muted: #64748b;
+  --cal-faint: #cbd5e1;
+  --cal-line: #e2e8f0;
+  --cal-sun: #e11d48;
+  --cal-sat: #2563eb;
+  --cal-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1.5px solid var(--cal-line);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--cal-text);
+}
+
+.tp-cal__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tp-cal__quick-chip {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1.5px solid var(--cal-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--cal-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.12s var(--cal-ease), border-color 0.15s ease, color 0.15s ease;
+}
+
+.tp-cal__quick-chip:hover {
+  border-color: var(--cal-blue);
+  color: var(--cal-blue);
+}
+
+.tp-cal__quick-chip:active {
+  transform: scale(0.96);
+}
+
+.tp-cal__quick-chip--ghost {
+  border-color: transparent;
+  color: var(--cal-muted);
+}
+
+.tp-cal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.tp-cal__month {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.tp-cal__nav {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: #f5f7fb;
+  color: var(--cal-text);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.12s var(--cal-ease);
+}
+
+.tp-cal__nav:hover:not(:disabled) {
+  background: var(--cal-blue-soft);
+  color: var(--cal-blue);
+}
+
+.tp-cal__nav:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.tp-cal__nav:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.tp-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.tp-cal__weekday {
+  padding: 4px 0;
+  color: var(--cal-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.tp-cal__weekday--0 {
+  color: var(--cal-sun);
+}
+
+.tp-cal__weekday--6 {
+  color: var(--cal-sat);
+}
+
+.tp-cal__day {
+  position: relative;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--cal-text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.12s var(--cal-ease);
+}
+
+.tp-cal__day--w0 {
+  color: var(--cal-sun);
+}
+
+.tp-cal__day--w6 {
+  color: var(--cal-sat);
+}
+
+.tp-cal__day:hover:not(:disabled):not(.is-selected) {
+  background: var(--cal-blue-soft);
+}
+
+.tp-cal__day:active:not(:disabled) {
+  transform: scale(0.92);
+}
+
+.tp-cal__day:focus-visible,
+.tp-cal__nav:focus-visible,
+.tp-cal__quick-chip:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.tp-cal__day.is-today::after {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+  transform: translateX(-50%);
+}
+
+.tp-cal__day.is-selected {
+  background: var(--cal-blue);
+  color: #fff;
+  box-shadow: 0 4px 10px rgb(37 99 235 / 25%);
+}
+
+.tp-cal__day:disabled {
+  color: var(--cal-faint);
+  cursor: not-allowed;
+}
+
+.tp-cal__summary {
+  margin: 0;
+  color: var(--cal-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tp-cal * {
+    transition: none !important;
+  }
+}

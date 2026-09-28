@@ -1028,6 +1028,83 @@
   color: var(--tripai-white);
 }
 
+/* 펼침 칸 — 제목 줄에 지금 값과 화살표, 누르면 아래로 펼쳐진다 */
+.plan-expand {
+  border: 1.5px solid var(--tripai-line);
+  border-radius: var(--tripai-radius-16);
+  background: var(--tripai-white);
+  transition: border-color 0.2s ease;
+}
+
+.plan-expand:hover,
+.plan-expand.is-open {
+  border-color: var(--tripai-blue);
+}
+
+.plan-expand__head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: var(--tripai-radius-16);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.plan-expand__head:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 35%);
+  outline-offset: 2px;
+}
+
+.plan-expand__title {
+  color: var(--tripai-navy);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.plan-expand__value {
+  flex: 1;
+  color: var(--tripai-blue);
+  font-size: 15px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.plan-expand__chevron {
+  display: grid;
+  color: var(--tripai-blue);
+  place-items: center;
+  transition: transform 0.25s var(--tripai-ease);
+}
+
+.plan-expand.is-open .plan-expand__chevron {
+  transform: rotate(180deg);
+}
+
+.plan-expand__body {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.25s var(--tripai-ease);
+}
+
+.plan-expand.is-open .plan-expand__body {
+  grid-template-rows: 1fr;
+}
+
+.plan-expand__inner {
+  min-height: 0;
+  padding: 0 16px;
+  overflow: hidden;
+}
+
+.plan-expand.is-open .plan-expand__inner {
+  padding-bottom: 16px;
+}
+
 /* 입력 칸 안내 문구는 입력한 글자와 헷갈리지 않게 연하게 */
 .plan-page .tp-field input::placeholder {
   color: var(--tripai-subtle);
