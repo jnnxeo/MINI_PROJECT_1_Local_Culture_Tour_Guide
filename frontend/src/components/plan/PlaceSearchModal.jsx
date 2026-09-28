@@ -134,20 +134,23 @@ export default function PlaceSearchModal({
           const isSelected = place.placeId === selectedId
 
           return (
-            <li key={place.placeId} className={`plan-place${isSelected ? ' is-selected' : ''}`}>
-              <div className="plan-place__photo">
-                {place.imageUrl ? <img src={place.imageUrl} alt="" /> : <span>사진 없음</span>}
-              </div>
-              <p className="plan-place__name">{place.name}</p>
-              <p className="plan-place__meta">{describePlace(place, time, durationMin)}</p>
+            <li key={place.placeId}>
+              {/* 카드 전체를 눌러 고른다 — 고른 카드는 파란 테두리와 체크 배지 */}
               <button
-                className={`tp-btn ${isSelected ? 'tp-btn--primary' : 'tp-btn--secondary'} plan-place__select`}
+                className={`plan-place${isSelected ? ' is-selected' : ''}${isUsed ? ' is-used' : ''}`}
                 type="button"
                 disabled={isUsed}
                 aria-pressed={isSelected}
                 onClick={() => setSelectedId(place.placeId)}
               >
-                {isUsed ? '이미 일정에 있어요' : isSelected ? '선택됨' : '이 장소 선택'}
+                <span className="plan-place__photo">
+                  {place.imageUrl ? <img src={place.imageUrl} alt="" /> : <span>사진 없음</span>}
+                </span>
+                <span className="plan-place__name">{place.name}</span>
+                <span className="plan-place__meta">{describePlace(place, time, durationMin)}</span>
+                <span className="plan-place__badge">
+                  {isUsed ? '이미 일정에 있어요' : isSelected ? '✓ 선택됨' : '눌러서 선택'}
+                </span>
               </button>
             </li>
           )
