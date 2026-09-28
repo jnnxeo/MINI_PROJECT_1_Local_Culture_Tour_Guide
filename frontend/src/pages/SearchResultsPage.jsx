@@ -70,6 +70,12 @@ export default function SearchResultsPage() {
   const [status, setStatus] = useState('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [retryCount, setRetryCount] = useState(0)
+  const keywordSummaryRef = useRef(null)
+  const [keywordSummaryHeight, setKeywordSummaryHeight] = useState(0)
+
+  useEffect(() => {
+    if (applied.keyword) setKeywordSummaryHeight(0)
+  }, [applied.keyword])
 
   useEffect(() => { setDraft(readSearchConditions(new URLSearchParams(location.search))) }, [appliedFilterKey, location.key])
 
@@ -106,7 +112,9 @@ export default function SearchResultsPage() {
     const params = new URLSearchParams(location.search)
     params.delete('keyword')
     params.delete('page')
-    navigateWith(params)
+    setKeywordSummaryHeight(keywordSummaryRef.current?.getBoundingClientRect().height || 0)
+    keywordSummaryRef.current?.focus({ preventScroll: true })
+    navigate({ pathname: '/events', search: params.toString() }, { replace: true, preventScrollReset: true })
   }
 
   const submitSearch = (event) => {
@@ -151,12 +159,10 @@ export default function SearchResultsPage() {
       </header>
 
       <div className="search-results-content">
-        {applied.keyword && (
-          <div className="search-results-keyword">
-            <p>검색어: <strong>{applied.keyword}</strong></p>
-            <button type="button" onClick={clearKeyword}>검색어 지우기</button>
-          </div>
-        )}
+        <div className="search-results-keyword" ref={keywordSummaryRef} tabIndex={-1} style={keywordSummaryHeight ? { minHeight: keywordSummaryHeight } : undefined}>
+          <p aria-live="polite">검색어: <strong>{applied.keyword || '없음'}</strong></p>
+          <button type="button" onClick={clearKeyword} disabled={!applied.keyword} className={!applied.keyword ? 'search-results-keyword__clear--hidden' : undefined}>검색어 지우기</button>
+        </div>
         <form className="search-results-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
           <div className="search-results-filters__month">
             <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
