@@ -27,7 +27,20 @@
                image_url
         FROM event
         WHERE <include refid="monthlyEventConditions" />
-        ORDER BY event_start_date ASC, event_content_id ASC
+        ORDER BY
+            CASE
+                WHEN event_start_date BETWEEN #{monthStart} AND #{monthEnd} THEN 0
+                ELSE 1
+            END ASC,
+            CASE
+                WHEN event_start_date BETWEEN #{monthStart} AND #{monthEnd}
+                THEN event_start_date
+            END ASC,
+            CASE
+                WHEN event_start_date &lt; #{monthStart}
+                THEN event_start_date
+            END DESC,
+            event_content_id ASC
         LIMIT #{size} OFFSET #{offset}
     </select>
 
