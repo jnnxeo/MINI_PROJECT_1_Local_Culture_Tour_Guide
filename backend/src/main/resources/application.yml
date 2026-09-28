@@ -19,3 +19,9 @@ server:
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:3600000}
+
+tour-api:
+  base-url: ${TOUR_API_BASE_URL:https://apis.data.go.kr/B551011/KorService2}
+  service-key: ${TOUR_API_SERVICE_KEY:}
+  mobile-os: ${TOUR_API_MOBILE_OS:ETC}
+  mobile-app: ${TOUR_API_MOBILE_APP:TripAI}
