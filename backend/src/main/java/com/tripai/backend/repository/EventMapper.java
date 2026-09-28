@@ -8,7 +8,10 @@ import com.tripai.backend.domain.dto.event.EventDetailResponse;
 @Mapper
 public interface EventMapper {
 
-    EventDetailResponse selectEventDetail(@Param("eventId") String eventId);
+    EventDetailResponse selectEventDetail(
+            @Param("eventId") String eventId,
+            @Param("userId") Long userId
+    );
 
 
     EventDetailResponse selectEventForRecommendation(
