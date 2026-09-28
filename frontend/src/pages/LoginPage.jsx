@@ -2,6 +2,28 @@ import React, { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext.jsx'
 import { getErrorMessage, requestLogin } from '../services/authService.js'
+import AuthHeader from '../components/AuthHeader.jsx'
+import hanokImage from '../assets/mock/hanok.jpg'
+import '../styles/signup.css'
+import '../styles/login.css'
+
+const loginImages = Object.values(import.meta.glob(
+  '../assets/mock/login/*.{jpg,jpeg,png,webp}',
+  { eager: true, query: '?url', import: 'default' },
+))
+
+function chooseLoginImage() {
+  if (loginImages.length === 0) return hanokImage
+
+  const previousValue = sessionStorage.getItem('tripai-login-image-index')
+  const previous = Number(previousValue)
+  const hasPrevious = previousValue !== null && Number.isInteger(previous) && previous >= 0 && previous < loginImages.length && loginImages.length > 1
+  const offset = Math.floor(Math.random() * (loginImages.length - (hasPrevious ? 1 : 0)))
+  const index = hasPrevious && offset >= previous ? offset + 1 : offset
+
+  sessionStorage.setItem('tripai-login-image-index', String(index))
+  return loginImages[index]
+}
 
 const INITIAL_FORM = {
   email: '',
@@ -31,6 +53,7 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({})
   const [serverError, setServerError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [loginImage] = useState(chooseLoginImage)
 
   if (isAuthenticated) {
     return <Navigate to="/" replace />
@@ -68,54 +91,69 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <section className="auth-card" aria-labelledby="login-title">
-        <div className="auth-brand">TripAI</div>
-        <h1 id="login-title">로그인</h1>
-        <p className="auth-description">문화행사와 여행 일정을 더 편하게 관리해 보세요.</p>
+    <div className="signup-page login-page">
+      <AuthHeader />
+      <main className="login-content auth-page-panel">
+        <div className="login-layout">
+          <section className="login-intro" aria-label="TripAI 소개">
+            <p className="login-intro-brand">TripAI</p>
+            <h1>좋아하는 순간들을<br />하나의 여행으로.</h1>
+            <p>행사를 저장하고, 내 취향에 맞는<br />하루 일정을 만들어 보세요.</p>
+            {loginImage && <img src={loginImage} alt="서울 문화 공간 풍경" />}
+          </section>
 
-        <form className="auth-form" onSubmit={handleSubmit} noValidate>
-          <label htmlFor="email">이메일</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={form.email}
-            onChange={handleChange}
-            aria-invalid={Boolean(errors.email)}
-            aria-describedby={errors.email ? 'email-error' : undefined}
-            placeholder="example@tripai.com"
-            className={errors.email ? 'auth-input input-error' : form.email ? 'auth-input input-filled' : 'auth-input'}
-          />
-          {errors.email && <p className="field-error" id="email-error">{errors.email}</p>}
+          <section className="login-card" aria-labelledby="login-title">
+            <h2 id="login-title">다시 만나 반가워요</h2>
+            <p className="login-description">이메일로 로그인해 주세요.</p>
 
-          <label htmlFor="password">비밀번호</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            value={form.password}
-            onChange={handleChange}
-            aria-invalid={Boolean(errors.password)}
-            aria-describedby={errors.password ? 'password-error' : undefined}
-            placeholder="비밀번호를 입력해 주세요"
-            className={errors.password ? 'auth-input input-error' : form.password ? 'auth-input input-filled' : 'auth-input'}
-          />
-          {errors.password && <p className="field-error" id="password-error">{errors.password}</p>}
+            <form className="auth-form" onSubmit={handleSubmit} noValidate>
+              <div className="signup-field">
+                <label htmlFor="login-email">이메일</label>
+                <input
+                  id="login-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={form.email}
+                  onChange={handleChange}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                  placeholder="이메일을 입력하세요"
+                  className={errors.email ? 'input-error' : ''}
+                />
+                {errors.email && <p className="field-error" id="email-error">{errors.email}</p>}
+              </div>
 
-          {serverError && <p className="server-error" role="alert">{serverError}</p>}
+              <div className="signup-field">
+                <label htmlFor="login-password">비밀번호</label>
+                <input
+                  id="login-password"
+                  name="password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={form.password}
+                  onChange={handleChange}
+                  aria-invalid={Boolean(errors.password)}
+                  aria-describedby={errors.password ? 'password-error' : undefined}
+                  placeholder="비밀번호를 입력하세요"
+                  className={errors.password ? 'input-error' : ''}
+                />
+                {errors.password && <p className="field-error" id="password-error">{errors.password}</p>}
+              </div>
 
-          <button className="login-button" type="submit" disabled={isSubmitting}>
-            {isSubmitting ? '로그인 중...' : '로그인'}
-          </button>
+              {serverError && <p className="server-error" role="alert">{serverError}</p>}
 
-          <Link to="/signup" className="auth-signup-link">
-            아직 계정이 없으신가요? 회원가입
-          </Link>
-        </form>
-      </section>
-    </main>
+              <button className="signup-submit-button" type="submit" disabled={isSubmitting}>
+                {isSubmitting ? '로그인 중...' : '로그인'}
+              </button>
+
+              <Link to="/signup" className="login-signup-link">
+                처음이라면 회원가입
+              </Link>
+            </form>
+          </section>
+        </div>
+      </main>
+    </div>
   )
 }

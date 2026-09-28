@@ -37,6 +37,14 @@ export default function App() {
       />
 
       <Route
+        path="/my-trips"
+        element={(
+          <ProtectedRoute>
+            <Navigate to="/mypage" replace />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
         path="/trips/draft"
         element={(
           <ProtectedRoute>
