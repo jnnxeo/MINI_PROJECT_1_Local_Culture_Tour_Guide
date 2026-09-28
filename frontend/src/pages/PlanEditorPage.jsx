@@ -106,6 +106,17 @@ function toNewItem(place, { key, startTime, durationMin }) {
  * API: 조회 PLAN-002, 조건 수정 PLAN-003 → 다시 추천 PLAN-004, 저장 시 PLAN-008·007·006·005 반영 후 PLAN-009
  * 팝업에서 바꾼 내용은 화면에만 두었다가 "일정 저장"에서 한 번에 서버에 반영한다(UX-004 미저장 이탈 확인).
  */
+/**
+ * 장소 변경 팝업의 음식 종류 — 바꾸려는 항목 시각이 점심·저녁 시간대면 그 끼니 음식 종류(docs/07 [제안]),
+ * 그 밖의 시각(카페 등)은 두 끼 공통 값(다르면 전체)으로 찾는다.
+ */
+function foodForTime(conditions, time) {
+  if (!conditions) return undefined
+  if (time && time >= '11:00' && time <= '14:30') return conditions.lunchFoodPreference ?? conditions.foodPreference
+  if (time && time >= '17:00' && time <= '20:30') return conditions.dinnerFoodPreference ?? conditions.foodPreference
+  return conditions.foodPreference ?? undefined
+}
+
 export default function PlanEditorPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -476,7 +487,7 @@ export default function PlanEditorPage() {
             usedPlaceIds={items.map((item) => item.placeId)}
             time={target?.startTime}
             durationMin={target?.durationMin}
-            foodPreference={draft?.conditions?.foodPreference}
+            foodPreference={foodForTime(draft?.conditions, target?.startTime)}
             mealType={draft?.conditions?.mealType}
             onConfirm={(place) => replacePlace(modal.key, place)}
             onClose={closeModal}
@@ -571,7 +582,9 @@ export default function PlanEditorPage() {
             visitDate={draft.visitDate}
             conditions={draft.conditions}
             coreItem={coreItem}
-            onSubmit={({ foodPreference, mealType, transportMode }) => startGeneration({ foodPreference, mealType, transportMode })}
+            onSubmit={({ mealType, transportMode, lunchFoodPreference, dinnerFoodPreference, includeCafe }) => startGeneration({
+              mealType, transportMode, lunchFoodPreference, dinnerFoodPreference, includeCafe, foodPreference: undefined,
+            })}
             onClose={closeModal}
           />
         )

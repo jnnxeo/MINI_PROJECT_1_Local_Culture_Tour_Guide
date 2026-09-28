@@ -85,6 +85,7 @@ function toRestaurantItem(place, { itemId, startTime, durationMin }) {
     breakTime: place.breakTime,
     closeTime: place.closeTime,
     timeFixed: false,
+    cuisineType: place.cuisineType ?? null,
   }
 }
 
@@ -120,8 +121,10 @@ function buildCourse(courseIndex, store, conditions) {
     store.nextItemId += 1
     return store.nextItemId
   }
-  const foodPreference = conditions.foodPreference ?? 'ALL'
   const mealStartTime = conditions.mealType === 'DINNER' ? '17:00' : '12:30'
+  // 목업은 식사 1번만 만든다 — 그 끼니의 음식 종류(없으면 두 끼 공통 값)로 고른다
+  const foodPreference = (conditions.mealType === 'DINNER' ? conditions.dinnerFoodPreference : conditions.lunchFoodPreference)
+    ?? conditions.foodPreference ?? 'ALL'
   const candidates = RESTAURANTS
     .filter((place) => place.cuisineType !== 'OTHER')
     .filter((place) => foodPreference === 'ALL' || place.cuisineType === foodPreference)
@@ -152,6 +155,9 @@ function createInitialStore() {
     foodPreference: 'ALL',
     mealType: 'LUNCH',
     transportMode: 'WALK_TRANSIT',
+    lunchFoodPreference: 'ALL',
+    dinnerFoodPreference: 'ALL',
+    includeCafe: false,
   }
   const { items, recommendationReasons } = buildCourse(0, store, conditions)
 
@@ -232,7 +238,13 @@ export async function mockUpdateConditions(draftId, conditions) {
     throw mockError(400, '여행 날짜와 방문 시간을 확인해 주세요.')
   }
 
-  draft.conditions = { ...draft.conditions, ...conditions }
+  // 실제 API-PLAN-003 처럼 보내지 않은 값(undefined)은 지금 조건을 두고, foodPreference만 보내면 두 끼 모두 바꾼다
+  const sent = Object.fromEntries(Object.entries(conditions).filter(([, value]) => value !== undefined))
+  const merged = { ...draft.conditions, ...sent }
+  merged.lunchFoodPreference = sent.lunchFoodPreference ?? sent.foodPreference ?? draft.conditions.lunchFoodPreference ?? 'ALL'
+  merged.dinnerFoodPreference = sent.dinnerFoodPreference ?? sent.foodPreference ?? draft.conditions.dinnerFoodPreference ?? 'ALL'
+  merged.foodPreference = merged.lunchFoodPreference === merged.dinnerFoodPreference ? merged.lunchFoodPreference : null
+  draft.conditions = merged
   draft.visitDate = conditions.visitDate
   // 실제 API-PLAN-003 과 같이 조건과 일정을 한 번에 바꾼다 (화면은 003 → 002)
   const { items, recommendationReasons } = buildCourse(draft.courseIndex, store, draft.conditions)

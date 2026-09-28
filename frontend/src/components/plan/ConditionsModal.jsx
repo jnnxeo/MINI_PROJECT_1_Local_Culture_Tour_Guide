@@ -14,12 +14,6 @@ export const FOOD_PREFERENCE_LABELS = {
   JAPANESE: '일식',
   WESTERN: '양식',
 }
-export const MEAL_TYPE_LABELS = {
-  BOTH: '점심 + 저녁 모두',
-  LUNCH: '점심 · 12:30',
-  DINNER: '저녁 · 17:00',
-}
-
 /**
  * Figma "conditions · 팝업" (SCR-010) — 인원·이동 방법은 드롭다운(people/transport 팝업 대체)
  * API-PLAN-003 Body는 {visitDate,startTime,endTime,companion,foodPreference,mealType,transportMode}를 쓴다.
@@ -27,12 +21,18 @@ export const MEAL_TYPE_LABELS = {
  * mealType은 "BOTH"(점심+저녁 모두)·"LUNCH"·"DINNER"로 항상 명시적인 값을 보낸다.
  * 생성 API가 mealType 없음을 "둘 다"로 해석하는 것과 같은 의미이며, 조건을 열고 그대로
  * 적용해도 기존 값이 바뀌지 않도록 값이 없을 때는 LUNCH가 아니라 BOTH로 초기화한다.
+ * 메인 AI 추천 모달과 같은 구조로 카페 포함 체크 → 점심·저녁 체크 → 끼니마다 음식 종류 하나를 고른다
+ * (lunchFoodPreference·dinnerFoodPreference·includeCafe, docs/07 [제안]). 둘 다 해제하면 적용할 수 없다.
  */
 export default function ConditionsModal({ visitDate, conditions, coreItem, onSubmit, onClose }) {
   const [headcount, setHeadcount] = useState(2)
   const [transportMode, setTransportMode] = useState(conditions?.transportMode ?? 'WALK_TRANSIT')
-  const [foodPreference, setFoodPreference] = useState(conditions?.foodPreference ?? 'ALL')
-  const [mealType, setMealType] = useState(conditions?.mealType ?? 'BOTH')
+  const savedMealType = conditions?.mealType ?? 'BOTH'
+  const [lunch, setLunch] = useState(savedMealType !== 'DINNER')
+  const [dinner, setDinner] = useState(savedMealType !== 'LUNCH')
+  const [lunchFood, setLunchFood] = useState(conditions?.lunchFoodPreference ?? conditions?.foodPreference ?? 'ALL')
+  const [dinnerFood, setDinnerFood] = useState(conditions?.dinnerFoodPreference ?? conditions?.foodPreference ?? 'ALL')
+  const [includeCafe, setIncludeCafe] = useState(Boolean(conditions?.includeCafe))
   const [interests, setInterests] = useState([])
   const [useAi, setUseAi] = useState(true)
 
@@ -43,6 +43,36 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
   }
 
   const coreInfo = coreItem?.timeFixed ? `${coreItem.startTime} 시작` : '운영시간 정보 없음'
+  const noMeal = !lunch && !dinner
+  const mealType = lunch && dinner ? 'BOTH' : (lunch ? 'LUNCH' : 'DINNER')
+
+  const mealField = (label, checked, setChecked, food, setFood) => (
+    <div className="tp-field plan-conditions__meal">
+      <button
+        className={`tp-btn tp-btn--secondary plan-toggle${checked ? ' is-checked' : ''}`}
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        onClick={() => setChecked((value) => !value)}
+      >
+        {`${checked ? '☑' : '☐'} ${label}`}
+      </button>
+      <span className="tp-field__label">{`${label} 음식 종류`}</span>
+      <select
+        aria-label={`${label} 음식 종류`}
+        value={food}
+        disabled={!checked}
+        onChange={(event) => setFood(event.target.value)}
+      >
+        {Object.entries(FOOD_PREFERENCE_LABELS).map(([value, text]) => (
+          <option key={value} value={value}>{text}</option>
+        ))}
+      </select>
+      <p className="plan-conditions__meal-hint">
+        {checked ? '눌러서 음식 종류를 바꿀 수 있어요' : `${label}을 체크하면 고를 수 있어요`}
+      </p>
+    </div>
+  )
 
   return (
     <PlanModal title="어떤 하루를 만들어 볼까요?" onClose={onClose}>
@@ -72,24 +102,22 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
         </label>
       </div>
 
+      <p className="plan-conditions__label">식사 · 카페</p>
+      <p className="plan-conditions__help">원하는 끼니를 체크하고, 끼니마다 음식 종류를 하나씩 골라 주세요.</p>
+      <button
+        className={`tp-btn tp-btn--secondary tp-btn--block plan-toggle${includeCafe ? ' is-checked' : ''}`}
+        type="button"
+        role="checkbox"
+        aria-checked={includeCafe}
+        onClick={() => setIncludeCafe((value) => !value)}
+      >
+        {`${includeCafe ? '☑' : '☐'} 카페 포함 (식사 시간 외 빈 시간에 근처 카페 1곳)`}
+      </button>
       <div className="plan-conditions__row">
-        <label className="tp-field">
-          <span className="tp-field__label">음식 종류</span>
-          <select value={foodPreference} onChange={(event) => setFoodPreference(event.target.value)}>
-            {Object.entries(FOOD_PREFERENCE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="tp-field">
-          <span className="tp-field__label">식사 시간</span>
-          <select value={mealType} onChange={(event) => setMealType(event.target.value)}>
-            {Object.entries(MEAL_TYPE_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
+        {mealField('점심', lunch, setLunch, lunchFood, setLunchFood)}
+        {mealField('저녁', dinner, setDinner, dinnerFood, setDinnerFood)}
       </div>
+      {noMeal && <p className="tp-modal__error" role="alert">점심과 저녁 중 하나 이상 선택해 주세요.</p>}
 
       <p className="plan-conditions__label">관심사 (추천에는 반영되지 않음)</p>
       <div className="plan-conditions__interests">
@@ -110,7 +138,7 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
           )
         })}
       </div>
-      <p className="plan-conditions__help">선택한 음식 종류와 식사 시간에 영업 중인 행사 주변 맛집을 추천합니다.</p>
+      <p className="plan-conditions__help">점심·저녁마다 선택한 음식 종류로, 그 시간에 영업 중인 행사 주변 맛집을 추천합니다.</p>
 
       <button
         className={`tp-btn tp-btn--secondary tp-btn--bold tp-btn--block plan-toggle${useAi ? ' is-checked' : ''}`}
@@ -126,7 +154,17 @@ export default function ConditionsModal({ visitDate, conditions, coreItem, onSub
       <button
         className="tp-btn tp-btn--primary tp-btn--block"
         type="button"
-        onClick={() => onSubmit({ headcount, transportMode, foodPreference, mealType, interests, useAi })}
+        disabled={noMeal}
+        onClick={() => onSubmit({
+          headcount,
+          transportMode,
+          mealType,
+          lunchFoodPreference: lunchFood,
+          dinnerFoodPreference: dinnerFood,
+          includeCafe,
+          interests,
+          useAi,
+        })}
       >
         {useAi ? 'AI로 하루 일정 만들기' : '하루 일정 만들기'}
       </button>
