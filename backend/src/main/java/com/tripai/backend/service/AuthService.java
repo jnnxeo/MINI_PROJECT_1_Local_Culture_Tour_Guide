@@ -2,11 +2,14 @@ package com.tripai.backend.service;
 
 import com.tripai.backend.domain.dto.LoginRequest;
 import com.tripai.backend.domain.dto.LoginResponse;
+import com.tripai.backend.domain.dto.SignupRequest;
+import com.tripai.backend.domain.dto.SignupResponse;
 import com.tripai.backend.domain.entity.User;
 import com.tripai.backend.global.exception.CustomException;
 import com.tripai.backend.global.exception.ErrorCode;
 import com.tripai.backend.global.jwt.JwtTokenProvider;
 import com.tripai.backend.repository.UserMapper;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -25,6 +28,26 @@ public class AuthService {
         this.userMapper = userMapper;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
+    }
+
+    public SignupResponse signup(SignupRequest request) {
+        if (userMapper.findByEmail(request.email()).isPresent()) {
+            throw new CustomException(ErrorCode.EMAIL_DUPLICATED);
+        }
+
+        User user = User.builder()
+                .email(request.email())
+                .password(passwordEncoder.encode(request.password()))
+                .build();
+
+        try {
+            userMapper.insert(user);
+        } catch (DuplicateKeyException exception) {
+            // 중복 확인 직후 다른 요청이 같은 이메일을 등록한 경우
+            throw new CustomException(ErrorCode.EMAIL_DUPLICATED);
+        }
+
+        return new SignupResponse(user.getUserId(), user.getEmail());
     }
 
     public LoginResponse login(LoginRequest request) {

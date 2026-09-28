@@ -1,11 +1,16 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Header from './components/Header.jsx'
+import PlanHeader from './components/plan/PlanHeader.jsx'
+import FeaturePlaceholderPage from './pages/FeaturePlaceholderPage.jsx'
 import { useAuth } from './contexts/AuthContext.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import PlanEditorPage from './pages/PlanEditorPage.jsx'
 import SignupPage from './pages/SignupPage.jsx'
+import EventDetailPage from './pages/EventDetailPage.jsx'
+import MyPage from './pages/MyPage.jsx'
+import SearchResultsPage from './pages/SearchResultsPage.jsx'
+import EventSavedPlanPage from './pages/EventSavedPlanPage.jsx'
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -13,11 +18,33 @@ function ProtectedRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
+function HomeNavigation() {
+  return <div className="home-plan-header"><PlanHeader /></div>
+}
+
 export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+
+      <Route
+        path="/mypage"
+        element={(
+          <ProtectedRoute>
+            <MyPage />
+          </ProtectedRoute>
+        )}
+      />
+
+      <Route
+        path="/my-trips"
+        element={(
+          <ProtectedRoute>
+            <Navigate to="/mypage" replace />
+          </ProtectedRoute>
+        )}
+      />
       <Route
         path="/trips/draft"
         element={(
@@ -27,11 +54,36 @@ export default function App() {
         )}
       />
       <Route
+        path="/my-trips/:planId"
+        element={(
+          <ProtectedRoute>
+            <EventSavedPlanPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
         path="/"
         element={(
           <ProtectedRoute>
-            <Header />
+            <HomeNavigation />
             <HomePage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/events"
+        element={(
+          <ProtectedRoute>
+            <HomeNavigation />
+            <SearchResultsPage />
+          </ProtectedRoute>
+        )}
+      />
+      <Route
+        path="/events/:eventId"
+        element={(
+          <ProtectedRoute>
+            <EventDetailPage />
           </ProtectedRoute>
         )}
       />

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.tripai.backend.repository.MonthlyEventMapper">
+
+    <sql id="monthlyEventConditions">
+        display_yn = TRUE
+        AND event_start_date &lt;= #{monthEnd}
+        AND event_end_date &gt;= #{monthStart}
+        <if test="eventTypes != null and !eventTypes.isEmpty()">
+            AND event_type IN
+            <foreach collection="eventTypes" item="eventType" open="(" separator="," close=")">
+                #{eventType}
+            </foreach>
+        </if>
+    </sql>
+
+    <select id="findMonthlyEvents" resultType="com.tripai.backend.domain.entity.MonthlyEvent">
+        SELECT event_content_id AS event_id,
+               event_name AS title,
+               event_type,
+               district_name AS district,
+               event_start_date AS start_date,
+               event_end_date AS end_date,
+               free_yn,
+               use_fee AS fee,
+               image_url
+        FROM event
+        WHERE <include refid="monthlyEventConditions" />
+        ORDER BY event_start_date ASC, event_content_id ASC
+        LIMIT #{size} OFFSET #{offset}
+    </select>
+
+    <select id="countMonthlyEvents" resultType="long">
+        SELECT COUNT(*)
+        FROM event
+        WHERE <include refid="monthlyEventConditions" />
+    </select>
+
+</mapper>

@@ -116,6 +116,7 @@ export async function recommendDraft({
     })
     : await request(() => api.post('/api/plans/recommend', body))
 
+  if (draft?.draftId == null) throw new Error('일정 초안 ID를 받지 못했습니다.')
   rememberDraftId(draft.draftId)
   return draft
 }
@@ -220,4 +221,53 @@ export function searchRestaurants({ eventId, radius, foodPreference, mealType, p
   return request(() => api.get('/api/places/restaurants', {
     params: { eventId, radius, cuisineType, mealTime, page, size },
   }))
+}
+
+/** EVENT-003: 저장 일정 선택 팝업용 목록. 목록 API는 내 여행 담당 구현과 연동한다. */
+export async function getSavedPlans() {
+  const all = []
+  const pageSize = 20
+  for (let page = 0; page < 100; page += 1) {
+    const data = await request(() => api.get('/api/plans', { params: { page, size: pageSize } }))
+    const plans = Array.isArray(data) ? data : (data?.items ?? data?.plans)
+    if (!Array.isArray(plans)) throw new Error('저장한 일정 목록의 응답 형식이 맞지 않습니다.')
+    all.push(...plans.map((plan) => ({
+      ...plan,
+      planId: plan.planId ?? plan.tripPlanId,
+      tripDate: plan.tripDate ?? plan.visitDate,
+    })))
+    if (plans.length < pageSize || data?.totalCount != null && all.length >= data.totalCount) return all
+  }
+  throw new Error('저장한 일정이 많아 목록을 모두 불러오지 못했습니다.')
+}
+
+/** EVENT-003: 저장 일정의 행사 중복·날짜 충돌을 확인할 상세 조회. */
+export async function getPlan(planId) {
+  const data = await request(() => api.get(`/api/plans/${encodeURIComponent(planId)}`))
+  if (!data || typeof data !== 'object') throw new Error('일정 상세 응답 형식이 맞지 않습니다.')
+  return {
+    ...data,
+    planId: data.planId ?? data.tripPlanId,
+    tripDate: data.tripDate ?? data.visitDate,
+    items: (data.items ?? []).map((item) => ({
+      ...item,
+      contentId: item.contentId ?? item.eventId ?? item.placeId,
+      seq: item.seq ?? item.sequence,
+    })),
+  }
+}
+
+/** EVENT-003: 저장 일정에 행사 추가. 서버가 소유권·중복·개수·시간 충돌을 다시 검사한다. */
+export function addEventToSavedPlan(planId, eventId, startTime) {
+  return request(() => api.post(`/api/plans/${encodeURIComponent(planId)}/events`, {
+    eventId,
+    startTime,
+  }))
+}
+
+export function updateSavedEventTime(planId, itemId, startTime) {
+  return request(() => api.patch(
+    `/api/plans/${encodeURIComponent(planId)}/events/${encodeURIComponent(itemId)}`,
+    { startTime },
+  ))
 }
