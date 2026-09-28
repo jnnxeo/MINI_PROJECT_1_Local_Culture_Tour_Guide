@@ -207,7 +207,9 @@ function overlaps(aStart, aEnd, bStart, bEnd) {
  * @returns 'OK' | 'OUTSIDE_HOURS' | 'BREAK_TIME'
  */
 export function checkBusinessHours({ openTime, closeTime, breakTime }, startTime, durationMin) {
-  const [open, close] = toRange(openTime, closeTime)
+  const [open, rangeClose] = toRange(openTime, closeTime)
+  // 시작 = 종료(예: TourAPI 00:00~24:00 → 00:00~00:00)는 24시간 영업 — 자정을 넘는 방문도 영업 중으로 본다
+  const close = openTime === closeTime ? open + 2 * DAY_MINUTES : rangeClose
   const [breakFrom, breakTo] = breakTime ? toRange(...breakTime.split('~')) : [null, null]
   let result = 'OUTSIDE_HOURS'
 
