@@ -13,6 +13,8 @@ import TimelineItem, { getItemHeading } from '../components/plan/TimelineItem.js
 import TimePickerModal from '../components/plan/TimePickerModal.jsx'
 import {
   addDraftItem,
+  copySavedPlanToDraft,
+  discardSavedEditDraft,
   forgetDraftId,
   getDraft,
   regenerateDraft,
@@ -20,6 +22,7 @@ import {
   replaceDraftItems,
   resolveDraftId,
   saveDraftAsPlan,
+  saveEditedPlan,
   updateConditions,
   updateDraftTitle,
 } from '../services/planService.js'
@@ -121,7 +124,7 @@ function foodForTime(conditions, time) {
   return conditions.foodPreference ?? undefined
 }
 
-export default function PlanEditorPage() {
+export default function PlanEditorPage({ savedPlanId = null }) {
   const location = useLocation()
   const navigate = useNavigate()
   const mapRef = useRef(null)
@@ -129,7 +132,11 @@ export default function PlanEditorPage() {
   // 추천 요청은 서버에서 되돌릴 수 없어, 끝나기 전에는 새 요청을 받지 않는다
   const generationRunningRef = useRef(false)
   const autoRegenerateRef = useRef(Boolean(location.state?.autoRegenerate))
-  const [draftId] = useState(() => resolveDraftId(location.state?.draftId))
+  const clonePromiseRef = useRef(null)
+  const editDraftRef = useRef(null)
+  const mountedRef = useRef(false)
+  const cleanupTimerRef = useRef(null)
+  const [draftId, setDraftId] = useState(() => savedPlanId ? null : resolveDraftId(location.state?.draftId))
 
   const [status, setStatus] = useState('loading')
   const [loadError, setLoadError] = useState('')
@@ -142,6 +149,7 @@ export default function PlanEditorPage() {
   const [saving, setSaving] = useState(false)
   const [generation, setGeneration] = useState(null)
   const [savedPlan, setSavedPlan] = useState(null)
+  const [hasNewRecommendation, setHasNewRecommendation] = useState(false)
 
   const applyDraft = useCallback((nextDraft) => {
     const keyedItems = withKeys(sortItems(nextDraft.items))
@@ -153,8 +161,55 @@ export default function PlanEditorPage() {
   }, [])
 
   useEffect(() => {
+    if (!savedPlanId) return undefined
+    let active = true
+    if (!clonePromiseRef.current || clonePromiseRef.current.planId !== savedPlanId) {
+      setStatus('loading')
+      setDraftId(null)
+      clonePromiseRef.current = { planId: savedPlanId, promise: copySavedPlanToDraft(savedPlanId) }
+    }
+    clonePromiseRef.current.promise
+      .then((copy) => {
+        if (active) setDraftId(copy.draftId)
+        else if (!mountedRef.current) discardSavedEditDraft(copy.draftId).catch(() => {})
+      })
+      .catch((error) => {
+        if (active) {
+          clonePromiseRef.current = null
+          setLoadError(error.message)
+          setStatus('error')
+        }
+      })
+    return () => { active = false }
+  }, [savedPlanId, reloadCount])
+
+  useEffect(() => {
+    if (!savedPlanId) return undefined
+    mountedRef.current = true
+    if (cleanupTimerRef.current) clearTimeout(cleanupTimerRef.current)
+    const discard = () => {
+      const id = editDraftRef.current
+      if (id) {
+        editDraftRef.current = null
+        discardSavedEditDraft(id, { keepalive: true }).catch(() => {})
+      }
+    }
+    window.addEventListener('pagehide', discard)
+    return () => {
+      mountedRef.current = false
+      window.removeEventListener('pagehide', discard)
+      // 개발 모드 StrictMode의 효과 재실행 중에는 초안을 지우지 않는다.
+      cleanupTimerRef.current = setTimeout(discard, 0)
+    }
+  }, [savedPlanId])
+
+  useEffect(() => {
+    if (savedPlanId && draftId) editDraftRef.current = draftId
+  }, [savedPlanId, draftId])
+
+  useEffect(() => {
     if (!draftId) {
-      setStatus('empty')
+      if (!savedPlanId) setStatus('empty')
       return undefined
     }
 
@@ -185,9 +240,10 @@ export default function PlanEditorPage() {
     return () => {
       ignore = true
     }
-  }, [draftId, reloadCount, applyDraft])
+  }, [draftId, reloadCount, applyDraft, savedPlanId])
 
-  const isDirty = Boolean(draft) && !savedPlan && snapshot(title, items) !== snapshot(draft.title, sortItems(draft.items))
+  const isDirty = Boolean(draft) && !savedPlan
+    && (hasNewRecommendation || snapshot(title, items) !== snapshot(draft.title, sortItems(draft.items)))
 
   // UX-004 새로고침·탭 닫기 이탈 방지
   useEffect(() => {
@@ -362,11 +418,15 @@ export default function PlanEditorPage() {
 
     try {
       await syncDraft()
-      const saved = await saveDraftAsPlan(draftId)
-      forgetDraftId()
-      // 저장된 일정은 더 이상 초안이 아니라 초안 조회(002)는 404 — 방금 저장한 화면 내용을 그대로 둔다
+      const saved = savedPlanId
+        ? await saveEditedPlan(savedPlanId, draftId)
+        : await saveDraftAsPlan(draftId)
+      if (savedPlanId) editDraftRef.current = null
+      if (!savedPlanId) forgetDraftId()
+      // 저장 후 초안 조회가 불가능하므로 방금 저장한 화면 내용을 그대로 둔다.
       applyDraft({ ...draft, title, items })
-      // 저장된 초안은 다시 저장할 수 없다(API-PLAN-009 409). 이후 편집은 저장 일정 상세(SCR-017)에서
+      setHasNewRecommendation(false)
+      // 이후 수정은 저장 일정 상세에서 다시 시작한다.
       setSavedPlan(saved)
       setModal({ type: 'saved', plan: saved })
     } catch (saveError) {
@@ -425,6 +485,7 @@ export default function PlanEditorPage() {
         }
 
         applyDraft(result)
+        setHasNewRecommendation(true)
         setModal({
           type: 'notice',
           title: '새 추천 일정이 반영되었어요',
@@ -445,6 +506,15 @@ export default function PlanEditorPage() {
     generationTokenRef.current += 1
     setGeneration(null)
     closeModal()
+  }
+
+  const reopenSavedEditor = () => {
+    setModal(null)
+    setSavedPlan(null)
+    setDraft(null)
+    setDraftId(null)
+    clonePromiseRef.current = null
+    setReloadCount((count) => count + 1)
   }
 
   useEffect(() => {
@@ -575,9 +645,9 @@ export default function PlanEditorPage() {
             description={`${modal.plan.title}\n${formatDate(modal.plan.visitDate)} · 당일 여행`}
             confirmLabel="저장한 일정 확인"
             cancelLabel="내 여행 목록"
-            onConfirm={() => navigate(`/my-trips/${modal.plan.planId}`)}
+            onConfirm={savedPlanId ? reopenSavedEditor : () => navigate(`/my-trips/${modal.plan.planId}`)}
             onCancel={() => navigate('/mypage')}
-            onClose={() => navigate(`/my-trips/${modal.plan.planId}`)}
+            onClose={savedPlanId ? reopenSavedEditor : () => navigate(`/my-trips/${modal.plan.planId}`)}
           />
         )
       case 'regenerate':
@@ -619,6 +689,7 @@ export default function PlanEditorPage() {
             errorMessage={generation?.message}
             onConfirm={() => {
               applyDraft(generation.result)
+              setHasNewRecommendation(true)
               setGeneration(null)
               closeModal()
             }}
@@ -692,7 +763,7 @@ export default function PlanEditorPage() {
       <PlanHeader onNavigate={requestNavigate} />
 
       <section className="plan-heading">
-        <p className="plan-heading__eyebrow">{`나의 일정 · ${savedPlan ? '저장 완료' : '저장 전 초안'} · ${formatDate(draft.visitDate)}`}</p>
+        <p className="plan-heading__eyebrow">{`나의 일정 · ${savedPlan ? '저장 완료' : savedPlanId ? '저장한 일정' : '저장 전 초안'} · ${formatDate(draft.visitDate)}`}</p>
         <h1 className="plan-heading__title">{title}</h1>
         <p className="plan-heading__desc">
           {coreItem?.timeFixed
@@ -714,7 +785,7 @@ export default function PlanEditorPage() {
         <div className="plan-toolbar">
           <p className="plan-toolbar__desc">당일 여행 · 선택한 행사에 맞춘 동선</p>
           <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'conditions' })}>
-            조건 수정
+            {savedPlanId ? '일정 편집' : '조건 수정'}
           </button>
           <button className="tp-btn tp-btn--secondary plan-toolbar__button" type="button" disabled={Boolean(savedPlan)} onClick={() => setModal({ type: 'regenerate' })}>
             다시 추천
@@ -724,8 +795,8 @@ export default function PlanEditorPage() {
               저장 완료 · 확인
             </button>
           ) : (
-            <button className="tp-btn tp-btn--primary plan-toolbar__save" type="button" disabled={saving} onClick={handleSave}>
-              {saving ? '저장 중…' : '일정 저장'}
+            <button className="tp-btn tp-btn--primary plan-toolbar__save" type="button" disabled={saving || (savedPlanId && !isDirty && !hasNewRecommendation)} onClick={handleSave}>
+              {saving ? '저장 중…' : savedPlanId ? '변경 저장' : '일정 저장'}
             </button>
           )}
         </div>

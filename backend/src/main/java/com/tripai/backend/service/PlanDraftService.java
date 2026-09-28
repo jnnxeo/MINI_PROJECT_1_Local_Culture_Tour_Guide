@@ -73,6 +73,13 @@ public class PlanDraftService {
         return toDraftResponse(plan, items);
     }
 
+    @Transactional
+    public void discardDraft(Long userId, Long draftId) {
+        findOwnedDraftForUpdate(userId, draftId);
+        planDraftMapper.deleteItemsByPlanId(draftId);
+        planDraftMapper.deleteDraft(draftId);
+    }
+
     /** 저장본을 그대로 보존하고 제목·조건·추천 이유·항목을 새 초안에 복사한다. */
     @Transactional
     public DraftResponse copySavedPlan(Long userId, Long planId) {
@@ -260,6 +267,55 @@ public class PlanDraftService {
 
         long dDay = ChronoUnit.DAYS.between(LocalDate.now(clock), plan.getTripDate());
         return new PlanSaveResponse(plan.getTripPlanId(), plan.getTitle(), plan.getTripDate(), dDay);
+    }
+
+    /** 편집 초안을 검증한 뒤 기존 저장 일정의 ID를 유지하며 한 트랜잭션에서 교체한다. */
+    @Transactional
+    public PlanSaveResponse replaceSavedPlan(Long userId, Long planId, Long draftId) {
+        if (Objects.equals(planId, draftId)) {
+            throw new PlanRuleException(HttpStatus.BAD_REQUEST, "저장 일정과 편집 초안이 같을 수 없습니다.");
+        }
+        // 잠금 순서를 일정 ID 기준으로 고정해 동시 편집의 교착을 피한다.
+        TripPlan first = planDraftMapper.findPlanByIdForUpdate(Math.min(planId, draftId))
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        TripPlan second = planDraftMapper.findPlanByIdForUpdate(Math.max(planId, draftId))
+                .orElseThrow(() -> new CustomException(ErrorCode.PLAN_NOT_FOUND));
+        TripPlan saved = Objects.equals(first.getTripPlanId(), planId) ? first : second;
+        TripPlan draft = Objects.equals(first.getTripPlanId(), draftId) ? first : second;
+        if (!Objects.equals(saved.getUserId(), userId) || !Objects.equals(draft.getUserId(), userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+        if (!Boolean.TRUE.equals(saved.getSaveYn()) || Boolean.TRUE.equals(draft.getSaveYn())) {
+            throw new CustomException(ErrorCode.PLAN_NOT_FOUND);
+        }
+
+        List<PlanItemView> draftItems = planDraftMapper.findItemsByPlanId(draftId);
+        PlanItemRules.check(draftItems.stream().map(this::toCandidate).toList(), draft.getAnchorContentId(),
+                draft.getVisitStartTime(), draft.getVisitEndTime(), true)
+                .ifPresent(result -> {
+                    throw new PlanRuleException(HttpStatus.BAD_REQUEST, result.message());
+                });
+        if (planDraftMapper.replaceSavedFromDraft(planId, draftId) != 1) {
+            throw new PlanRuleException(HttpStatus.CONFLICT, "저장 일정이 변경되어 다시 불러와야 합니다.");
+        }
+        planDraftMapper.deleteItemsByPlanId(planId);
+        for (PlanItemView item : draftItems) {
+            planDraftMapper.insertItem(TripItem.builder()
+                    .tripPlanId(planId)
+                    .seqOrder(item.getSeqOrder())
+                    .itemType(item.getItemType())
+                    .eventContentId(item.getEventContentId())
+                    .placeContentId(item.getPlaceContentId())
+                    .startTime(item.getStartTime())
+                    .durationMin(item.getDurationMin())
+                    .aiReason(item.getAiReason())
+                    .timeFixYn(item.getTimeFixYn())
+                    .build());
+        }
+        planDraftMapper.deleteItemsByPlanId(draftId);
+        planDraftMapper.deleteDraft(draftId);
+        long dDay = ChronoUnit.DAYS.between(LocalDate.now(clock), draft.getTripDate());
+        return new PlanSaveResponse(planId, draft.getTitle(), draft.getTripDate(), dDay);
     }
 
     /**

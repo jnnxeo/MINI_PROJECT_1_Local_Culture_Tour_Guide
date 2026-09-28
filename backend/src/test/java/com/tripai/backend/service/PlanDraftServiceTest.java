@@ -125,6 +125,24 @@ class PlanDraftServiceTest {
     }
 
     @Nested
+    class 초안_폐기 {
+        @Test
+        void 본인_초안만_폐기한다() {
+            service.discardDraft(OWNER_ID, DRAFT_ID);
+            assertThat(mapper.plans).doesNotContainKey(DRAFT_ID);
+            assertThat(mapper.findItemsByPlanId(DRAFT_ID)).isEmpty();
+        }
+
+        @Test
+        void 다른_사람_초안과_저장된_일정은_보존한다() {
+            assertErrorCode(() -> service.discardDraft(3L, DRAFT_ID), ErrorCode.FORBIDDEN);
+            mapper.plans.put(DRAFT_ID, draft(true));
+            assertErrorCode(() -> service.discardDraft(OWNER_ID, DRAFT_ID), ErrorCode.PLAN_NOT_FOUND);
+            assertThat(mapper.plans).containsKey(DRAFT_ID);
+        }
+    }
+
+    @Nested
     class 저장_일정_복사 {
 
         @Test
@@ -147,6 +165,35 @@ class PlanDraftServiceTest {
             mapper.plans.put(DRAFT_ID, draft(true));
             assertErrorCode(() -> service.copySavedPlan(3L, DRAFT_ID), ErrorCode.FORBIDDEN);
             assertThat(mapper.plans).hasSize(1);
+        }
+    }
+
+    @Nested
+    class 저장_일정_편집 {
+
+        @Test
+        void 편집_초안을_기존_일정에_저장하고_초안을_지운다() {
+            mapper.plans.put(DRAFT_ID, draft(true));
+            long editId = service.copySavedPlan(OWNER_ID, DRAFT_ID).draftId();
+            service.updateTitle(OWNER_ID, editId, "수정한 하루");
+
+            PlanSaveResponse result = service.replaceSavedPlan(OWNER_ID, DRAFT_ID, editId);
+
+            assertThat(result.planId()).isEqualTo(DRAFT_ID);
+            assertThat(result.title()).isEqualTo("수정한 하루");
+            assertThat(mapper.plans.get(DRAFT_ID).getSaveYn()).isTrue();
+            assertThat(mapper.plans.get(DRAFT_ID).getTitle()).isEqualTo("수정한 하루");
+            assertThat(mapper.findItemsByPlanId(DRAFT_ID)).hasSize(2);
+            assertThat(mapper.plans).doesNotContainKey(editId);
+            assertThat(mapper.findItemsByPlanId(editId)).isEmpty();
+        }
+
+        @Test
+        void 다른_사람의_일정에는_편집본을_저장할_수_없다() {
+            mapper.plans.put(DRAFT_ID, draft(true));
+            long editId = service.copySavedPlan(OWNER_ID, DRAFT_ID).draftId();
+            assertErrorCode(() -> service.replaceSavedPlan(3L, DRAFT_ID, editId), ErrorCode.FORBIDDEN);
+            assertThat(mapper.plans.get(DRAFT_ID).getTitle()).isEqualTo("고궁의 밤을 기다리는 하루");
         }
     }
 

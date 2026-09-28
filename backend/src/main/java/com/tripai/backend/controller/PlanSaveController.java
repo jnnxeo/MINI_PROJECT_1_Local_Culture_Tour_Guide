@@ -11,13 +11,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 나의 일정 — 초안을 저장 일정으로 확정 (요구사항 정의서 08 API-PLAN-009)
- * 저장 일정 목록·상세·수정·삭제(API-PLAN-010~013)는 내 여행 담당이라 여기 두지 않는다.
+ * 나의 일정 — 초안을 새 일정으로 저장하거나 기존 저장 일정을 편집 초안으로 교체한다.
  */
 @RestController
 @RequestMapping("/api/plans")
@@ -37,6 +38,15 @@ public class PlanSaveController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(planDraftService.saveDraft(userId, request.draftId())));
+    }
+
+    @PutMapping("/{planId}/from-draft")
+    public ResponseEntity<ApiResponse<PlanSaveResponse>> replaceSaved(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long planId,
+            @Valid @RequestBody PlanSaveRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(planDraftService.replaceSavedPlan(userId, planId, request.draftId())));
     }
 
     @ExceptionHandler(PlanRuleException.class)

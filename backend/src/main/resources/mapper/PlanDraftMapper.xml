@@ -201,4 +201,33 @@
 		WHERE trip_plan_id = #{tripPlanId}
 	</delete>
 
+	<update id="replaceSavedFromDraft">
+		UPDATE trip_plan saved
+		JOIN trip_plan draft ON draft.trip_plan_id = #{draftId}
+		SET saved.anchor_content_id = draft.anchor_content_id,
+		    saved.title = draft.title,
+		    saved.trip_date = draft.trip_date,
+		    saved.visit_start_time = draft.visit_start_time,
+		    saved.visit_end_time = draft.visit_end_time,
+		    saved.ai_yn = draft.ai_yn,
+		    saved.transport_md = draft.transport_md,
+		    saved.food_preference = draft.food_preference,
+		    saved.meal_type = draft.meal_type,
+		    saved.lunch_food_preference = draft.lunch_food_preference,
+		    saved.dinner_food_preference = draft.dinner_food_preference,
+		    saved.cafe_yn = draft.cafe_yn,
+		    saved.search_dates = draft.search_dates,
+		    saved.search_categories = draft.search_categories,
+		    saved.search_district = draft.search_district,
+		    saved.search_free_yn = draft.search_free_yn,
+		    saved.headcount = draft.headcount
+		WHERE saved.trip_plan_id = #{planId}
+		  AND saved.save_yn = TRUE
+		  AND draft.save_yn = FALSE
+	</update>
+
+	<delete id="deleteDraft" parameterType="long">
+		DELETE FROM trip_plan WHERE trip_plan_id = #{draftId} AND save_yn = FALSE
+	</delete>
+
 </mapper>

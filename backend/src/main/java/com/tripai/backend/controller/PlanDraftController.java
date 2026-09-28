@@ -63,6 +63,16 @@ public class PlanDraftController {
         return ResponseEntity.ok(ApiResponse.success(planDraftService.getDraft(userId, draftId)));
     }
 
+    /** 저장 일정 편집 화면을 떠날 때 임시 초안을 폐기한다. */
+    @DeleteMapping("/{draftId}")
+    public ResponseEntity<Void> discardDraft(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long draftId
+    ) {
+        planDraftService.discardDraft(userId, draftId);
+        return ResponseEntity.noContent().build();
+    }
+
     /** API-PLAN-005 저장 전 일정 제목 변경 */
     @PatchMapping("/{draftId}/title")
     public ResponseEntity<ApiResponse<DraftTitleResponse>> updateTitle(
