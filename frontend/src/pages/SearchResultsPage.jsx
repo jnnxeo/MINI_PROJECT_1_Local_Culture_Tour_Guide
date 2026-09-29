@@ -1,13 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import FilterModal from '../features/home/components/FilterModal.jsx'
-import KeywordModal from '../features/home/components/KeywordModal.jsx'
 import DateModal from '../features/home/components/DateModal.jsx'
 import SearchResultCard from '../features/search/components/SearchResultCard.jsx'
 import { buildSubmittedSearchParams, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
 import { getDefaultSort, getSortOptions } from '../features/search/eventSort.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
+import '../styles/condition-filters.css'
 import useFavoriteEvents from '../hooks/useFavoriteEvents.js'
 
 function SortDropdown({ selected, dates, onSelect }) {
@@ -71,8 +71,14 @@ export default function SearchResultsPage() {
   const [status, setStatus] = useState('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [retryCount, setRetryCount] = useState(0)
+  const keywordSummaryRef = useRef(null)
+  const [keywordSummaryHeight, setKeywordSummaryHeight] = useState(0)
 
-  useEffect(() => { setDraft(readSearchConditions(new URLSearchParams(location.search))) }, [appliedFilterKey])
+  useEffect(() => {
+    if (applied.keyword) setKeywordSummaryHeight(0)
+  }, [applied.keyword])
+
+  useEffect(() => { setDraft(readSearchConditions(new URLSearchParams(location.search))) }, [appliedFilterKey, location.key])
 
   useEffect(() => {
     let active = true
@@ -99,9 +105,18 @@ export default function SearchResultsPage() {
         setStatus('error')
       })
     return () => { active = false }
-  }, [location.search, applied.page, retryCount, navigate])
+  }, [location.key, location.search, applied.page, retryCount, navigate])
 
   const navigateWith = (params) => navigate({ pathname: '/events', search: params.toString() })
+
+  const clearKeyword = () => {
+    const params = new URLSearchParams(location.search)
+    params.delete('keyword')
+    params.delete('page')
+    setKeywordSummaryHeight(keywordSummaryRef.current?.getBoundingClientRect().height || 0)
+    keywordSummaryRef.current?.focus({ preventScroll: true })
+    navigate({ pathname: '/events', search: params.toString() }, { replace: true, preventScrollReset: true })
+  }
 
   const submitSearch = (event) => {
     event.preventDefault()
@@ -145,14 +160,11 @@ export default function SearchResultsPage() {
       </header>
 
       <div className="search-results-content">
-        <div className="search-results-filters__keyword">
-          <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('keyword')} aria-haspopup="dialog">
-            <span>키워드 검색</span>
-            <strong>{draft.keyword || '행사명 · 장소 · 지역 · 행사 분야로 찾기'}</strong>
-          </button>
-          {draft.keyword && <button type="button" className="search-results-filters__clear" onClick={() => setDraft((current) => ({ ...current, keyword: '' }))} aria-label="검색어 지우기">×</button>}
+        <div className="search-results-keyword" ref={keywordSummaryRef} tabIndex={-1} style={keywordSummaryHeight ? { minHeight: keywordSummaryHeight } : undefined}>
+          <p aria-live="polite">검색어: <strong>{applied.keyword || '없음'}</strong></p>
+          <button type="button" onClick={clearKeyword} disabled={!applied.keyword} className={!applied.keyword ? 'search-results-keyword__clear--hidden' : undefined}>검색어 지우기</button>
         </div>
-        <form className="search-results-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
+        <form className="search-results-filters event-condition-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
           <div className="search-results-filters__month">
             <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
               <span>날짜 선택</span>
@@ -231,13 +243,6 @@ export default function SearchResultsPage() {
         <span>행사 정보는 방문 전 공식 안내를 확인해 주세요.</span>
       </footer>
 
-      {activeModal === 'keyword' && (
-        <KeywordModal
-          initialKeyword={draft.keyword}
-          onClose={() => setActiveModal(null)}
-          onSearch={(keyword) => { setActiveModal(null); navigateWith(new URLSearchParams({ keyword })) }}
-        />
-      )}
       {activeModal === 'date' && (
         <DateModal
           dates={draft.dates}

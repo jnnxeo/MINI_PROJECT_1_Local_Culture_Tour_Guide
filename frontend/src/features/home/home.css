@@ -151,15 +151,6 @@
   align-items: stretch;
 }
 
-.home-keyword-search {
-  margin-bottom: 16px;
-}
-
-.home-search__field--keyword {
-  width: 100%;
-  min-height: 96px;
-}
-
 .home-search__field {
   min-width: 0;
   min-height: 78px;
@@ -530,12 +521,13 @@
   border-color: #b42318;
 }
 
-.keyword-modal__field span {
+.keyword-modal__field label {
   color: var(--tripai-muted);
   font-size: 14px;
 }
 
 .keyword-modal__field input {
+  min-width: 0;
   width: 100%;
   border: 0;
   outline: 0;
@@ -543,6 +535,56 @@
   font: inherit;
   font-size: 20px;
   font-weight: 700;
+}
+
+.keyword-modal__input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keyword-modal__field input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.keyword-modal__clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--tripai-muted);
+  cursor: pointer;
+}
+
+.keyword-modal__clear:hover {
+  background: var(--tripai-canvas);
+  color: var(--tripai-text);
+}
+
+@media (max-width: 640px) {
+  .keyword-modal {
+    padding: 24px 20px;
+    max-height: calc(100dvh - 32px);
+    border-radius: 22px;
+  }
+
+  .keyword-modal .home-modal__description {
+    margin: 20px 0;
+    font-size: 15px;
+  }
+
+  .keyword-modal__field {
+    padding: 12px;
+  }
+
+  .keyword-modal__field input {
+    font-size: 16px;
+  }
 }
 
 .keyword-modal__suggestions {
@@ -700,6 +742,92 @@
 .home-modal input:focus-visible {
   outline: 3px solid rgb(45 102 238 / 30%);
   outline-offset: 2px;
+}
+
+/* 키워드 검색은 AI 추천 모달과 같은 크기·간격으로 구성한다. */
+.keyword-modal {
+  width: min(100%, 620px);
+  padding: 32px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 24px;
+}
+
+.keyword-modal .home-modal__heading h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.keyword-modal .home-modal__description {
+  margin: 16px 0 24px;
+  font-size: 15px;
+}
+
+.keyword-modal__field {
+  min-height: 86px;
+  padding: 12px 16px;
+  gap: 2px;
+  background: var(--tripai-canvas);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.keyword-modal__field:focus-within {
+  border-color: var(--tripai-blue);
+  box-shadow: 0 0 0 3px rgb(45 102 238 / 10%);
+}
+
+.keyword-modal__field--error,
+.keyword-modal__field--error:focus-within {
+  border-color: #b42318;
+}
+
+.keyword-modal .keyword-modal__field input {
+  padding: 0;
+  background: transparent;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.keyword-modal .keyword-modal__field input:focus-visible {
+  outline: none;
+}
+
+.keyword-modal .home-modal__section-title {
+  margin: 24px 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.keyword-modal__suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.keyword-modal__suggestions button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 22px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.keyword-modal__suggestions button:hover {
+  color: var(--tripai-blue);
+  background: var(--tripai-canvas);
+}
+
+.keyword-modal .home-modal__full-button {
+  margin-top: 28px;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+@media (max-width: 640px) {
+  .keyword-modal {
+    padding: 24px 20px;
+  }
 }
 
 .event-card__image {

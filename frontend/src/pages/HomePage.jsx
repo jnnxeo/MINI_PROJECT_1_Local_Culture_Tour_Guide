@@ -54,10 +54,6 @@ export default function HomePage() {
     setSelectedMonth(month)
   }
 
-  const handleKeywordSearch = (keyword) => {
-    navigate(`/events?${new URLSearchParams({ keyword })}`)
-  }
-
   const handleFilterSearch = ({ dates, categories, district, freeOnly }) => {
     const params = new URLSearchParams()
     dates.forEach((date) => params.append('date', date))
@@ -103,7 +99,7 @@ export default function HomePage() {
       <HeroSection onExplore={scrollToEvents} />
 
       <div className="home-content">
-        <SearchPanel onKeywordSearch={handleKeywordSearch} onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
+        <SearchPanel onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
         {recommendConditions && <ConditionsModal
           mode="create" conditions={recommendConditions} busy={recommending} error={searchError}
           onSubmit={createRecommendation}

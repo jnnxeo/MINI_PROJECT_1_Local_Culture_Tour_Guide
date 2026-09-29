@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import HomeModal from './HomeModal.jsx'
 import DateCalendar from '../../../components/common/DateCalendar.jsx'
+import './date-modal.css'
 
 export default function DateModal({ dates = [], onConfirm, onClose }) {
   const [selected, setSelected] = useState(dates)
   return (
-    <HomeModal title="날짜 선택" titleId="date-modal-title" onClose={onClose}>
+    <HomeModal title="날짜 선택" titleId="date-modal-title" className="date-modal" onClose={onClose}>
       <p className="home-modal__description">갈 수 있는 날을 골라 주세요. 선택한 날 중 하루라도 진행하는 행사를 찾아요. 최대 31일까지 선택할 수 있어요.</p>
       <DateCalendar value={selected} onChange={setSelected} />
       {selected.length > 31 && <p role="alert">날짜는 최대 31일까지 선택해 주세요.</p>}

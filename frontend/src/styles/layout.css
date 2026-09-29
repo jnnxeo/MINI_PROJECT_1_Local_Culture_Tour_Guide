@@ -1,3 +1,8 @@
+/* 모달이 배경 스크롤을 잠가도 스크롤바 자리의 폭을 유지한다. */
+html {
+  scrollbar-gutter: stable;
+}
+
 .home-plan-header {
   --tripai-page-gutter: clamp(20px, 5vw, 64px);
   --tripai-radius-12: 12px;
@@ -11,6 +16,19 @@
 .home-plan-header .tp-nav {
   max-width: 1440px;
   margin: 0 auto;
+}
+
+.home-plan-header .tp-nav__search {
+  width: 48px;
+  padding: 0;
+  border-color: #e6ebf4;
+  cursor: pointer;
+}
+
+.home-plan-header .tp-nav__search:hover,
+.home-plan-header .tp-nav__search[aria-expanded="true"] {
+  color: #2d66ee;
+  background: #eff4ff;
 }
 
 .feature-placeholder {
