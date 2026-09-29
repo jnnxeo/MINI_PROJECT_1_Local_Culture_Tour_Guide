@@ -29,7 +29,7 @@ export default function App() {
         element={(
           <ProtectedRoute>
             {/* 메인·검색 결과와 같은 상단 메뉴(로고·메인페이지·내 여행·로그아웃) */}
-            <HomeNavigation />
+            <HomeNavigation enableSearch />
             <MyPage />
           </ProtectedRoute>
         )}

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { getEventDetail } from '../services/eventService.js'
 import EventCreateModal from '../components/layout/event/EventCreateModal.jsx'
 import FavoriteButton from '../components/FavoriteButton.jsx'
-import SiteHeader from '../components/layout/SiteHeader.jsx'
+import HomeNavigation from '../features/home/components/HomeNavigation.jsx'
 import SiteFooter from '../components/layout/SiteFooter.jsx'
 import '../styles/event-base.css'
 import '../styles/eventdetail.css'
@@ -100,7 +100,7 @@ export default function EventDetailPage() {
 
   return (
     <div className="event-page">
-      <SiteHeader />
+      <HomeNavigation enableSearch />
 
       <main>
         <header className="event-heading">

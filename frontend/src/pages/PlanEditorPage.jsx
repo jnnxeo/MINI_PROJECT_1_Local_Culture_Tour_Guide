@@ -6,7 +6,7 @@ import GeneratingModal from '../components/plan/GeneratingModal.jsx'
 import PlaceChosenModal from '../components/plan/PlaceChosenModal.jsx'
 import PlaceSearchModal from '../components/plan/PlaceSearchModal.jsx'
 import PlanFooter from '../components/plan/PlanFooter.jsx'
-import PlanHeader from '../components/plan/PlanHeader.jsx'
+import HomeNavigation from '../features/home/components/HomeNavigation.jsx'
 import RenameModal from '../components/plan/RenameModal.jsx'
 import RouteMap from '../components/plan/RouteMap.jsx'
 import TimelineItem, { getItemHeading } from '../components/plan/TimelineItem.jsx'
@@ -729,7 +729,7 @@ export default function PlanEditorPage({ savedPlanId = null }) {
   if (status !== 'ready') {
     return (
       <div className="plan-page">
-        <PlanHeader />
+        <HomeNavigation enableSearch />
         <main className="plan-status">
           {status === 'loading' && <p aria-live="polite">일정을 불러오는 중이에요…</p>}
           {status === 'empty' && (
@@ -760,7 +760,7 @@ export default function PlanEditorPage({ savedPlanId = null }) {
 
   return (
     <div className="plan-page">
-      <PlanHeader onNavigate={requestNavigate} />
+      <HomeNavigation enableSearch onNavigate={requestNavigate} />
 
       <section className="plan-heading">
         <p className="plan-heading__eyebrow">{`나의 일정 · ${savedPlan ? '저장 완료' : savedPlanId ? '저장한 일정' : '저장 전 초안'} · ${formatDate(draft.visitDate)}`}</p>
