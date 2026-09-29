@@ -22,8 +22,7 @@
 
 ```bash
 # 프로젝트 루트에서 실행
-mysql -u root -p tripai < database/schema/01_tripai_ddl_v3.2.1.sql
-mysql -u root -p tripai < database/schema/02_place_food_category_v3.2.2.sql
+mysql -u root -p < database/schema/01_TripAI_최종_DDL_v3.2.5.sql   # DB를 처음 만들 때만 (통합 DDL)
 mysql -u root -p tripai < database/seed/01_place_tourapi_seoul_2026-09-27.sql
 mysql -u root -p tripai < database/seed/02_place_tourapi_seoul_break_time_2026-09-27.sql
 mysql -u root -p tripai < database/seed/03_place_tourapi_seoul_open_time_fix_2026-09-27.sql
@@ -31,7 +30,7 @@ mysql -u root -p tripai < database/seed/04_place_tourapi_seoul_break_time_spacin
 mysql -u root -p tripai < database/seed/05_place_tourapi_seoul_remaining_2026-09-28.sql
 ```
 
-이미 팀 DDL이 적용된 DB라면 마지막 다섯 시드 명령만 실행한다. 적용 뒤 아래처럼 확인한다.
+이미 팀 DDL이 적용된 DB라면 다섯 시드 명령만 실행한다. 예전 v3.2.1로 만든 DB라면 `database/schema/README.md`를 보고 빠진 마이그레이션(02~05)을 먼저 적용한다. 적용 뒤 아래처럼 확인한다.
 
 ```sql
 SELECT cuisine_type, COUNT(*)
