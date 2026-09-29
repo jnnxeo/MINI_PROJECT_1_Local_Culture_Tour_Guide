@@ -9,9 +9,9 @@ const PlansList = ({ary, onUpdate}) => {
     if (ary.length === 0) {
         return (
             <div className="empty-state">
-                <p className="empty-state-title">아직 저장한 일정이 없어요.</p>
-                <p>마음에 드는 여행 코스를 만들어보세요.</p>
-                <button className="primary-button" onClick={() => moveUrl(`/events/${event.eventId}`)}>일정 만들기</button>
+                <p className="empty-state-title">저장한 일정이 없습니다.</p>
+                <p>행사를 골라 일정을 만들고 저장해 보세요.</p>
+                <button className="primary-button" onClick={() => moveUrl('/', { state: { guide: 'plan' } })}>메인 페이지로 이동</button>
             </div>
         )
     }

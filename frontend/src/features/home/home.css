@@ -1218,3 +1218,16 @@
   color: #2457c5;
 }
 .home-search__recommend:hover { background: #dce9ff; }
+
+.home-return-guide {
+  padding: 16px 20px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 15px;
+  font-weight: 600;
+  scroll-margin-top: 88px;
+}
+
+#monthly-events { scroll-margin-top: 160px; }

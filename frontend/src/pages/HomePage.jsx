@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import EventSection from '../features/home/components/EventSection.jsx'
 import HeroSection from '../features/home/components/HeroSection.jsx'
 import MonthSelector from '../features/home/components/MonthSelector.jsx'
@@ -12,6 +12,8 @@ import '../styles/plan.css'
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const guide = location.state?.guide === 'favorite' || location.state?.guide === 'plan' ? location.state.guide : null
   const today = new Date()
   const [selectedYear] = useState(today.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(today.getMonth() + 1)
@@ -45,6 +47,13 @@ export default function HomePage() {
       })
     return () => { active = false }
   }, [selectedPeriod, reloadCount])
+
+  useEffect(() => {
+    if (!guide) return undefined
+    const target = guide === 'plan' ? 'home-plan-start' : 'monthly-events'
+    const frame = requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+    return () => cancelAnimationFrame(frame)
+  }, [guide, location.key])
 
   const handleFavorite = (eventId) => toggleFavorite(eventId)
 
@@ -99,6 +108,7 @@ export default function HomePage() {
       <HeroSection onExplore={scrollToEvents} />
 
       <div className="home-content">
+        {guide === 'plan' && <p className="home-return-guide" role="status" id="home-plan-start">행사를 골라 일정을 만들고 저장해 보세요. 날짜를 고른 뒤 AI 추천받기를 누르면 시작할 수 있습니다.</p>}
         <SearchPanel onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
         {recommendConditions && <ConditionsModal
           mode="create" conditions={recommendConditions} busy={recommending} error={searchError}
@@ -112,6 +122,7 @@ export default function HomePage() {
         </p>
 
         {favoriteError && <p className="home-search__error" role="alert">{favoriteError}</p>}
+        {guide === 'favorite' && <p className="home-return-guide" role="status">마음에 드는 행사에 하트를 눌러 저장해 보세요. 저장한 행사는 내 여행의 관심 행사에서 볼 수 있습니다.</p>}
         <EventSection
           id="monthly-events"
           title={`${selectedYear}년 ${selectedMonth}월의 문화행사`}

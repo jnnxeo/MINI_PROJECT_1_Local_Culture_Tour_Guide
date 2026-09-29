@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import api from '../services/api.js'
 import '../styles/myPage.css'
 
@@ -16,9 +16,12 @@ const MyPage = () => {
     const [page, setPage] = useState(0);
     const [pageSize, setPageSize] = useState(10);
     const [totalPages, setTotalPages] = useState(0);
+    const [loadState, setLoadState] = useState({ tab: null, loading: true, error: '' });
+    const requestId = useRef(0);
 
     const loadPlans = async () =>{
-
+        const currentRequest = ++requestId.current;
+        setLoadState({ tab: 'plans', loading: true, error: '' });
         await api.get('/api/plans', {
             params : {
                 page : page,
@@ -26,8 +29,7 @@ const MyPage = () => {
             }
         })
         .then(response => {
-            console.log('Mypage loadPlans response : ', response)
-            if(response.status === 200){
+            if(currentRequest === requestId.current && response.status === 200){
                 const result = response.data.data
                 setPlans(result.plans)
                 const totalPageCount = Math.ceil(result.totalCount / pageSize)
@@ -35,15 +37,22 @@ const MyPage = () => {
             }
         })
         .catch(error=>{
+            if(currentRequest !== requestId.current) return;
             if(error.response?.status === 404){
                     setPlans([])
                     setTotalPages(0)
+            } else {
+                setLoadState({ tab: 'plans', loading: false, error: '저장한 일정을 불러오지 못했습니다.' });
             }
+        })
+        .finally(() => {
+            if(currentRequest === requestId.current) setLoadState((state) => ({ ...state, loading: false }));
         })
     }
 
     const loadEvents = async () => {
-
+        const currentRequest = ++requestId.current;
+        setLoadState({ tab: 'events', loading: true, error: '' });
         await api.get('/api/favorites/events', {
             params : {
                 page : page,
@@ -51,8 +60,7 @@ const MyPage = () => {
             }
         })
         .then(response => {
-                console.log(`debug >>>> MyPage loadEvents response : `, response)
-                if(response.status === 200){
+                if(currentRequest === requestId.current && response.status === 200){
                     const result = response.data.data
                     setEvents(result.events)
                     const totalPageCount = Math.ceil(result.totalCount / pageSize);
@@ -60,11 +68,17 @@ const MyPage = () => {
                 }
         })
         .catch(error => {
+                if(currentRequest !== requestId.current) return;
                 if(error.response?.status === 404){
                     setEvents([])
                     setTotalPages(0)
+                } else {
+                    setLoadState({ tab: 'events', loading: false, error: '관심 행사를 불러오지 못했습니다.' });
                 }
             })
+        .finally(() => {
+            if(currentRequest === requestId.current) setLoadState((state) => ({ ...state, loading: false }));
+        })
     }
 
     useEffect(()=>{
@@ -171,10 +185,15 @@ const MyPage = () => {
 
         <h2>{activeTab === 'plans' ? '저장한 일정' : '관심 행사'}</h2>
 
-        {activeTab === 'plans' && <PlansList ary={plans} onUpdate={loadPlans} />}
-        {activeTab === 'events' && <EventsList ary={events} onUpdate={loadEvents} />}
+        {(loadState.tab !== activeTab || loadState.loading) && <p role="status">목록을 불러오는 중입니다.</p>}
+        {loadState.tab === activeTab && !loadState.loading && loadState.error && <div role="alert">
+            <p>{loadState.error}</p>
+            <button className="primary-button" type="button" onClick={activeTab === 'plans' ? loadPlans : loadEvents}>다시 시도</button>
+        </div>}
+        {loadState.tab === activeTab && !loadState.loading && !loadState.error && activeTab === 'plans' && <PlansList ary={plans} onUpdate={loadPlans} />}
+        {loadState.tab === activeTab && !loadState.loading && !loadState.error && activeTab === 'events' && <EventsList ary={events} onUpdate={loadEvents} />}
 
-        {totalPages > 1 && (
+        {!loadState.loading && !loadState.error && totalPages > 1 && (
             <nav className="pagination">
             {Array.from({ length: totalPages }, (_, index) => (
                 <button
