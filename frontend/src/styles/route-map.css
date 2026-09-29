@@ -1,0 +1,45 @@
+/* 오늘의 이동 동선 — 카카오 지도 (개념도 .plan-map 크기를 그대로 쓴다) */
+.plan-kakao-map__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.plan-map--loading {
+  background: linear-gradient(90deg, #eef2f7 0%, #f6f8fb 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: plan-map-loading 1.2s ease-in-out infinite;
+}
+
+@keyframes plan-map-loading {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+/* 카카오 CustomOverlay 가 위치를 잡으므로 개념도 마커와 달리 transform 을 쓰지 않는다 */
+.plan-kakao-map__marker {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 3px solid var(--tripai-white);
+  border-radius: 50%;
+  background: var(--tripai-blue);
+  color: var(--tripai-white);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 30%);
+  cursor: pointer;
+}
+
+.plan-kakao-map__marker.is-selected {
+  width: 44px;
+  height: 44px;
+  background: var(--tripai-navy);
+  font-size: 16px;
+  box-shadow: 0 0 0 4px rgb(37 99 235 / 35%), 0 4px 12px rgb(15 23 42 / 35%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-map--loading { animation: none; }
+}
