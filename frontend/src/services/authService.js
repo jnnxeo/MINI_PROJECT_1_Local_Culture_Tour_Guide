@@ -41,8 +41,12 @@ export async function requestLogin({ email, password }) {
   return data.data
 }
 
-export async function requestLogout() {
-  await api.post('/api/auth/logout', null, { skipAuthSessionHandling: true })
+export async function requestLogout(accessToken) {
+  await api.post('/api/auth/logout', null, {
+    skipAuthSessionHandling: true,
+    timeout: 5000,
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
+  })
 }
 
 export function saveAuth({ accessToken, expiresIn }) {
