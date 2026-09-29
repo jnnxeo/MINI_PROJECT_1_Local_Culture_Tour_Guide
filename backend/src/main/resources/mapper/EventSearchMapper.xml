@@ -59,6 +59,23 @@
         FROM event
         WHERE <include refid="searchConditions" />
         <choose>
+            <when test="criteria.sort == 'dateClosest'">
+                ORDER BY LEAST(2147483647,
+                    <foreach collection="criteria.dates" item="date" separator=",">
+                        CASE WHEN event_start_date &lt;= #{date} AND event_end_date &gt;= #{date}
+                             THEN DATEDIFF(#{date}, event_start_date) ELSE 2147483647 END
+                    </foreach>
+                ) ASC, event_end_date ASC, event_content_id ASC
+            </when>
+            <when test="criteria.sort == 'recentStart'">
+                ORDER BY CASE WHEN event_start_date &gt; CURRENT_DATE THEN 1
+                              WHEN event_end_date &lt; CURRENT_DATE THEN 2 ELSE 0 END ASC,
+                         CASE WHEN event_start_date &lt;= CURRENT_DATE AND event_end_date &gt;= CURRENT_DATE
+                              THEN event_start_date END DESC,
+                         CASE WHEN event_start_date &gt; CURRENT_DATE THEN event_start_date END ASC,
+                         CASE WHEN event_end_date &lt; CURRENT_DATE THEN event_end_date END DESC,
+                         event_end_date ASC, event_content_id ASC
+            </when>
             <when test="criteria.sort == 'endDateAsc'">
                 ORDER BY CASE WHEN event_end_date &lt; CURRENT_DATE THEN 1 ELSE 0 END ASC,
                          CASE WHEN event_end_date &gt;= CURRENT_DATE THEN event_end_date END ASC,

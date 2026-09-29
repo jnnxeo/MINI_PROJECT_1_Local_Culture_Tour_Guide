@@ -1,0 +1,177 @@
+.home-modal.filter-modal {
+  width: min(100%, 620px);
+  padding: 32px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 24px;
+  max-height: calc(100dvh - 32px);
+}
+
+.filter-modal .home-modal__heading h2 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.filter-modal .home-modal__description {
+  margin: 16px 0 24px;
+  font-size: 15px;
+}
+
+.filter-modal .home-modal__section-title {
+  margin: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.filter-modal .filter-modal__section + .filter-modal__section {
+  margin-top: 24px;
+}
+
+.filter-modal .filter-modal__choices {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.filter-modal .filter-modal__choice {
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 8px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.filter-modal .filter-modal__choice:hover {
+  background: var(--tripai-canvas);
+}
+
+.filter-modal .filter-modal__choice--selected,
+.filter-modal .filter-modal__free--selected {
+  border-color: var(--tripai-blue);
+  color: var(--tripai-blue);
+  background: #eff4ff;
+  box-shadow: 0 2px 8px rgb(37 99 235 / 8%);
+}
+
+.filter-modal .filter-modal__choice--selected {
+  font-weight: 700;
+}
+
+.filter-modal .filter-modal__choices--districts {
+  max-height: 280px;
+  padding: 4px;
+  overscroll-behavior: contain;
+}
+
+.filter-modal .filter-modal__free {
+  min-height: 72px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 16px;
+  text-align: left;
+}
+
+.filter-modal__free-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-modal__free-copy strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.filter-modal__free-copy small {
+  color: var(--tripai-muted);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.filter-modal__check {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--tripai-line);
+  border-radius: 50%;
+  background: white;
+  color: transparent;
+}
+
+.filter-modal__free--selected .filter-modal__check {
+  border-color: var(--tripai-blue);
+  background: var(--tripai-blue);
+  color: white;
+}
+
+.filter-modal .filter-modal__summary {
+  margin-top: 24px;
+  padding: 14px 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  border-radius: 12px;
+  background: var(--tripai-canvas);
+  color: var(--tripai-muted);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.filter-modal .filter-modal__actions {
+  margin-top: 24px;
+  grid-template-columns: 1fr 2fr;
+  gap: 12px;
+}
+
+.filter-modal .filter-modal__summary--details {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-modal__summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.filter-modal__summary-row > span {
+  flex: none;
+}
+
+.filter-modal__summary-row > strong {
+  min-width: 0;
+  color: var(--tripai-text);
+  font-weight: 600;
+}
+
+.filter-modal .filter-modal__actions button {
+  height: 48px;
+  min-height: 48px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.filter-modal .primary-button:hover {
+  transform: none;
+}
+
+@media (max-width: 640px) {
+  .home-modal.filter-modal {
+    padding: 24px 20px;
+  }
+
+  .filter-modal .filter-modal__choices {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

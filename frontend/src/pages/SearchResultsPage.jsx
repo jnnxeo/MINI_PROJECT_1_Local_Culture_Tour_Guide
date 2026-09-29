@@ -1,24 +1,20 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import FilterModal from '../features/home/components/FilterModal.jsx'
-import KeywordModal from '../features/home/components/KeywordModal.jsx'
 import DateModal from '../features/home/components/DateModal.jsx'
 import SearchResultCard from '../features/search/components/SearchResultCard.jsx'
-import { buildSearchParams, DEFAULT_SORT, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
+import { buildSubmittedSearchParams, readSearchConditions, SEARCH_PAGE_SIZE } from '../features/search/searchParams.js'
+import { getDefaultSort, getSortOptions } from '../features/search/eventSort.js'
 import { getEventSearchResults } from '../services/eventSearchService.js'
 import '../features/search/search.css'
+import '../styles/condition-filters.css'
 import useFavoriteEvents from '../hooks/useFavoriteEvents.js'
 
-const SORT_OPTIONS = [
-  { value: 'startDateAsc', label: '시작 날짜순' },
-  { value: 'endDateAsc', label: '종료 임박순' },
-  { value: 'titleAsc', label: '행사명순' },
-]
-
-function SortDropdown({ selected, onSelect }) {
+function SortDropdown({ selected, dates, onSelect }) {
+  const options = getSortOptions(dates)
   const [open, setOpen] = useState(false)
   const containerRef = useRef(null)
-  const label = SORT_OPTIONS.find((option) => option.value === selected)?.label || SORT_OPTIONS[0].label
+  const label = options.find((option) => option.value === selected)?.label || options[0].label
 
   useEffect(() => {
     if (!open) return undefined
@@ -39,11 +35,14 @@ function SortDropdown({ selected, onSelect }) {
   return (
     <div className="search-results__sort" ref={containerRef}>
       <button type="button" className="search-results__sort-trigger" onClick={() => setOpen((current) => !current)} aria-expanded={open} aria-controls="event-sort-options">
-        {label} <span aria-hidden="true">⌄</span>
+        {label}
+        <svg className="search-results__sort-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
       </button>
       {open && (
         <div className="search-results__sort-options" id="event-sort-options" role="group" aria-label="정렬 방식">
-          {SORT_OPTIONS.map((option) => (
+          {options.map((option) => (
             <button
               key={option.value}
               type="button"
@@ -72,8 +71,14 @@ export default function SearchResultsPage() {
   const [status, setStatus] = useState('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [retryCount, setRetryCount] = useState(0)
+  const keywordSummaryRef = useRef(null)
+  const [keywordSummaryHeight, setKeywordSummaryHeight] = useState(0)
 
-  useEffect(() => { setDraft(readSearchConditions(new URLSearchParams(location.search))) }, [appliedFilterKey])
+  useEffect(() => {
+    if (applied.keyword) setKeywordSummaryHeight(0)
+  }, [applied.keyword])
+
+  useEffect(() => { setDraft(readSearchConditions(new URLSearchParams(location.search))) }, [appliedFilterKey, location.key])
 
   useEffect(() => {
     let active = true
@@ -100,13 +105,22 @@ export default function SearchResultsPage() {
         setStatus('error')
       })
     return () => { active = false }
-  }, [location.search, applied.page, retryCount, navigate])
+  }, [location.key, location.search, applied.page, retryCount, navigate])
 
   const navigateWith = (params) => navigate({ pathname: '/events', search: params.toString() })
 
+  const clearKeyword = () => {
+    const params = new URLSearchParams(location.search)
+    params.delete('keyword')
+    params.delete('page')
+    setKeywordSummaryHeight(keywordSummaryRef.current?.getBoundingClientRect().height || 0)
+    keywordSummaryRef.current?.focus({ preventScroll: true })
+    navigate({ pathname: '/events', search: params.toString() }, { replace: true, preventScrollReset: true })
+  }
+
   const submitSearch = (event) => {
     event.preventDefault()
-    const params = buildSearchParams({ ...draft, page: 0, sort: applied.sort })
+    const params = buildSubmittedSearchParams(draft, applied)
     if (params.toString() === new URLSearchParams(location.search).toString()) {
       setRetryCount((count) => count + 1)
     } else {
@@ -116,7 +130,7 @@ export default function SearchResultsPage() {
 
   const selectSort = (sort) => {
     const params = new URLSearchParams(location.search)
-    if (sort === DEFAULT_SORT) params.delete('sort')
+    if (sort === getDefaultSort(applied.dates)) params.delete('sort')
     else params.set('sort', sort)
     params.delete('page')
     navigateWith(params)
@@ -146,14 +160,11 @@ export default function SearchResultsPage() {
       </header>
 
       <div className="search-results-content">
-        <div className="search-results-filters__keyword">
-          <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('keyword')} aria-haspopup="dialog">
-            <span>키워드 검색</span>
-            <strong>{draft.keyword || '행사명 · 장소 · 지역 · 행사 분야로 찾기'}</strong>
-          </button>
-          {draft.keyword && <button type="button" className="search-results-filters__clear" onClick={() => setDraft((current) => ({ ...current, keyword: '' }))} aria-label="검색어 지우기">×</button>}
+        <div className="search-results-keyword" ref={keywordSummaryRef} tabIndex={-1} style={keywordSummaryHeight ? { minHeight: keywordSummaryHeight } : undefined}>
+          <p aria-live="polite">검색어: <strong>{applied.keyword || '없음'}</strong></p>
+          <button type="button" onClick={clearKeyword} disabled={!applied.keyword} className={!applied.keyword ? 'search-results-keyword__clear--hidden' : undefined}>검색어 지우기</button>
         </div>
-        <form className="search-results-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
+        <form className="search-results-filters event-condition-filters" onSubmit={submitSearch} aria-label="문화행사 검색 조건">
           <div className="search-results-filters__month">
             <button type="button" className="home-search__field home-search__field--button" onClick={() => setActiveModal('date')} aria-haspopup="dialog">
               <span>날짜 선택</span>
@@ -181,7 +192,7 @@ export default function SearchResultsPage() {
 
         <div className="search-results-toolbar">
           <h2>{status === 'success' ? (result.totalCount ? `검색 결과 ${result.totalCount}건` : '검색 결과가 없어요') : '검색 결과'}</h2>
-          <SortDropdown selected={applied.sort} onSelect={selectSort} />
+          <SortDropdown selected={applied.sort} dates={applied.dates} onSelect={selectSort} />
         </div>
 
         <p className="home-visually-hidden" role="status">{status === 'loading' ? '행사 검색 결과를 불러오는 중입니다.' : ''}</p>
@@ -232,13 +243,6 @@ export default function SearchResultsPage() {
         <span>행사 정보는 방문 전 공식 안내를 확인해 주세요.</span>
       </footer>
 
-      {activeModal === 'keyword' && (
-        <KeywordModal
-          initialKeyword={draft.keyword}
-          onClose={() => setActiveModal(null)}
-          onSearch={(keyword) => { setActiveModal(null); navigateWith(new URLSearchParams({ keyword })) }}
-        />
-      )}
       {activeModal === 'date' && (
         <DateModal
           dates={draft.dates}

@@ -61,6 +61,111 @@ class EventSearchIntegrationTest {
     }
 
     @Test
+    void selectedDateKeepsYearAndIncludesOnlyEventsRunningOnThatDay() throws Exception {
+        assertEquals(0, fixtureCount());
+        insert(ENDED, "전시/미술", "IT61연도 과거 종료", "종로구", "전시장",
+                "2021-09-28", "2021-09-29", true, true);
+        insert(PERFORMANCE, "콘서트", "IT61연도 장기 진행", "종로구", "공연장",
+                "2021-09-28", "2026-09-29", true, true);
+        insert(EXHIBITION, "전시/미술", "IT61연도 선택일", "종로구", "전시장",
+                "2026-09-29", "2026-09-29", true, true);
+        insert(OUTSIDE, "전시/미술", "IT61연도 다음 해", "종로구", "전시장",
+                "2027-09-29", "2027-09-29", true, true);
+        insert(HIDDEN, "전시/미술", "IT61연도 비표시", "종로구", "전시장",
+                "2026-09-29", "2026-09-29", true, false);
+
+        mockMvc.perform(get("/api/events").header("Authorization", authorization())
+                        .param("keyword", "IT61연도").param("date", "2026-09-29").param("sort", "startDateAsc"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(2))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(PERFORMANCE))
+                .andExpect(jsonPath("$.data.items[1].eventId").value(EXHIBITION));
+    }
+
+    @Test
+    void datesFromDifferentYearsArePreservedWhenSortingAndPaging() throws Exception {
+        assertEquals(0, fixtureCount());
+        insert(EXHIBITION, "전시/미술", "B-IT61다중연도 연말", "종로구", "전시장",
+                "2026-12-31", "2026-12-31", true, true);
+        insert(PERFORMANCE, "콘서트", "A-IT61다중연도 새해", "종로구", "공연장",
+                "2027-01-01", "2027-01-01", true, true);
+        insert(OUTSIDE, "전시/미술", "C-IT61다중연도 과거", "종로구", "전시장",
+                "2025-12-31", "2026-01-01", true, true);
+        String authorization = authorization();
+
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT61다중연도").param("date", "2026-12-31", "2027-01-01")
+                        .param("sort", "titleAsc").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(2))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(PERFORMANCE));
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT61다중연도").param("date", "2026-12-31", "2027-01-01")
+                        .param("sort", "titleAsc").param("page", "1").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(2))
+                .andExpect(jsonPath("$.data.page").value(1))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(EXHIBITION));
+    }
+
+    @Test
+    void defaultDateSortPrioritizesMatchingDatesAndKeepsCountAcrossPages() throws Exception {
+        assertEquals(0, fixtureCount());
+        insert(EXHIBITION, "전시/미술", "IT61날짜정렬 당일", "종로구", "전시장", "2026-09-28", "2026-09-30", true, true);
+        insert(UPCOMING, "전시/미술", "IT61날짜정렬 당일 빠른종료", "종로구", "전시장", "2026-09-28", "2026-09-29", true, true);
+        insert(PERFORMANCE, "콘서트", "IT61날짜정렬 두번째선택일", "종로구", "공연장", "2026-10-03", "2026-10-04", true, true);
+        insert(OUTSIDE, "전시/미술", "IT61날짜정렬 전날", "종로구", "전시장", "2026-09-27", "2026-10-10", true, true);
+        insert(ENDED, "전시/미술", "IT61날짜정렬 장기", "종로구", "전시장", "2021-09-28", "2026-12-31", true, true);
+        String authorization = authorization();
+
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT61날짜정렬").param("date", "2026-09-28", "2026-10-03").param("size", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(5))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(UPCOMING))
+                .andExpect(jsonPath("$.data.items[1].eventId").value(EXHIBITION));
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT61날짜정렬").param("date", "2026-09-28", "2026-10-03")
+                        .param("size", "2").param("page", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(5))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(PERFORMANCE))
+                .andExpect(jsonPath("$.data.items[1].eventId").value(OUTSIDE));
+        mockMvc.perform(get("/api/events").header("Authorization", authorization)
+                        .param("keyword", "IT61날짜정렬").param("date", "2026-09-28", "2026-10-03")
+                        .param("size", "2").param("page", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(5))
+                .andExpect(jsonPath("$.data.items.length()").value(1))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(ENDED));
+    }
+
+    @Test
+    void defaultRecentSortGroupsOngoingUpcomingAndEndedEvents() throws Exception {
+        assertEquals(0, fixtureCount());
+        LocalDate today = jdbcTemplate.queryForObject("SELECT CURRENT_DATE", Date.class).toLocalDate();
+        insert(EXHIBITION, "전시/미술", "IT61최근정렬 최근진행", "종로구", "전시장", today.minusDays(1).toString(), today.plusDays(10).toString(), true, true);
+        insert(PERFORMANCE, "콘서트", "IT61최근정렬 장기진행", "종로구", "공연장", today.minusDays(365).toString(), today.plusDays(10).toString(), true, true);
+        insert(OUTSIDE, "전시/미술", "IT61최근정렬 곧시작", "종로구", "전시장", today.plusDays(1).toString(), today.plusDays(2).toString(), true, true);
+        insert(HIDDEN, "전시/미술", "IT61최근정렬 나중시작", "종로구", "전시장", today.plusDays(20).toString(), today.plusDays(21).toString(), true, true);
+        insert(ENDED, "전시/미술", "IT61최근정렬 최근종료", "종로구", "전시장", today.minusDays(2).toString(), today.minusDays(1).toString(), true, true);
+        insert(UPCOMING, "전시/미술", "IT61최근정렬 과거종료", "종로구", "전시장", today.minusDays(60).toString(), today.minusDays(50).toString(), true, true);
+
+        mockMvc.perform(get("/api/events").header("Authorization", authorization()).param("keyword", "IT61최근정렬"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.totalCount").value(6))
+                .andExpect(jsonPath("$.data.items[0].eventId").value(EXHIBITION))
+                .andExpect(jsonPath("$.data.items[1].eventId").value(PERFORMANCE))
+                .andExpect(jsonPath("$.data.items[2].eventId").value(OUTSIDE))
+                .andExpect(jsonPath("$.data.items[3].eventId").value(HIDDEN))
+                .andExpect(jsonPath("$.data.items[4].eventId").value(ENDED))
+                .andExpect(jsonPath("$.data.items[5].eventId").value(UPCOMING));
+    }
+
+    @Test
     void searchMatchesKeywordAcrossMonthsAndCombinesFiltersWithoutDuplicateRows() throws Exception {
         assertEquals(0, fixtureCount());
         insert(EXHIBITION, "전시/미술", "Z-IT53키워드_ 전시", "종로구", "세종문화회관", "2098-01-31", "2098-03-31", null, true);
@@ -69,7 +174,7 @@ class EventSearchIntegrationTest {
         insert(HIDDEN, "콘서트", "H-IT53키워드 비공개", "종로구", "광장", "2098-02-10", "2098-02-11", true, false);
         String authorization = authorization();
 
-        mockMvc.perform(get("/api/events").header("Authorization", authorization).param("keyword", "IT53키워드"))
+        mockMvc.perform(get("/api/events").header("Authorization", authorization).param("keyword", "IT53키워드").param("sort", "startDateAsc"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.totalCount").value(3))
                 .andExpect(jsonPath("$.data.page").value(0))

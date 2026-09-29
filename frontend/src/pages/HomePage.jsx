@@ -63,10 +63,6 @@ export default function HomePage() {
     setSelectedMonth(month)
   }
 
-  const handleKeywordSearch = (keyword) => {
-    navigate(`/events?${new URLSearchParams({ keyword })}`)
-  }
-
   const handleFilterSearch = ({ dates, categories, district, freeOnly }) => {
     const params = new URLSearchParams()
     dates.forEach((date) => params.append('date', date))
@@ -113,7 +109,7 @@ export default function HomePage() {
 
       <div className="home-content">
         {guide === 'plan' && <p className="home-return-guide" role="status" id="home-plan-start">행사를 골라 일정을 만들고 저장해 보세요. 날짜를 고른 뒤 AI 추천받기를 누르면 시작할 수 있습니다.</p>}
-        <SearchPanel onKeywordSearch={handleKeywordSearch} onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
+        <SearchPanel onFilterSearch={handleFilterSearch} onRecommend={(conditions) => { setSearchError(''); setRecommendConditions(conditions) }} />
         {recommendConditions && <ConditionsModal
           mode="create" conditions={recommendConditions} busy={recommending} error={searchError}
           onSubmit={createRecommendation}

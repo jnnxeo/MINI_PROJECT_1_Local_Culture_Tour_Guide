@@ -1,5 +1,6 @@
 import galleryImage from '../../assets/mock/gallery.jpg'
 import palaceImage from '../../assets/mock/palace.jpg'
+import { compareDefaultEvents, resolveSort } from '../../features/search/eventSort.js'
 
 const events = [
   { eventId: 'DEV-EV-001', title: '고궁의 밤, 달빛 산책', category: '전통문화', district: '종로구', place: '경복궁', startMonthDay: '09-01', endMonthDay: '10-31', freeYn: true, fee: '무료', imageUrl: palaceImage },
@@ -21,7 +22,7 @@ const searchOnlyEvents = [
   { eventId: 'mock-113', title: '서울의 가을 축제', category: '축제', district: '강남구', startMonthDay: '09-01', endMonthDay: '11-30', freeYn: false, fee: '5,000원', imageUrl: null, imageTone: 'palace' },
 ]
 
-const SORT_VALUES = ['startDateAsc', 'endDateAsc', 'titleAsc']
+const SORT_VALUES = ['dateClosest', 'recentStart', 'startDateAsc', 'endDateAsc', 'titleAsc']
 
 export async function mockSearchEvents(params) {
   const month = params.get('month')
@@ -30,7 +31,7 @@ export async function mockSearchEvents(params) {
   const categories = params.getAll('category')
   const district = params.get('district')
   const freeYn = params.get('freeYn')
-  const sort = params.get('sort') || 'startDateAsc'
+  const sort = resolveSort(params.get('sort'), dates)
   const page = Number(params.get('page') ?? 0)
   const size = Number(params.get('size') ?? 10)
 
@@ -44,7 +45,7 @@ export async function mockSearchEvents(params) {
 
   const year = month ? Number(month.slice(0, 4)) : new Date().getFullYear()
   const monthEnd = month ? `${month}-${String(new Date(year, Number(month.slice(5)), 0).getDate()).padStart(2, '0')}` : null
-  const today = new Date().toLocaleDateString('sv-SE')
+  const today = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
   const matched = [...events, ...searchOnlyEvents]
     .map(({ startMonthDay, endMonthDay, ...event }) => ({
       ...event,
@@ -62,6 +63,7 @@ export async function mockSearchEvents(params) {
         .some((value) => value?.toLocaleLowerCase('ko-KR').includes(keyword))
     })
     .sort((left, right) => {
+      if (sort === 'dateClosest' || sort === 'recentStart') return compareDefaultEvents(left, right, dates, today)
       if (sort === 'titleAsc') return left.title.localeCompare(right.title, 'ko') || left.eventId.localeCompare(right.eventId)
       if (sort === 'endDateAsc') {
         const leftEnded = left.endDate < today

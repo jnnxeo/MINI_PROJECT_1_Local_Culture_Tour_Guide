@@ -37,6 +37,24 @@ class EventSearchServiceTest {
     }
 
     @Test
+    void defaultSortWithoutDatesIsRecentStart() {
+        when(mapper.findEvents(any())).thenReturn(List.of());
+        service.searchEvents(null, null, null, null, null, null, "0", "10");
+        ArgumentCaptor<EventSearchCriteria> criteria = ArgumentCaptor.forClass(EventSearchCriteria.class);
+        verify(mapper).findEvents(criteria.capture());
+        assertEquals("recentStart", criteria.getValue().sort());
+    }
+
+    @Test
+    void defaultSortWithDatesIsDateClosest() {
+        when(mapper.findEvents(any())).thenReturn(List.of());
+        service.searchEvents(null, null, null, null, null, null, "0", "10", List.of("2026-09-28"));
+        ArgumentCaptor<EventSearchCriteria> criteria = ArgumentCaptor.forClass(EventSearchCriteria.class);
+        verify(mapper).findEvents(criteria.capture());
+        assertEquals("dateClosest", criteria.getValue().sort());
+    }
+
+    @Test
     void keywordSearchDoesNotAddMonthAndMatchesDisplayCategory() {
         when(mapper.findEvents(any())).thenReturn(List.of());
         service.searchEvents(" 공연 ", null, null, null, null, "startDateAsc", "0", "10");

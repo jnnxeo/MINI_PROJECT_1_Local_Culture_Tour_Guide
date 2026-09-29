@@ -1,6 +1,6 @@
 import React from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import PlanHeader from './components/plan/PlanHeader.jsx'
+import HomeNavigation from './features/home/components/HomeNavigation.jsx'
 import FeaturePlaceholderPage from './pages/FeaturePlaceholderPage.jsx'
 import { useAuth } from './contexts/AuthContext.jsx'
 import HomePage from './pages/HomePage.jsx'
@@ -16,10 +16,6 @@ function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
 
   return isAuthenticated ? children : <Navigate to="/login" replace />
-}
-
-function HomeNavigation() {
-  return <div className="home-plan-header"><PlanHeader /></div>
 }
 
 export default function App() {
@@ -67,7 +63,7 @@ export default function App() {
         path="/"
         element={(
           <ProtectedRoute>
-            <HomeNavigation />
+            <HomeNavigation enableSearch />
             <HomePage />
           </ProtectedRoute>
         )}
@@ -76,7 +72,7 @@ export default function App() {
         path="/events"
         element={(
           <ProtectedRoute>
-            <HomeNavigation />
+            <HomeNavigation enableSearch />
             <SearchResultsPage />
           </ProtectedRoute>
         )}
