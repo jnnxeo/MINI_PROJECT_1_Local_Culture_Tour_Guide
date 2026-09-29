@@ -79,7 +79,8 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
         ...common,
         availableDates: dates,
         categories,
-        district: district === ALL_DISTRICTS ? null : district,
+        // '전체 지역'은 빈 값으로 보낸다 — null 은 서버가 '기존 지역 유지'로 해석한다 (조건 수정)
+        district: district === ALL_DISTRICTS ? '' : district,
         freeYn: freeOnly,
       })
       return

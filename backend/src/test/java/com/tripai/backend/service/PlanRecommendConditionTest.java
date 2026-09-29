@@ -186,6 +186,25 @@ class PlanRecommendConditionTest {
     }
 
     @Test
+    void 조건_수정에서_전체_지역을_고르면_기존_지역_제한을_푼다() {
+        // 종로구로 만든 초안 (10/8 종로구 전시 → EV-C)
+        Long draftId = service.recommend(1L, conditions(List.of(OCT_8), null, "종로구", null)).draftId();
+        assertThat(draftService.getDraft(1L, draftId).conditions().district()).isEqualTo("종로구");
+
+        // 지역을 보내지 않으면(null) 기존 지역을 그대로 쓴다 (음식 종류만 바꾼 경우)
+        service.updateConditions(1L, draftId, new DraftConditionsRequest(null, null, null, null, null, null, null,
+                "KOREAN", "KOREAN", null, null, null, null, null));
+        assertThat(draftService.getDraft(1L, draftId).conditions().district()).isEqualTo("종로구");
+
+        // 화면의 '전체 지역'은 빈 값("")으로 보낸다 → 지역 제한을 풀고 중구 공연(EV-B)도 고를 수 있다
+        service.updateConditions(1L, draftId, new DraftConditionsRequest(null, null, null, null, null, null, null,
+                null, null, null, null, List.of("공연"), "", null));
+        DraftResponse all = draftService.getDraft(1L, draftId);
+        assertThat(all.conditions().district()).isNull();
+        assertThat(all.selectedEvent().eventId()).isEqualTo("EV-B");
+    }
+
+    @Test
     void 행사를_직접_고른_초안은_조건이_없고_다시_추천에서_행사를_유지한다() {
         DraftResponse draft = service.recommend(1L, new PlanRecommendRequest("EV-A", OCT_3, null, null, null, null, null,
                 "WALK_TRANSIT", null));

@@ -8,6 +8,7 @@ import SiteFooter from '../components/layout/SiteFooter.jsx'
 import '../styles/event-base.css'
 import '../styles/eventdetail.css'
 import EventSavedPlanModal from '../components/plan/EventSavedPlanModal.jsx'
+import Modal from '../components/common/Modal.jsx'
 
 // null, 빈 문자열 등 표시할 정보가 없으면 같은 문구를 사용한다.
 function displayText(value) {
@@ -56,6 +57,7 @@ export default function EventDetailPage() {
   const [imageFailed, setImageFailed] = useState(false)
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [savedPlanModalOpen, setSavedPlanModalOpen] = useState(false)
+  const [officialConfirmOpen, setOfficialConfirmOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -137,10 +139,9 @@ export default function EventDetailPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(clickEvent) => {
-                  const confirmed = window.confirm(
-                    '공식 안내 페이지가 새 탭에서 열립니다. 이동하시겠습니까?'
-                  )
-                  if (!confirmed) clickEvent.preventDefault()
+                  // 브라우저 기본 확인 창은 환경에 따라 바로 '취소'가 되어 이동이 막힌다 → 화면 안 확인 창 (EVENT-002)
+                  clickEvent.preventDefault()
+                  setOfficialConfirmOpen(true)
                 }}
               >
                 공식 안내 확인
@@ -206,6 +207,24 @@ export default function EventDetailPage() {
             state: { draftId: draft.draftId },
           })}
         />
+      )}
+      {officialConfirmOpen && officialUrl && (
+        <Modal title="공식 안내로 이동할까요?" onClose={() => setOfficialConfirmOpen(false)}>
+          <p className="tp-modal__desc">공식 안내 페이지가 새 탭에서 열립니다.</p>
+          <button
+            className="tp-btn tp-btn--primary tp-btn--block"
+            type="button"
+            onClick={() => {
+              window.open(officialUrl, '_blank', 'noopener,noreferrer')
+              setOfficialConfirmOpen(false)
+            }}
+          >
+            새 탭에서 열기
+          </button>
+          <button className="tp-btn tp-btn--secondary tp-btn--block" type="button" onClick={() => setOfficialConfirmOpen(false)}>
+            취소
+          </button>
+        </Modal>
       )}
       {savedPlanModalOpen && (
         <EventSavedPlanModal

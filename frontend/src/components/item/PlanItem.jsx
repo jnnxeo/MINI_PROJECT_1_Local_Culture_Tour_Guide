@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import api from '../../services/api.js'
+import ConfirmModal from '../plan/ConfirmModal.jsx'
 import galleryFallback from '../../assets/mock/gallery.jpg'
 import '../../styles/myPage.css'
 
@@ -13,28 +14,37 @@ const PlanItem = ({ plan, onUpdate }) => {
     const dDay = plan.dDay
     const dDayText = dDay === 0 ? 'D-Day' : dDay > 0 ? `D-${dDay}` : `D+${Math.abs(dDay)}`
 
-    const deletePlan = async () => {
-        // 삭제하면 되돌릴 수 없어 한 번 더 확인한다
-        if (!window.confirm(`'${plan.title}' 일정을 삭제할까요? 삭제한 일정은 되돌릴 수 없습니다.`)) return
+    // 브라우저 기본 확인 창(window.confirm)은 앱 안 브라우저 등에서 바로 '취소'가 되어 삭제가 막혔다 → 앱 확인 창 사용
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [error, setError] = useState('');
 
-        await api.delete(`/api/plans/${plan.tripPlanId}`)
-            .then(response => {
-                console.log(`debug >>>> plan item delete planId : `, plan.tripPlanId)
-                if(response.status === 204){onUpdate();}
-            })
-            .catch(error => {
-                console.log(`debug >>>> plan item delete error : `, error)
-            })
+    const deletePlan = async () => {
+        setDeleting(true)
+        setError('')
+        try {
+            const response = await api.delete(`/api/plans/${plan.tripPlanId}`)
+            if (response.status === 204) {
+                setConfirmOpen(false)
+                onUpdate()
+            }
+        } catch {
+            setError('일정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+            setConfirmOpen(false)
+        } finally {
+            setDeleting(false)
+        }
     }
 
     const updatePlanName = async () => {
         const trimmedTitle = title.trim()
 
         if (!trimmedTitle) {
-            alert('일정 이름을 입력해 주세요.')
+            setError('일정 이름을 입력해 주세요.')
             return
         }
 
+        setError('')
         await api.patch(`/api/plans/${plan.tripPlanId}`, {title : trimmedTitle})
             .then(response => {
                 if(response.status === 200){
@@ -42,8 +52,8 @@ const PlanItem = ({ plan, onUpdate }) => {
                     onUpdate()
                 }
             })
-            .catch(error => {
-                console.log('debug >>>> error plan item update plan name : ', error)
+            .catch(() => {
+                setError('이름을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.')
             })
     }
 
@@ -127,6 +137,7 @@ const PlanItem = ({ plan, onUpdate }) => {
                 onClick={() => {
                     setTitle(plan.title)
                     setIsEditing(false)
+                    setError('')
                 }}
                 >
                 취소
@@ -161,13 +172,26 @@ const PlanItem = ({ plan, onUpdate }) => {
                     일정 보기
                 </button>
                 <button onClick={() => setIsEditing(true)}>이름 변경</button>
-                <button className="delete-button" onClick={deletePlan}>
+                <button className="delete-button" onClick={() => { setError(''); setConfirmOpen(true) }}>
                     일정 삭제
                 </button>
                 </div>
             </>
             )}
+            {error && <p className="plan-card__error" role="alert">{error}</p>}
         </div>
+        {confirmOpen && (
+            <ConfirmModal
+                title="일정을 삭제할까요?"
+                description={`'${plan.title}' 일정을 삭제하면 되돌릴 수 없습니다.`}
+                confirmLabel={deleting ? '삭제하는 중…' : '삭제'}
+                confirmVariant="danger"
+                cancelLabel="취소"
+                busy={deleting}
+                onConfirm={deletePlan}
+                onClose={() => { if (!deleting) setConfirmOpen(false) }}
+            />
+        )}
         </article>
     )
 };

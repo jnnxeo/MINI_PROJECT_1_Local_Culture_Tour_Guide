@@ -408,3 +408,10 @@
 @media (prefers-reduced-motion: reduce) {
   .plan-card { transition: none; }
 }
+
+.plan-card__error {
+  margin: 10px 0 0;
+  color: #e5484d;
+  font-size: 13px;
+  font-weight: 600;
+}
