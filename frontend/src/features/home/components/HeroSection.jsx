@@ -1,4 +1,5 @@
 import React from 'react'
+import palaceImage from '../../../assets/mock/palace.jpg'
 
 export default function HeroSection({ onExplore }) {
   return (
@@ -21,10 +22,8 @@ export default function HeroSection({ onExplore }) {
           </button>
         </div>
 
-        <div className="home-hero__visual" role="img" aria-label="서울 고궁의 처마를 표현한 이미지 영역">
-          <span className="home-hero__moon" />
-          <span className="home-hero__roof home-hero__roof--back" />
-          <span className="home-hero__roof home-hero__roof--front" />
+        <div className="home-hero__visual">
+          <img className="home-hero__photo" src={palaceImage} alt="파란 하늘 아래 서울 고궁의 처마" />
         </div>
       </div>
     </section>
