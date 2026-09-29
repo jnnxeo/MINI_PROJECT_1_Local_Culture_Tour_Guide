@@ -861,7 +861,6 @@ export default function PlanEditorPage({ savedPlanId = null }) {
             )}
 
             <p className="plan-route__summary">{routeSummary}</p>
-            <p className="plan-route__note">방문 순서 개념도 · 실제 지도/경로가 아닙니다. 거리는 직선거리 기준입니다.</p>
 
             <button
               className="tp-btn tp-btn--secondary tp-btn--block"
