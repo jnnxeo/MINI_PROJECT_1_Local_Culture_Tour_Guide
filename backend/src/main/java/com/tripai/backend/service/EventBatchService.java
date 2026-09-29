@@ -35,7 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class EventBatchService {
 
-    // 컬럼 길이 (database/schema/01_tripai_ddl_v3.2.1.sql 기준)
+    // 컬럼 길이 (database/schema/01_TripAI_최종_DDL_v3.2.5.sql 기준)
     private static final int LEN_EVENT_TYPE = 20;
     private static final int LEN_DISTRICT = 20;
     private static final int LEN_EVENT_NAME = 200;
