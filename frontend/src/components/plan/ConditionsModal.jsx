@@ -29,8 +29,10 @@ const DISTRICT_OPTIONS = [ALL_DISTRICTS, ...SEOUL_DISTRICTS].map((district) => (
  * - 행사 조건(분야·지역·무료): 조건으로 만든 초안만 — 바꾸면 조건에 맞는 행사를 다시 고른다.
  * - 식사: 점심·저녁 체크 카드 + 끼니별 음식 종류, 카페 포함 (lunchFoodPreference·dinnerFoodPreference·includeCafe).
  * mealType은 "BOTH"·"LUNCH"·"DINNER"로 항상 명시적인 값을 보낸다. 선택지는 드롭다운 없이 모두 펼쳐 둔다.
+ * 행사 상세의 "이 행사로 일정 만들기"도 이 팝업을 쓴다 (conditions 없이 selectedEvent 만 → 행사 조건 없이 날짜·식사만).
+ * - blockedReason: 종료된 행사처럼 일정을 만들 수 없는 이유 — 안내하고 만들기 버튼을 막는다.
  */
-export default function ConditionsModal({ visitDate, conditions, selectedEvent, coreItem, onSubmit, onClose, mode = 'edit', busy = false, error = '' }) {
+export default function ConditionsModal({ visitDate, conditions, selectedEvent, coreItem, onSubmit, onClose, mode = 'edit', busy = false, error = '', title = '어떤 하루를 만들어 볼까요?', blockedReason = '' }) {
   const conditionMode = Array.isArray(conditions?.availableDates)
   // 지난 날짜(밤 8시 이후면 오늘 포함)는 달력에서 고를 수도 풀 수도 없으니 처음부터 뺀다
   const [dates, setDates] = useState(() => (conditionMode ? conditions.availableDates : [visitDate])
@@ -88,7 +90,7 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
   }
 
   return (
-    <PlanModal title="어떤 하루를 만들어 볼까요?" onClose={busy ? undefined : onClose}>
+    <PlanModal title={title} onClose={busy ? undefined : onClose}>
       <fieldset disabled={busy} className="plan-conditions__fields">
       <p className="tp-modal__desc">
         {conditionMode
@@ -180,15 +182,16 @@ export default function ConditionsModal({ visitDate, conditions, selectedEvent, 
       />}
 
       {error && <p className="tp-modal__error" role="alert">{error}</p>}
+      {blockedReason && !error && <p className="tp-modal__error" role="alert">{blockedReason}</p>}
       {busy && <p role="status">조건에 맞는 하루 일정을 만들고 있어요. 잠시 기다려 주세요.</p>}
       {tooManyDates && <p className="tp-modal__error" role="alert">날짜는 최대 31일까지 선택해 주세요.</p>}
-      {noDate && <p className="tp-modal__error" role="alert">날짜를 하루 이상 골라 주세요.</p>}
+      {noDate && !blockedReason && <p className="tp-modal__error" role="alert">날짜를 하루 이상 골라 주세요.</p>}
       {noMeal && <p className="tp-modal__error" role="alert">점심과 저녁 중 하나 이상 켜 주세요.</p>}
 
       <button
         className="tp-btn tp-btn--primary tp-btn--block tp-btn--bold"
         type="button"
-        disabled={busy || noMeal || noDate || tooManyDates}
+        disabled={busy || noMeal || noDate || tooManyDates || Boolean(blockedReason)}
         onClick={submit}
       >
         {busy ? '일정 만드는 중…' : (useAi ? 'AI로 하루 일정 만들기' : '하루 일정 만들기')}

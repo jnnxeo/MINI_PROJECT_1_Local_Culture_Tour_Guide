@@ -1,148 +1,77 @@
-import React, { useState } from 'react'
-import Modal from '../../common/Modal.jsx'
+import React, { useRef, useState } from 'react'
+import ConditionsModal from '../../plan/ConditionsModal.jsx'
+import { earliestTripDate } from '../../common/DateCalendar.jsx'
 import { recommendDraft } from '../../../services/planService.js'
-import EventSelect from './EventSelect.jsx'
 
+/**
+ * 행사 상세 "이 행사로 일정 만들기" — 메인 AI 추천·조건 수정과 같은 팝업(ConditionsModal)을 쓴다.
+ * 행사를 이미 골랐으므로 행사 조건(분야·지역·무료)은 빼고, 행사 기간 안의 날짜 하루와 이동·식사·카페만 고른다.
+ * 요청은 기존과 같은 API-PLAN-001(eventId + visitDate)이며 끼니별 음식 종류·카페만 더해 보낸다.
+ */
 export default function EventCreateModal({ event, onClose, onCreated }) {
-  const today = new Date().toLocaleDateString('sv-SE', {
-    timeZone: 'Asia/Seoul',
-  })
-  // 저녁 8시가 지나면 오늘 일정은 만들 수 없으므로(서버 규칙) 기본 날짜를 내일로 둔다
-  const seoulHour = Number(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul', hour: '2-digit', hour12: false }))
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })
-  const earliest = seoulHour >= 20 ? tomorrow : today
+  const earliest = earliestTripDate()
   const firstDate = event.startDate && event.startDate > earliest ? event.startDate : earliest
 
-  const [tripDate, setTripDate] = useState(firstDate)
-  const [headcount, setHeadcount] = useState(2)
-  const [transportMode, setTransportMode] = useState('WALK_TRANSIT')
-  const [foodPreference, setFoodPreference] = useState('ALL')
-  const [mealType, setMealType] = useState('BOTH')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const pending = useRef(false)
+
   const unavailableReason = !event.startDate || !event.endDate
     || event.startDate > event.endDate
     ? '행사 날짜 정보가 없어 여행 날짜를 선택할 수 없습니다.'
-    : event.endDate < today
+    : event.endDate < firstDate
       ? '종료된 행사는 일정으로 만들 수 없습니다.'
       : event.lat == null || event.lng == null
         ? '행사 위치 정보가 없어 일정을 만들 수 없습니다.'
-        : null
+        : ''
 
-  async function handleSubmit() {
-    if (unavailableReason) {
-      setError(unavailableReason)
-      return
-    }
-    if (!tripDate || tripDate < event.startDate || tripDate > event.endDate) {
+  const coreItem = event.startTime
+    ? { timeFixed: true, startTime: event.startTime.slice(0, 5) }
+    : null
+
+  async function handleSubmit({ visitDate, headcount, transportMode, mealType, lunchFoodPreference, dinnerFoodPreference, includeCafe }) {
+    if (pending.current || unavailableReason) return
+    if (!visitDate || visitDate < event.startDate || visitDate > event.endDate) {
       setError('행사 기간 안의 여행 날짜를 선택해 주세요.')
       return
     }
 
+    pending.current = true
     setSaving(true)
     setError('')
 
     try {
       const draft = await recommendDraft({
         eventId: event.eventId,
-        visitDate: tripDate,
+        visitDate,
         headcount,
         transportMode,
-        foodPreference,
         mealType,
+        lunchFoodPreference,
+        dinnerFoodPreference,
+        includeCafe,
       })
       onCreated(draft)
     } catch (requestError) {
-      setError(requestError.message)
+      setError(requestError.message || '일정을 만들지 못했습니다. 조건을 바꿔 다시 시도해 주세요.')
     } finally {
+      pending.current = false
       setSaving(false)
     }
   }
 
   return (
-    <Modal title="어떤 하루를 만들어 볼까요?" onClose={onClose}>
-      <p className="tp-modal__desc">
-        {event.title} · {event.startTime ? `${event.startTime.slice(0, 5)} 시작` : '운영시간 정보 없음'}
-      </p>
-
-      <label className="tp-field">
-        <span className="tp-field__label">여행 날짜 · 당일 여행</span>
-        <input
-          type="date"
-          value={tripDate}
-          min={firstDate}
-          max={event.endDate}
-          onChange={(e) => setTripDate(e.target.value)}
-        />
-      </label>
-
-      <div className="event-modal__row">
-        <EventSelect
-            label="인원"
-            value={headcount}
-            onChange={setHeadcount}
-            options={[
-            { value: 1, label: '1명' },
-            { value: 2, label: '2명' },
-            { value: 3, label: '3명' },
-            { value: 4, label: '4명 이상' },
-            ]}
-        />
-        <EventSelect
-            label="이동 방법"
-            value={transportMode}
-            onChange={setTransportMode}
-            options={[
-            { value: 'WALK_TRANSIT', label: '도보 + 대중교통' },
-            { value: 'WALK', label: '도보 위주' },
-            ]}
-        />
-      </div>
-
-      <div className="event-modal__row">
-        <EventSelect
-          label="음식 종류"
-          value={foodPreference}
-          onChange={setFoodPreference}
-          options={[
-            { value: 'ALL', label: '전체' },
-            { value: 'KOREAN', label: '한식' },
-            { value: 'CHINESE', label: '중식' },
-            { value: 'JAPANESE', label: '일식' },
-            { value: 'WESTERN', label: '양식' },
-          ]}
-        />
-        <EventSelect
-          label="식사 시간"
-          value={mealType}
-          onChange={setMealType}
-          options={[
-            { value: 'BOTH', label: '점심 + 저녁' },
-            { value: 'LUNCH', label: '점심' },
-            { value: 'DINNER', label: '저녁' },
-          ]}
-        />
-      </div>
-
-      <p className="event-modal__hint">행사 시간과 선택한 음식 종류에 맞는 주변 맛집을 추천합니다.</p>
-
-      {error && <p className="tp-modal__error" role="alert">{error}</p>}
-      {unavailableReason && !error && (
-        <p className="tp-modal__error" role="alert">{unavailableReason}</p>
-      )}
-
-      <button
-        type="button"
-        className="tp-btn tp-btn--primary tp-btn--block"
-        disabled={saving || Boolean(unavailableReason)}
-        onClick={handleSubmit}
-      >
-        {saving ? '일정을 만드는 중입니다…' : '하루 일정 만들기'}
-      </button>
-
-      <p className="event-modal__hint">
-        주변에 조건에 맞는 음식점이 없으면 일정이 생성되지 않으며 사유를 안내합니다.
-      </p>
-    </Modal>
+    <ConditionsModal
+      mode="create"
+      title="이 행사로 AI 일정 만들기"
+      visitDate={firstDate}
+      selectedEvent={event}
+      coreItem={coreItem}
+      busy={saving}
+      error={error}
+      blockedReason={unavailableReason}
+      onSubmit={handleSubmit}
+      onClose={() => { if (!pending.current) onClose() }}
+    />
   )
 }
