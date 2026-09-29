@@ -1,22 +1,15 @@
 -- =====================================================================
--- TripAI 문화행사 DB 생성 스크립트 v3.2.1 (MariaDB Compatibility FIX)
--- 기준 : ERDCloud 최신 화면(팀 확정본)을 구조(테이블·컬럼·이름·타입·PK/FK)의 원본으로 사용
---        NOT NULL·DEFAULT·CHECK·인덱스는 ERD 화면에 표시되지 않아 그동안 합의된 DA 권장사항을 유지
--- 범위 : 당일여행 (숙박 기능 제외)
--- DBMS : MySQL 8.0.16 이상 권장 (CHECK 제약 사용)
+-- TripAI 최종 DDL v3.2.5 · 보고/신규 구축용
+-- 출처: database/schema/01_tripai_ddl_v3.2.1.sql 및 02~05 마이그레이션
+-- 범위: 서울 문화행사 + 음식점 기반 당일 여행 (숙박 기능 없음)
+-- DBMS: MariaDB 12.3 / MySQL 8.0.16+ (CHECK 제약 사용)
 --
--- [v2.6 -> v3.1 주요 변경 - ERD 대조로 확인됨]
---  1) event PK 컬럼명 content_id -> event_content_id (place.content_id와 이름 충돌 해소)
---  2) favorite_event 참조 컬럼 content_id -> event_content_id (EVENT FK 명칭 통일)
---  3) trip_plan_interest PK 순서 (interest_label, trip_plan_id) - ERD 기준
---  4) trip_item.ai_reason VARCHAR(100) - ERD 기준(500 아님)
---  5) 시각 컬럼 전체 TIME 타입으로 통일 (기존 VARCHAR(5))
---  6) place.business_hours_text 신규 추가, event 주요 컬럼 길이 확대(200/500/1000)
---
--- [ERD에 아직 반영 안 돼 있어 이번에도 적용하지 않은 것]
---  place.first_menu 추가 / place.activity_label_name 삭제 /
---  transport_md -> transport_mode / break_close_time -> break_end_time
---  (ERD에서 먼저 바뀌면 다음 버전에 반영)
+-- 빈 tripai 스키마에서 1회 실행하는 통합본입니다.
+-- 이미 01~05를 적용한 DB에는 재실행하지 마세요. 이 파일에는 DROP/DML이 없습니다.
+-- 식별 관계: users→favorite_event, event→favorite_event,
+--            trip_plan→trip_plan_interest (3개)
+-- 비식별 관계: users→trip_plan, event→trip_plan,
+--              trip_plan/event/place→trip_item (5개)
 -- =====================================================================
 
 SET NAMES utf8mb4;
@@ -74,6 +67,8 @@ CREATE TABLE `tripai`.`place` (
 	`homepage`	VARCHAR(300)	NULL	COMMENT '홈페이지',
 	`tel_no`	VARCHAR(50)	NULL	COMMENT '전화번호',
 	`activity_label_name`	VARCHAR(50)	NULL	COMMENT '활동유형명',
+	`tour_cat3_code`	VARCHAR(20)	NULL	COMMENT 'TourAPI 음식점 세부분류코드',
+	`cuisine_type`	VARCHAR(20)	NOT NULL DEFAULT 'OTHER'	COMMENT '서비스 음식분류(KOREAN, WESTERN, JAPANESE, CHINESE, OTHER)',
 	`default_duration_min`	INT	NULL	COMMENT '기본소요시간(분)',
 	`open_time`	TIME	NULL	COMMENT '영업시작시간',
 	`close_time`	TIME	NULL	COMMENT '영업종료시간',
@@ -104,6 +99,15 @@ CREATE TABLE `tripai`.`trip_plan` (
 	`save_yn`	BOOLEAN	NOT NULL	DEFAULT FALSE	COMMENT '저장여부',
 	`ai_yn`	BOOLEAN	NOT NULL	DEFAULT FALSE	COMMENT 'AI생성여부',
 	`transport_md`	VARCHAR(30)	NULL	COMMENT '이동수단',
+	`food_preference`	VARCHAR(20)	NULL	COMMENT '음식선호(ALL, KOREAN, CHINESE, JAPANESE, WESTERN)',
+	`meal_type`	VARCHAR(10)	NULL	COMMENT '식사시간대(LUNCH, DINNER)',
+	`lunch_food_preference`	VARCHAR(20)	NULL	COMMENT '점심 음식선호(ALL, KOREAN, CHINESE, JAPANESE, WESTERN)',
+	`dinner_food_preference`	VARCHAR(20)	NULL	COMMENT '저녁 음식선호(ALL, KOREAN, CHINESE, JAPANESE, WESTERN)',
+	`cafe_yn`	BOOLEAN	NOT NULL DEFAULT FALSE	COMMENT '카페 포함 여부',
+	`search_dates`	VARCHAR(400)	NULL	COMMENT '방문 가능 날짜(YYYY-MM-DD, 쉼표 구분)',
+	`search_categories`	VARCHAR(100)	NULL	COMMENT '행사 분야(화면 분야명, 쉼표 구분)',
+	`search_district`	VARCHAR(20)	NULL	COMMENT '서울 자치구',
+	`search_free_yn`	BOOLEAN	NULL	COMMENT '무료 행사만 여부',
 	`headcount`	INT	NOT NULL	COMMENT '인원수',
 	`created_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '생성일시',
 	`upd_at`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP	COMMENT '수정일시',
@@ -237,27 +241,13 @@ CREATE INDEX `IX_EVENT_PERIOD` ON `tripai`.`event` (event_start_date, event_end_
 CREATE INDEX `IX_EVENT_NAME` ON `tripai`.`event` (event_name);  -- 이름 검색
 CREATE INDEX `IX_PLACE_SEARCH` ON `tripai`.`place` (display_yn, content_type_cd, district_name);  -- 후보 조회(API-PLACE-001)
 CREATE INDEX `IX_PLACE_COORD` ON `tripai`.`place` (mapy, mapx);  -- 반경 검색
+CREATE INDEX `IX_PLACE_RESTAURANT_CUISINE` ON `tripai`.`place` (display_yn, content_type_cd, cuisine_type);  -- 음식 종류별 후보 조회 (02)
 CREATE INDEX `IX_FAV_USER` ON `tripai`.`favorite_event` (user_id, created_at);  -- 내 관심 행사 목록(최신순)
 CREATE INDEX `IX_TRIP_PLAN_USER_DATE` ON `tripai`.`trip_plan` (user_id, save_yn, trip_date);  -- 내 여행 목록(API-PLAN-010)
 CREATE INDEX `IX_TRIP_PLAN_ANCHOR` ON `tripai`.`trip_plan` (anchor_content_id);  -- FK 성능
 CREATE INDEX `IX_TRIP_ITEM_EVENT` ON `tripai`.`trip_item` (event_content_id);  -- 행사 기준 조회
 CREATE INDEX `IX_TRIP_ITEM_PLACE` ON `tripai`.`trip_item` (place_content_id);  -- 장소 기준 조회
 
--- 생성 결과 확인 (기대값: 테이블 7개, 외래키 8개) --------------------------
-SHOW TABLES;
-SELECT COUNT(*) AS table_count FROM information_schema.tables
-  WHERE table_schema = 'tripai' AND table_type = 'BASE TABLE';
-SELECT COUNT(*) AS fk_count FROM information_schema.table_constraints
-  WHERE constraint_schema = 'tripai' AND constraint_type = 'FOREIGN KEY';
-
--- [초기화] 처음부터 다시 만들 때만 주석을 풀고 실행 (모든 데이터 삭제!) --------
--- 참고: 개발 중 꼬였을 때는 DROP DATABASE IF EXISTS `tripai`; 한 줄이 가장 간단합니다.
--- SET FOREIGN_KEY_CHECKS = 0;
--- DROP TABLE IF EXISTS `tripai`.`trip_item`;
--- DROP TABLE IF EXISTS `tripai`.`trip_plan_interest`;
--- DROP TABLE IF EXISTS `tripai`.`trip_plan`;
--- DROP TABLE IF EXISTS `tripai`.`favorite_event`;
--- DROP TABLE IF EXISTS `tripai`.`place`;
--- DROP TABLE IF EXISTS `tripai`.`event`;
--- DROP TABLE IF EXISTS `tripai`.`users`;
--- SET FOREIGN_KEY_CHECKS = 1;
+-- 구조 요약: 테이블 7개, 컬럼 85개, 외래키 8개, 명시적 조회 인덱스 11개.
+-- trip_item의 EVENT/PLACE 배타 참조는 MariaDB 호환성을 위해
+-- DB CHECK가 아닌 서비스/DTO 검증 대상입니다.
