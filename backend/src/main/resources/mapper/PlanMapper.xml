@@ -6,15 +6,48 @@
     <select id="findPlansByUserId"
             resultType="com.tripai.backend.domain.dto.PlanSummary">
 
+        <!-- 컬럼 순서 = PlanSummary 필드(생성자) 순서 -->
         SELECT
-            trip_plan_id AS tripPlanId,
-            title,
-            trip_date AS tripDate,
-            DATEDIFF(trip_date, CURDATE()) AS dDay
-        FROM trip_plan
-        WHERE user_id = #{userId}
-        AND save_yn = 1
-        ORDER BY trip_date ASC
+            p.trip_plan_id AS tripPlanId,
+            p.title,
+            p.trip_date AS tripDate,
+            DATEDIFF(p.trip_date, CURDATE()) AS dDay,
+            e.event_content_id AS eventId,
+            e.event_name AS eventName,
+            e.image_url AS eventImageUrl,
+            e.event_type AS eventCategory,
+            e.district_name AS district,
+            e.event_place AS eventPlace,
+            s.startTime,
+            s.endTime,
+            COALESCE(s.itemCount, 0) AS itemCount,
+            s.courseText
+        FROM trip_plan p
+        LEFT JOIN event e ON e.event_content_id = p.anchor_content_id
+        LEFT JOIN (
+            <!-- 일정 항목 요약: 방문 시간 범위, 항목 수, 방문 순서대로 이름 -->
+            SELECT
+                i.trip_plan_id,
+                TIME_FORMAT(MIN(i.start_time), '%H:%i') AS startTime,
+                TIME_FORMAT(MAX(ADDTIME(i.start_time, SEC_TO_TIME(i.duration_min * 60))), '%H:%i') AS endTime,
+                COUNT(*) AS itemCount,
+                GROUP_CONCAT(COALESCE(ie.event_name, ip.place_name) ORDER BY i.seq_order SEPARATOR '\n') AS courseText
+            FROM trip_item i
+            JOIN trip_plan tp ON tp.trip_plan_id = i.trip_plan_id
+                AND tp.user_id = #{userId}
+                AND tp.save_yn = 1
+            LEFT JOIN event ie ON ie.event_content_id = i.event_content_id
+            LEFT JOIN place ip ON ip.content_id = i.place_content_id
+            GROUP BY i.trip_plan_id
+        ) s ON s.trip_plan_id = p.trip_plan_id
+        WHERE p.user_id = #{userId}
+        AND p.save_yn = 1
+        <!-- 다가오는 일정(가까운 날짜순) 먼저, 지난 일정은 뒤에 최근순 -->
+        ORDER BY
+            CASE WHEN p.trip_date >= CURDATE() THEN 0 ELSE 1 END,
+            CASE WHEN p.trip_date >= CURDATE() THEN p.trip_date END ASC,
+            p.trip_date DESC,
+            p.trip_plan_id DESC
         LIMIT #{size} OFFSET #{offset}
     </select>
 
