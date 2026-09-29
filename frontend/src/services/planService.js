@@ -97,6 +97,26 @@ export function forgetDraftId() {
   }
 }
 
+/** 저장 일정을 편집하는 동안 쓸 임시 초안을 만든다. 기존 초안 복원 ID는 건드리지 않는다. */
+export async function copySavedPlanToDraft(planId) {
+  const draft = await request(() => api.post(`/api/plans/drafts/from-saved/${encodeURIComponent(planId)}`))
+  if (draft?.draftId == null) throw new Error('복사한 일정 초안 ID를 받지 못했습니다.')
+  return draft
+}
+
+/** 저장 일정 화면의 임시 편집 초안을 폐기한다. 탭 종료 시에는 요청을 계속 보낸다. */
+export function discardSavedEditDraft(draftId, { keepalive = false } = {}) {
+  if (keepalive) {
+    const token = localStorage.getItem('tripai.accessToken')
+    return fetch(new URL(draftPath(draftId), api.defaults.baseURL), {
+      method: 'DELETE',
+      keepalive: true,
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  }
+  return api.delete(draftPath(draftId))
+}
+
 /**
  * API-PLAN-001 문화행사 1개 기준 일정 초안 생성 — 메인·행사 상세(2팀 화면)에서 호출한다.
  * Body: {eventId, visitDate, startTime, endTime, companion, foodPreference, transportMode}
@@ -225,6 +245,11 @@ export function saveDraftAsPlan(draftId) {
   return request(() => api.post('/api/plans', { draftId }))
 }
 
+/** 편집 초안의 결과를 기존 저장 일정에 적용한다. 일정 ID는 유지된다. */
+export function saveEditedPlan(planId, draftId) {
+  return request(() => api.put(`/api/plans/${encodeURIComponent(planId)}/from-draft`, { draftId }))
+}
+
 /** API-PLACE-001 행사 주변 맛집 후보 조회 — Query: eventId, radius, cuisineType, mealTime, page, size */
 export function searchRestaurants({ eventId, radius, foodPreference, mealType, page, size }) {
   if (USE_MOCK_API) {
@@ -287,4 +312,9 @@ export function updateSavedEventTime(planId, itemId, startTime) {
     `/api/plans/${encodeURIComponent(planId)}/events/${encodeURIComponent(itemId)}`,
     { startTime },
   ))
+}
+
+/** 저장 일정 제목 변경 후 상세를 다시 조회해 목록과 같은 서버 값을 보여 준다. */
+export function updateSavedPlanTitle(planId, title) {
+  return request(() => api.patch(`/api/plans/${encodeURIComponent(planId)}`, { title }))
 }

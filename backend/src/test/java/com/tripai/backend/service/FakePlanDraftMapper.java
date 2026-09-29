@@ -301,6 +301,32 @@ class FakePlanDraftMapper implements PlanDraftMapper {
         return before - rows.size();
     }
 
+    @Override
+    public int replaceSavedFromDraft(Long planId, Long draftId) {
+        TripPlan saved = plans.get(planId);
+        TripPlan draft = plans.get(draftId);
+        if (saved == null || draft == null || !Boolean.TRUE.equals(saved.getSaveYn())
+                || Boolean.TRUE.equals(draft.getSaveYn())) return 0;
+        plans.put(planId, TripPlan.builder()
+                .tripPlanId(planId).userId(saved.getUserId()).saveYn(true)
+                .anchorContentId(draft.getAnchorContentId()).title(draft.getTitle())
+                .tripDate(draft.getTripDate()).visitStartTime(draft.getVisitStartTime())
+                .visitEndTime(draft.getVisitEndTime()).aiYn(draft.getAiYn())
+                .transportMd(draft.getTransportMd()).foodPreference(draft.getFoodPreference())
+                .mealType(draft.getMealType()).lunchFoodPreference(draft.getLunchFoodPreference())
+                .dinnerFoodPreference(draft.getDinnerFoodPreference()).cafeYn(draft.getCafeYn())
+                .searchDates(draft.getSearchDates()).searchCategories(draft.getSearchCategories())
+                .searchDistrict(draft.getSearchDistrict()).searchFreeYn(draft.getSearchFreeYn())
+                .headcount(draft.getHeadcount()).build());
+        return 1;
+    }
+
+    @Override
+    public int deleteDraft(Long draftId) {
+        TripPlan draft = plans.get(draftId);
+        return draft != null && !Boolean.TRUE.equals(draft.getSaveYn()) && plans.remove(draftId) != null ? 1 : 0;
+    }
+
     private void checkConstraints(Long tripPlanId) {
         List<TripItem> planRows = rows.values().stream().filter(row -> row.getTripPlanId().equals(tripPlanId)).toList();
         if (planRows.stream().anyMatch(row -> row.getSeqOrder() <= 0)) {

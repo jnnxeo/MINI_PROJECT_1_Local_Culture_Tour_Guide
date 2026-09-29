@@ -3,7 +3,7 @@ import { formatDistance } from '../../utils/planTime.js'
 
 /** 카드 제목: "HH:mm  이름" (Figma). 시작 시간이 정해지지 않은 행사는 이름만 */
 export function getItemHeading(item) {
-  if (item.type === 'EVENT' && !item.timeFixed) {
+  if (item.type === 'EVENT' && !item.timeFixed && !item.showVisitTime) {
     return item.name
   }
 
@@ -19,6 +19,7 @@ export default function TimelineItem({
   isSelected,
   locked = false,
   onEditTime,
+  onEditEventTime,
   onChangePlace,
   onRemove,
   onShowOnMap,
@@ -41,13 +42,18 @@ export default function TimelineItem({
 
       <p className="plan-item__meta">
         {isEvent
-          ? `${isCore ? '선택한 행사' : '추가한 행사'} · ${item.timeFixed ? '시작 시간 고정' : '운영시간 정보 없음'} · ${item.durationMin}분`
+          ? `${isCore ? '선택한 행사' : '추가한 행사'} · ${item.timeFixed ? '시작 시간 고정' : item.showVisitTime ? '선택한 방문 시간' : '운영시간 정보 없음'} · ${item.durationMin}분`
           : `${item.durationMin}분 · ${item.cuisineType === 'CAFE' ? '카페' : '맛집'}`}
       </p>
 
+      {item.addr && <p className="plan-item__address">{item.addr}</p>}
+
       {isEvent ? (
-        <p className="plan-item__event-note">행사 시간을 기준으로 주변 일정을 조정합니다.</p>
-      ) : (
+        <>
+          <p className="plan-item__event-note">행사 시간을 기준으로 주변 일정을 조정합니다.</p>
+          {onEditEventTime && <button className="tp-btn tp-btn--secondary plan-item__action" type="button" onClick={onEditEventTime}>방문 시간 수정</button>}
+        </>
+      ) : !locked && (
         <div className="plan-item__actions">
           <button className="tp-btn tp-btn--secondary plan-item__action" type="button" disabled={locked} onClick={onEditTime}>
             시간 변경
